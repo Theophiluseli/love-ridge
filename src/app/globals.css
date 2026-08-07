@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 font-sans antialiased selection:bg-emerald-500/20 selection:text-emerald-900;
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.05) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(5, 150, 105, 0.06) 0px, transparent 50%),
+      radial-gradient(at 50% 100%, rgba(240, 253, 244, 0.8) 0px, transparent 50%);
+    background-attachment: fixed;
+  }
+}
+
+/* Background Pattern Grid Overlay */
+.bg-grid-pattern {
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, rgba(15, 82, 36, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(15, 82, 36, 0.04) 1px, transparent 1px);
+}
+
+.floating-pill-header {
+  @apply bg-slate-950/85 backdrop-blur-xl border border-white/15 shadow-2xl rounded-full px-6 py-3 transition-all duration-300;
+}
+
+.glass-panel {
+  @apply bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl shadow-emerald-900/5;
+}
+
+.glass-card {
+  @apply bg-white backdrop-blur-md border border-slate-200/80 shadow-md hover:shadow-xl hover:border-emerald-700/40 transition-all duration-300;
+}
+
+.gradient-text {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-emerald-900 via-emerald-700 to-green-800;
+}
+
+.gradient-btn {
+  @apply bg-gradient-to-r from-emerald-800 via-emerald-900 to-green-950 hover:from-emerald-900 hover:to-slate-950 text-white font-bold shadow-lg shadow-emerald-900/20 hover:shadow-emerald-900/40 transition-all duration-300 active:scale-[0.98];
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

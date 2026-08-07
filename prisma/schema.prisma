@@ -1,0 +1,284 @@
+// Prisma Schema for Love Ridge Property & Product Catalogue Platform
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id               String      @id @default(uuid())
+  name             String
+  email            String      @unique
+  phone            String?
+  passwordHash     String
+  roleId           String
+  role             Role        @relation(fields: [roleId], references: [id])
+  status           String      @default("ACTIVE") // ACTIVE, SUSPENDED
+  twoFactorEnabled Boolean     @default(false)
+  twoFactorSecret  String?
+  lastLoginAt      DateTime?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  properties       Property[]  @relation("AgentProperties")
+  createdProperties Property[] @relation("CreatedProperties")
+  approvedProperties Property[] @relation("ApprovedProperties")
+  createdProducts  Product[]   @relation("CreatedProducts")
+  assignedLeads    Lead[]      @relation("AssignedLeads")
+  uploadedMedia    Media[]
+  auditLogs        AuditLog[]
+
+  @@map("users")
+}
+
+model Role {
+  id           String           @id @default(uuid())
+  name         String           @unique
+  description  String?
+  isSystemRole Boolean          @default(false)
+  users        User[]
+  permissions  RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id @default(uuid())
+  key         String           @unique // e.g. "property.create", "users.manage"
+  description String?
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model Property {
+  id              String             @id @default(uuid())
+  title           String
+  slug            String             @unique
+  description     String
+  listingType     String             // SALE, RENT
+  propertyType    String             // HOUSE, APARTMENT, DUPLEX, TOWNHOUSE, GARAGE, LAND
+  status          String             @default("DRAFT") // DRAFT, PENDING_REVIEW, PUBLISHED, SOLD, RENTED, ARCHIVED
+  price           Float
+  currency        String             @default("GHS")
+  pricePeriod     String?            // per month, per year (for rent)
+  bedrooms        Int                @default(0)
+  bathrooms       Int                @default(0)
+  sizeSqft        Float?
+  locationAddress String
+  city            String
+  region          String
+  country         String             @default("Ghana")
+  lat             Float?
+  lng             Float?
+  featured        Boolean            @default(false)
+  
+  agentId         String?
+  agent           User?              @relation("AgentProperties", fields: [agentId], references: [id])
+  createdById     String
+  createdBy       User               @relation("CreatedProperties", fields: [createdById], references: [id])
+  approvedById    String?
+  approvedBy      User?              @relation("ApprovedProperties", fields: [approvedById], references: [id])
+  
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  publishedAt     DateTime?
+
+  media           PropertyMedia[]
+  amenities       PropertyAmenity[]
+  leads           Lead[]
+
+  @@map("properties")
+}
+
+model PropertyMedia {
+  id         String   @id @default(uuid())
+  propertyId String
+  mediaId    String
+  sortOrder  Int      @default(0)
+  isCover    Boolean  @default(false)
+
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  media      Media    @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@map("property_media")
+}
+
+model Amenity {
+  id         String            @id @default(uuid())
+  name       String            @unique
+  icon       String?           // lucide icon name
+  properties PropertyAmenity[]
+
+  @@map("amenities")
+}
+
+model PropertyAmenity {
+  propertyId String
+  amenityId  String
+
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  amenity    Amenity  @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+
+  @@id([propertyId, amenityId])
+  @@map("property_amenities")
+}
+
+model ProductCategory {
+  id          String            @id @default(uuid())
+  name        String
+  slug        String            @unique
+  description String?
+  parentId    String?
+  parent      ProductCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    ProductCategory[] @relation("CategoryHierarchy")
+  products    Product[]
+
+  @@map("product_categories")
+}
+
+model Product {
+  id            String          @id @default(uuid())
+  name          String
+  slug          String          @unique
+  description   String
+  categoryId    String
+  category      ProductCategory @relation(fields: [categoryId], references: [id])
+  sku           String          @unique
+  price         Float
+  currency      String          @default("GHS")
+  unit          String          @default("per piece") // per box, per sqft, per piece, set
+  stockQuantity Int             @default(0)
+  stockStatus   String          @default("IN_STOCK") // IN_STOCK, OUT_OF_STOCK, PREORDER
+  originCountry String          @default("China")
+  moq           Int             @default(1) // minimum order quantity
+  status        String          @default("DRAFT") // DRAFT, PUBLISHED, ARCHIVED
+  featured      Boolean         @default(false)
+
+  createdById   String
+  createdBy     User            @relation("CreatedProducts", fields: [createdById], references: [id])
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  media         ProductMedia[]
+  leads         Lead[]
+
+  @@map("products")
+}
+
+model ProductMedia {
+  id        String   @id @default(uuid())
+  productId String
+  mediaId   String
+  sortOrder Int      @default(0)
+  isCover   Boolean  @default(false)
+
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  media     Media    @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@map("product_media")
+}
+
+model Media {
+  id             String          @id @default(uuid())
+  fileUrl        String
+  fileType       String
+  altText        String?
+  uploadedById   String
+  uploadedBy     User            @relation(fields: [uploadedById], references: [id])
+  uploadedAt     DateTime        @default(now())
+  fileSize       Int
+
+  propertyMedias PropertyMedia[]
+  productMedias  ProductMedia[]
+
+  @@map("media")
+}
+
+model Lead {
+  id          String    @id @default(uuid())
+  type        String    // PROPERTY_VIEWING, PRODUCT_QUOTE, GENERAL_CONTACT
+  propertyId  String?
+  property    Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  productId   String?
+  product     Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+  
+  name        String
+  email       String
+  phone       String
+  message     String
+  status      String    @default("NEW") // NEW, CONTACTED, QUALIFIED, CONVERTED, CLOSED
+  
+  assignedToId String?
+  assignedTo  User?     @relation("AssignedLeads", fields: [assignedToId], references: [id])
+  source      String    @default("website")
+  createdAt   DateTime  @default(now())
+
+  @@map("leads")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String   // e.g. PROPERTY_CREATE, ROLE_UPDATE, USER_SUSPEND
+  entityType String   // property, product, user, role
+  entityId   String
+  oldValue   String?  // JSON string
+  newValue   String?  // JSON string
+  createdAt  DateTime @default(now())
+
+  @@map("audit_logs")
+}
+
+model Testimonial {
+  id        String   @id @default(uuid())
+  name      String
+  role      String?
+  company   String?
+  content   String
+  rating    Int      @default(5)
+  avatarUrl String?
+  status    String   @default("PUBLISHED") // DRAFT, PUBLISHED
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@map("testimonials")
+}
+
+model Partner {
+  id        String   @id @default(uuid())
+  name      String
+  logoUrl   String
+  website   String?
+  status    String   @default("PUBLISHED")
+  sortOrder Int      @default(0)
+
+  @@map("partners")
+}
+
+model Faq {
+  id        String   @id @default(uuid())
+  question  String
+  answer    String
+  category  String   @default("General") // Properties, Products, Ordering, General
+  status    String   @default("PUBLISHED")
+  sortOrder Int      @default(0)
+
+  @@map("faqs")
+}
