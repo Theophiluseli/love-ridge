@@ -5,7 +5,8 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import PropertyCard from '@/components/PropertyCard';
 import InquiryModal from '@/components/InquiryModal';
-import { Search, SlidersHorizontal, Building2, RotateCcw } from 'lucide-react';
+import { Search, SlidersHorizontal, Building2, RotateCcw, ChevronDown, Trees, Warehouse, Building } from 'lucide-react';
+import Link from 'next/link';
 
 export default function PropertiesPage() {
   const [properties, setProperties] = useState<any[]>([]);
@@ -15,9 +16,7 @@ export default function PropertiesPage() {
   const [listingType, setListingType] = useState('ALL');
   const [propertyType, setPropertyType] = useState('ALL');
   const [city, setCity] = useState('ALL');
-  const [bedrooms, setBedrooms] = useState('ALL');
   const [search, setSearch] = useState('');
-  const [maxPrice, setMaxPrice] = useState('');
 
   // Modal State
   const [modalState, setModalState] = useState<{
@@ -33,9 +32,7 @@ export default function PropertiesPage() {
       if (listingType !== 'ALL') params.append('listingType', listingType);
       if (propertyType !== 'ALL') params.append('propertyType', propertyType);
       if (city !== 'ALL') params.append('city', city);
-      if (bedrooms !== 'ALL') params.append('bedrooms', bedrooms);
       if (search) params.append('search', search);
-      if (maxPrice) params.append('maxPrice', maxPrice);
 
       const res = await fetch(`/api/properties?${params.toString()}`);
       const data = await res.json();
@@ -49,132 +46,141 @@ export default function PropertiesPage() {
 
   useEffect(() => {
     fetchProperties();
-  }, [listingType, propertyType, city, bedrooms]);
+  }, [listingType, propertyType, city]);
 
   function resetFilters() {
     setListingType('ALL');
     setPropertyType('ALL');
     setCity('ALL');
-    setBedrooms('ALL');
     setSearch('');
-    setMaxPrice('');
   }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between">
       <Navbar />
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-        {/* Page Header */}
-        <div className="space-y-2">
-          <span className="text-emerald-800 font-bold text-xs uppercase tracking-widest block">
-            Real Estate Catalogue
-          </span>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900">
-            Find Properties for Sale & Rent in Ghana
-          </h1>
-          <p className="text-slate-600 text-sm font-medium">
-            Browse verified houses, luxury villas, executive apartments, and commercial land plots.
-          </p>
-        </div>
-
-        {/* Filter Bar */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-md space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-            <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
-              <SlidersHorizontal className="w-4 h-4 text-emerald-700" /> Search & Filter Properties
-            </div>
-            <button
-              onClick={resetFilters}
-              className="text-xs text-emerald-800 font-bold hover:underline flex items-center gap-1"
-            >
-              <RotateCcw className="w-3.5 h-3.5" /> Reset Filters
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">Listing Status</label>
-              <select
-                value={listingType}
-                onChange={(e) => setListingType(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-900 font-medium focus:border-emerald-700"
-              >
-                <option value="ALL">All (Sale & Rent)</option>
-                <option value="SALE">For Sale</option>
-                <option value="RENT">For Rent</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">Property Type</label>
-              <select
-                value={propertyType}
-                onChange={(e) => setPropertyType(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-900 font-medium focus:border-emerald-700"
-              >
-                <option value="ALL">All Property Types</option>
-                <option value="HOUSE">House / Villa</option>
-                <option value="APARTMENT">Apartment</option>
-                <option value="DUPLEX">Duplex</option>
-                <option value="TOWNHOUSE">Townhouse</option>
-                <option value="LAND">Land Plot</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">Location</label>
-              <select
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-900 font-medium focus:border-emerald-700"
-              >
-                <option value="ALL">All Cities</option>
-                <option value="Accra">Accra</option>
-                <option value="Kumasi">Kumasi</option>
-                <option value="Takoradi">Takoradi</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">Min Bedrooms</label>
-              <select
-                value={bedrooms}
-                onChange={(e) => setBedrooms(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-900 font-medium focus:border-emerald-700"
-              >
-                <option value="ALL">Any Bedrooms</option>
-                <option value="1">1+ Bedroom</option>
-                <option value="2">2+ Bedrooms</option>
-                <option value="3">3+ Bedrooms</option>
-                <option value="4">4+ Bedrooms</option>
-              </select>
-            </div>
-
-            <div className="flex items-end">
+      {/* Main Container with Extra Top Padding for header & filter bar */}
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-12 sm:pt-16 pb-12 space-y-10">
+        {/* CENTERED FILTER & SEARCH BAR SECTION */}
+        <div className="max-w-5xl mx-auto w-full space-y-6">
+          {/* Centered Filter Bar */}
+          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/90 shadow-xl space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-slate-800">
+                <SlidersHorizontal className="w-4 h-4 text-emerald-700" /> Property Search Filter
+              </div>
               <button
-                onClick={fetchProperties}
-                className="gradient-btn w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2"
+                onClick={resetFilters}
+                className="text-xs text-emerald-800 font-bold hover:underline flex items-center gap-1"
               >
-                <Search className="w-4 h-4" /> Apply Filters
+                <RotateCcw className="w-3.5 h-3.5" /> Reset Filters
               </button>
+            </div>
+
+            {/* 4-Column Search Filter Inputs */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* 1. Listing Status */}
+              <div>
+                <label className="block text-xs font-extrabold text-slate-800 mb-2">Listing Status</label>
+                <div className="relative">
+                  <select
+                    value={listingType}
+                    onChange={(e) => setListingType(e.target.value)}
+                    className="w-full bg-slate-50/90 border border-slate-200 rounded-2xl px-4 py-3 text-xs text-slate-900 font-semibold appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-800/20 focus:border-emerald-700 focus:bg-white shadow-2xs pr-10 transition-all cursor-pointer"
+                  >
+                    <option value="ALL">All (Rent & Sale)</option>
+                    <option value="SALE">For Sale</option>
+                    <option value="RENT">For Rent / Lease</option>
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                    <ChevronDown className="w-4 h-4" />
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Property Type */}
+              <div>
+                <label className="block text-xs font-extrabold text-slate-800 mb-2">Property Type</label>
+                <div className="relative">
+                  <select
+                    value={propertyType}
+                    onChange={(e) => setPropertyType(e.target.value)}
+                    className="w-full bg-slate-50/90 border border-slate-200 rounded-2xl px-4 py-3 text-xs text-slate-900 font-semibold appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-800/20 focus:border-emerald-700 focus:bg-white shadow-2xs pr-10 transition-all cursor-pointer"
+                  >
+                    <option value="ALL">All Commercial & Lands</option>
+                    <option value="LAND">Land Plot</option>
+                    <option value="OFFICE_SPACE">Office Space</option>
+                    <option value="WAREHOUSE">Warehouse / Logistics</option>
+                    <option value="HOUSE">House / Villa</option>
+                    <option value="APARTMENT">Apartment</option>
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                    <ChevronDown className="w-4 h-4" />
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Location */}
+              <div>
+                <label className="block text-xs font-extrabold text-slate-800 mb-2">Location</label>
+                <div className="relative">
+                  <select
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    className="w-full bg-slate-50/90 border border-slate-200 rounded-2xl px-4 py-3 text-xs text-slate-900 font-semibold appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-800/20 focus:border-emerald-700 focus:bg-white shadow-2xs pr-10 transition-all cursor-pointer"
+                  >
+                    <option value="ALL">All Cities</option>
+                    <option value="Accra">Accra</option>
+                    <option value="Tema">Tema</option>
+                    <option value="Kumasi">Kumasi</option>
+                    <option value="Takoradi">Takoradi</option>
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                    <ChevronDown className="w-4 h-4" />
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. Search Keywords */}
+              <div>
+                <label className="block text-xs font-extrabold text-slate-800 mb-2">Search Keywords</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && fetchProperties()}
+                    placeholder="e.g. Ridge, Spintex, Tema..."
+                    className="w-full bg-slate-50/90 border border-slate-200 rounded-2xl px-4 py-3 text-xs text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-800/20 focus:border-emerald-700 focus:bg-white shadow-2xs transition-all pr-11"
+                  />
+                  <button
+                    onClick={fetchProperties}
+                    title="Search"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-emerald-800 text-white hover:bg-emerald-950 flex items-center justify-center transition-all shadow-xs"
+                  >
+                    <Search className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Property Grid */}
         {loading ? (
-          <div className="py-20 text-center text-slate-500 text-sm">Loading properties...</div>
+          <div className="py-20 text-center text-slate-500 text-sm font-semibold">Loading listed properties...</div>
         ) : properties.length === 0 ? (
-          <div className="bg-white p-12 rounded-2xl border border-slate-200 shadow-sm text-center space-y-4">
+          <div className="bg-white p-12 rounded-3xl border border-slate-200 shadow-sm text-center space-y-4 max-w-xl mx-auto">
             <Building2 className="w-12 h-12 text-slate-400 mx-auto" />
-            <h3 className="text-xl font-bold text-slate-900">No Properties Found</h3>
-            <p className="text-sm text-slate-600 max-w-md mx-auto">
-              We couldn't find any property matching your current filter criteria. Try resetting your search filters.
+            <h3 className="text-xl font-bold text-slate-900">No Listed Properties Found</h3>
+            <p className="text-sm text-slate-600">
+              We couldn't find any property matching your search keywords or filter options.
             </p>
-            <button onClick={resetFilters} className="gradient-btn px-6 py-2 rounded-xl text-xs font-bold">
-              Reset Filters
-            </button>
+            <div className="flex justify-center gap-3 pt-2">
+              <button onClick={resetFilters} className="bg-slate-100 px-5 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-200">
+                Reset Filters
+              </button>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -183,11 +189,7 @@ export default function PropertiesPage() {
                 key={prop.id}
                 property={prop}
                 onRequestViewing={(id, title) =>
-                  setModalState({
-                    isOpen: true,
-                    propertyId: id,
-                    itemName: title,
-                  })
+                  setModalState({ isOpen: true, propertyId: id, itemName: title })
                 }
               />
             ))}
@@ -200,7 +202,7 @@ export default function PropertiesPage() {
       <InquiryModal
         isOpen={modalState.isOpen}
         onClose={() => setModalState({ isOpen: false })}
-        title="Book Physical Property Viewing"
+        title="Schedule Property Viewing"
         type="PROPERTY_VIEWING"
         propertyId={modalState.propertyId}
         itemName={modalState.itemName}

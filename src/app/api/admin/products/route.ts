@@ -43,6 +43,8 @@ export async function POST(req: NextRequest) {
       moq = 1,
       status = 'PUBLISHED',
       featured = false,
+      imageUrl,
+      galleryUrls = [],
     } = body;
 
     if (!name || !description || !categoryId || !sku || price === undefined) {
@@ -70,6 +72,8 @@ export async function POST(req: NextRequest) {
         moq: parseInt(moq),
         status,
         featured: Boolean(featured),
+        imageUrl: imageUrl || null,
+        galleryUrls: Array.isArray(galleryUrls) ? galleryUrls : [],
         createdById: user.userId,
       },
     });

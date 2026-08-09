@@ -34,6 +34,8 @@ export async function PATCH(
         moq: body.moq !== undefined ? parseInt(body.moq) : existing.moq,
         status: body.status ?? existing.status,
         featured: body.featured !== undefined ? Boolean(body.featured) : existing.featured,
+        imageUrl: body.imageUrl !== undefined ? body.imageUrl : existing.imageUrl,
+        galleryUrls: Array.isArray(body.galleryUrls) ? body.galleryUrls : existing.galleryUrls,
       },
     });
 

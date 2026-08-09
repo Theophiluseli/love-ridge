@@ -41,6 +41,8 @@ export async function PATCH(
         city: body.city ?? existing.city,
         featured: body.featured !== undefined ? Boolean(body.featured) : existing.featured,
         agentId: body.agentId ?? existing.agentId,
+        imageUrl: body.imageUrl !== undefined ? body.imageUrl : existing.imageUrl,
+        galleryUrls: Array.isArray(body.galleryUrls) ? body.galleryUrls : existing.galleryUrls,
       },
     });
 

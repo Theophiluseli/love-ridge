@@ -19,6 +19,7 @@ interface ProductProps {
     moq: number;
     category?: { name: string };
     imageUrl?: string;
+    featured?: boolean;
     popular?: boolean;
   };
   onRequestQuote?: (productId: string, productName: string) => void;
@@ -47,14 +48,15 @@ export default function ProductCard({ product, onRequestQuote }: ProductProps) {
         {/* Image Frame Container */}
         <div className="relative w-full h-36 sm:h-52 bg-slate-50/80 rounded-xl p-2.5 sm:p-4 flex items-center justify-center overflow-hidden mb-2.5 sm:mb-3 border border-slate-100/90">
           {/* Badge at top-left */}
-          <div className="absolute top-2 left-2 sm:top-2.5 sm:left-2.5 z-10">
-            {isInStock ? (
-              <span className="bg-amber-400/90 text-slate-900 text-[9px] sm:text-[10px] font-semibold tracking-wide px-2 sm:px-2.5 py-0.5 rounded-full shadow-2xs">
-                Popular
+          <div className="absolute top-2 left-2 sm:top-2.5 sm:left-2.5 z-10 flex flex-wrap gap-1">
+            {product.featured && (
+              <span className="bg-red-600 text-white text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-2 sm:px-2.5 py-0.5 rounded-full shadow-xs">
+                FEATURED
               </span>
-            ) : (
-              <span className="bg-emerald-900 text-white text-[9px] sm:text-[10px] font-semibold tracking-wide px-2 sm:px-2.5 py-0.5 rounded-full shadow-2xs">
-                Pre-Order
+            )}
+            {!isInStock && (
+              <span className="bg-slate-800 text-white text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-2 sm:px-2.5 py-0.5 rounded-full shadow-xs">
+                PRE-ORDER
               </span>
             )}
           </div>

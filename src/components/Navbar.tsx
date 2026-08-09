@@ -12,7 +12,7 @@ export default function Navbar() {
 
   const navLinks = [
     { href: '/', label: 'Home' },
-    { href: '/properties', label: 'Properties' },
+    { href: '/properties', label: 'Properties & Commercial' },
     { href: '/products', label: 'Our Store' },
     { href: '/services', label: 'Services' },
     { href: '/about', label: 'About Us' },
@@ -51,7 +51,7 @@ export default function Navbar() {
         {/* Right CTA Button */}
         <div className="hidden lg:flex items-center z-10">
           <a
-            href="https://wa.me/233240001111?text=Hello%20Loveridge%20Properties,%20I%20am%20interested%20in%20your%20listings%20and%20materials."
+            href="https://wa.me/233240001111?text=Hello%20Loveridge%20Properties,%20I%20am%20interested%20in%20your%20lands,%20office%20spaces%20and%20warehouses."
             target="_blank"
             rel="noreferrer"
             className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-400 hover:to-green-400 text-slate-950 font-black px-5 py-2 rounded-full text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 transition-all active:scale-[0.98]"
@@ -85,9 +85,9 @@ export default function Navbar() {
           <Link
             href="/admin/login"
             onClick={() => setMobileMenu(false)}
-            className="block px-4 py-3 rounded-2xl text-sm font-bold text-white bg-emerald-900 border border-emerald-700"
+            className="block px-4 py-3 rounded-2xl text-sm font-bold text-white bg-slate-900 border border-slate-700"
           >
-            Admin Management Portal
+            Staff Admin Portal
           </Link>
         </div>
       )}
