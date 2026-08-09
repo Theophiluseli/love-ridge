@@ -54,6 +54,8 @@ export async function POST(req: NextRequest) {
       region,
       featured = false,
       agentId,
+      imageUrl,
+      galleryUrls = [],
     } = body;
 
     if (!title || !description || !listingType || !propertyType || !price || !locationAddress || !city) {
@@ -83,14 +85,16 @@ export async function POST(req: NextRequest) {
         price: parseFloat(price),
         currency,
         pricePeriod,
-        bedrooms: parseInt(bedrooms),
-        bathrooms: parseInt(bathrooms),
+        bedrooms: parseInt(bedrooms || 0),
+        bathrooms: parseInt(bathrooms || 0),
         sizeSqft: sizeSqft ? parseFloat(sizeSqft) : null,
         locationAddress,
         city,
         region: region || 'Greater Accra',
         country: 'Ghana',
         featured: Boolean(featured),
+        imageUrl: imageUrl || null,
+        galleryUrls: Array.isArray(galleryUrls) ? galleryUrls : [],
         agentId: agentId || user.userId,
         createdById: user.userId,
         approvedById: canAutoPublish ? user.userId : null,

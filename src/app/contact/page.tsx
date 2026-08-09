@@ -134,10 +134,10 @@ export default function ContactPage() {
             </div>
 
             {/* Right: Contact Form */}
-            <div className="lg:col-span-2 bg-white p-8 sm:p-12 rounded-3xl border border-slate-200 shadow-xl space-y-6">
+            <div className="lg:col-span-2 bg-white p-6 sm:p-10 rounded-3xl border border-slate-200 shadow-xl space-y-6">
               <div>
-                <h3 className="text-2xl font-extrabold text-slate-900">Send Us a Direct Message</h3>
-                <p className="text-xs text-slate-500 font-medium mt-1">
+                <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">Send Us a Direct Message</h3>
+                <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
                   Fill out the form below and an assigned staff member will reply within 2 hours.
                 </p>
               </div>
@@ -157,7 +157,7 @@ export default function ContactPage() {
                   </button>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-5">
+                <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
                   {error && (
                     <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl font-semibold">
                       {error}
@@ -173,7 +173,7 @@ export default function ContactPage() {
                         value={form.name}
                         onChange={(e) => setForm({ ...form, name: e.target.value })}
                         placeholder="e.g. Dr. Mensah Bonsu"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-emerald-700 font-medium"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 sm:px-4 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-emerald-700 font-medium transition"
                       />
                     </div>
 
@@ -182,7 +182,7 @@ export default function ContactPage() {
                       <select
                         value={form.inquiryType}
                         onChange={(e) => setForm({ ...form, inquiryType: e.target.value })}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-emerald-700 font-semibold"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 sm:px-4 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-emerald-700 font-semibold transition"
                       >
                         <option value="GENERAL_CONTACT">General Inquiry / Consultancy</option>
                         <option value="PROPERTY_VIEWING">Real Estate Viewing Request</option>
@@ -200,7 +200,7 @@ export default function ContactPage() {
                         value={form.email}
                         onChange={(e) => setForm({ ...form, email: e.target.value })}
                         placeholder="name@domain.com"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-emerald-700 font-medium"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 sm:px-4 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-emerald-700 font-medium transition"
                       />
                     </div>
 
@@ -212,7 +212,7 @@ export default function ContactPage() {
                         value={form.phone}
                         onChange={(e) => setForm({ ...form, phone: e.target.value })}
                         placeholder="+233 24 000 0000"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-emerald-700 font-medium"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 sm:px-4 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-emerald-700 font-medium transition"
                       />
                     </div>
                   </div>
@@ -225,14 +225,14 @@ export default function ContactPage() {
                       value={form.message}
                       onChange={(e) => setForm({ ...form, message: e.target.value })}
                       placeholder="Please specify details regarding property location or required material quantities..."
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-emerald-700 font-medium"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 sm:p-4 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-emerald-700 font-medium transition"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={loading}
-                    className="gradient-btn w-full py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2"
+                    className="gradient-btn w-full py-3.5 sm:py-4 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-md transition-all"
                   >
                     <Send className="w-4 h-4" />
                     {loading ? 'Sending Message...' : 'Send Message'}

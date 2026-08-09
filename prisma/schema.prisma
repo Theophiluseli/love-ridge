@@ -87,6 +87,8 @@ model Property {
   lat             Float?
   lng             Float?
   featured        Boolean            @default(false)
+  imageUrl        String?
+  galleryUrls     String[]           @default([])
   
   agentId         String?
   agent           User?              @relation("AgentProperties", fields: [agentId], references: [id])
@@ -169,6 +171,8 @@ model Product {
   moq           Int             @default(1) // minimum order quantity
   status        String          @default("DRAFT") // DRAFT, PUBLISHED, ARCHIVED
   featured      Boolean         @default(false)
+  imageUrl      String?
+  galleryUrls   String[]        @default([])
 
   createdById   String
   createdBy     User            @relation("CreatedProducts", fields: [createdById], references: [id])

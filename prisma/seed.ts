@@ -325,12 +325,152 @@ async function main() {
       publishedAt: new Date(),
     },
   });
+
+  await prisma.property.upsert({
+    where: { slug: '2-acre-industrial-lease-land-tema-heavy-industrial-zone' },
+    update: {},
+    create: {
+      title: '2-Acre Industrial Land for Rent / Lease (Tema Port Zone)',
+      slug: '2-acre-industrial-lease-land-tema-heavy-industrial-zone',
+      description: 'Prime fenced 2-acre industrial land plot available for long-term lease. Situated 5 minutes from Tema Port with high-capacity three-phase electrical power, piped water, and heavy vehicle paved access roads.',
+      listingType: 'RENT',
+      propertyType: 'LAND',
+      status: 'PUBLISHED',
+      price: 4500,
+      currency: 'USD',
+      pricePeriod: 'per month',
+      bedrooms: 0,
+      bathrooms: 0,
+      sizeSqft: 87120,
+      locationAddress: 'Heavy Industrial Area Zone 2',
+      city: 'Tema',
+      region: 'Greater Accra',
+      country: 'Ghana',
+      featured: true,
+      agentId: agentUser.id,
+      createdById: superAdmin.id,
+      approvedById: superAdmin.id,
+      publishedAt: new Date(),
+    },
+  });
+
+  await prisma.property.upsert({
+    where: { slug: 'grade-a-executive-office-suite-ridge-financial-district' },
+    update: {},
+    create: {
+      title: 'Grade-A Executive Office Suite (350 sqm) - Ridge',
+      slug: 'grade-a-executive-office-suite-ridge-financial-district',
+      description: 'Ultra-modern 350 sqm open-plan commercial office space located in Accra’s premier financial hub in Ridge. Features panoramic skyline views, high-speed fiber internet infrastructure, 24/7 power backup, central AC, and 10 dedicated underground parking slots.',
+      listingType: 'RENT',
+      propertyType: 'OFFICE_SPACE',
+      status: 'PUBLISHED',
+      price: 8750,
+      currency: 'USD',
+      pricePeriod: 'per month',
+      bedrooms: 0,
+      bathrooms: 4,
+      sizeSqft: 3767,
+      locationAddress: 'Financial District, Ridge',
+      city: 'Accra',
+      region: 'Greater Accra',
+      country: 'Ghana',
+      featured: true,
+      agentId: agentUser.id,
+      createdById: superAdmin.id,
+      approvedById: superAdmin.id,
+      publishedAt: new Date(),
+    },
+  });
+
+  await prisma.property.upsert({
+    where: { slug: 'corporate-office-floor-airport-city-accra' },
+    update: {},
+    create: {
+      title: 'Corporate Office Floor (850 sqm) for Sale - Airport City',
+      slug: 'corporate-office-floor-airport-city-accra',
+      description: 'Exclusive 850 sqm commercial office floor in an iconic Airport City high-rise. Fully partitioned into executive corner offices, boardrooms, open workstations, and cafeteria. High investment yield with blue-chip corporate tenant potential.',
+      listingType: 'SALE',
+      propertyType: 'OFFICE_SPACE',
+      status: 'PUBLISHED',
+      price: 2600000,
+      currency: 'USD',
+      pricePeriod: 'outright purchase',
+      bedrooms: 0,
+      bathrooms: 6,
+      sizeSqft: 9149,
+      locationAddress: 'Liberia Road, Airport City',
+      city: 'Accra',
+      region: 'Greater Accra',
+      country: 'Ghana',
+      featured: true,
+      agentId: agentUser.id,
+      createdById: superAdmin.id,
+      approvedById: superAdmin.id,
+      publishedAt: new Date(),
+    },
+  });
+
+  await prisma.property.upsert({
+    where: { slug: 'high-bay-logistics-distribution-warehouse-tema' },
+    update: {},
+    create: {
+      title: '2,500 sqm Logistics Warehouse for Rent (Tema)',
+      slug: 'high-bay-logistics-distribution-warehouse-tema',
+      description: 'Modern 2,500 sqm high-bay logistics warehouse facility featuring 12m clear height clearance, 4 raised dock levelers, automated drive-in container doors, 24/7 security patrol, fire sprinkler systems, and dedicated administrative offices.',
+      listingType: 'RENT',
+      propertyType: 'WAREHOUSE',
+      status: 'PUBLISHED',
+      price: 15000,
+      currency: 'USD',
+      pricePeriod: 'per month',
+      bedrooms: 0,
+      bathrooms: 4,
+      sizeSqft: 26910,
+      locationAddress: 'Harbour Commercial Expressway',
+      city: 'Tema',
+      region: 'Greater Accra',
+      country: 'Ghana',
+      featured: true,
+      agentId: agentUser.id,
+      createdById: superAdmin.id,
+      approvedById: superAdmin.id,
+      publishedAt: new Date(),
+    },
+  });
+
+  await prisma.property.upsert({
+    where: { slug: 'industrial-manufacturing-warehouse-spintex-road' },
+    update: {},
+    create: {
+      title: '4,000 sqm Industrial Warehouse Facility for Sale - Spintex',
+      slug: 'industrial-manufacturing-warehouse-spintex-road',
+      description: 'Substantial 4,000 sqm industrial manufacturing and logistics complex on 3 acres of land along Spintex Road. Includes cold storage room facilities, heavy overhead crane rails, 500kVA transformer substation, and expansive turning yard for 40ft articulation trucks.',
+      listingType: 'SALE',
+      propertyType: 'WAREHOUSE',
+      status: 'PUBLISHED',
+      price: 3500000,
+      currency: 'USD',
+      pricePeriod: 'outright purchase',
+      bedrooms: 0,
+      bathrooms: 8,
+      sizeSqft: 43055,
+      locationAddress: 'Spintex Road Commercial Corridor',
+      city: 'Accra',
+      region: 'Greater Accra',
+      country: 'Ghana',
+      featured: true,
+      agentId: agentUser.id,
+      createdById: superAdmin.id,
+      approvedById: superAdmin.id,
+      publishedAt: new Date(),
+    },
+  });
   console.log('✅ Sample properties created');
 
   // 7. Seed Sample Products
   await prisma.product.upsert({
     where: { slug: 'italian-60x120-porcelain-floor-tiles' },
-    update: {},
+    update: { featured: true },
     create: {
       name: 'Italian Carrara Porcelain Floor Tiles (60x120cm)',
       slug: 'italian-60x120-porcelain-floor-tiles',
@@ -352,7 +492,7 @@ async function main() {
 
   await prisma.product.upsert({
     where: { slug: 'industrial-20v-brushless-cordless-drill-kit' },
-    update: {},
+    update: { featured: true },
     create: {
       name: 'Industrial 20V Brushless Cordless Drill & Impact Driver Set',
       slug: 'industrial-20v-brushless-cordless-drill-kit',
@@ -374,7 +514,7 @@ async function main() {
 
   await prisma.product.upsert({
     where: { slug: 'smart-biometric-fingerprint-front-door-lock' },
-    update: {},
+    update: { featured: true },
     create: {
       name: 'Smart Biometric Fingerprint & Keypad Front Door Lock',
       slug: 'smart-biometric-fingerprint-front-door-lock',
@@ -393,7 +533,161 @@ async function main() {
       createdById: catalogueManager.id,
     },
   });
-  console.log('✅ Sample products created');
+
+  await prisma.product.upsert({
+    where: { slug: 'spanish-calacatta-gold-porcelain-wall-tiles' },
+    update: { featured: false },
+    create: {
+      name: 'Spanish Calacatta Gold Glossy Porcelain Wall Tiles (30x90cm)',
+      slug: 'spanish-calacatta-gold-porcelain-wall-tiles',
+      description: 'Luxury Spanish manufactured high-gloss ceramic & porcelain wall tiles with delicate gold veining.',
+      sku: 'TILE-ESP-3090-CAL-GOLD',
+      price: 165.00,
+      currency: 'GHS',
+      unit: 'per box (1.35 sqm)',
+      stockQuantity: 320,
+      stockStatus: 'IN_STOCK',
+      originCountry: 'Spain',
+      moq: 15,
+      status: 'PUBLISHED',
+      featured: false,
+      categoryId: tilesSubCategory.id,
+      createdById: catalogueManager.id,
+    },
+  });
+
+  await prisma.product.upsert({
+    where: { slug: '5-5kva-hybrid-solar-inverter-lithium-battery-system' },
+    update: { featured: false },
+    create: {
+      name: '5.5kVA Hybrid Solar Inverter & 10kWh Lithium Battery Storage System',
+      slug: '5-5kva-hybrid-solar-inverter-lithium-battery-system',
+      description: 'Complete off-grid and grid-tied intelligent solar power backup solution with dual MPPT charge controller.',
+      sku: 'SOLAR-HYBRID-55KVA-KIT',
+      price: 28500.00,
+      currency: 'GHS',
+      unit: 'per complete system',
+      stockQuantity: 12,
+      stockStatus: 'IN_STOCK',
+      originCountry: 'China',
+      moq: 1,
+      status: 'PUBLISHED',
+      featured: false,
+      categoryId: toolsCategory.id,
+      createdById: catalogueManager.id,
+    },
+  });
+
+  await prisma.product.upsert({
+    where: { slug: 'luxury-brushed-gold-thermostatic-rain-shower-set' },
+    update: { featured: false },
+    create: {
+      name: 'Luxury Brushed Gold Thermostatic Rain Shower System & Faucet',
+      slug: 'luxury-brushed-gold-thermostatic-rain-shower-set',
+      description: 'Premium solid brass wall-mounted thermostatic rainfall shower kit with PVD brushed gold finish.',
+      sku: 'BATH-GOLD-SHOWER-SET',
+      price: 2450.00,
+      currency: 'GHS',
+      unit: 'per set',
+      stockQuantity: 28,
+      stockStatus: 'IN_STOCK',
+      originCountry: 'China',
+      moq: 2,
+      status: 'PUBLISHED',
+      featured: false,
+      categoryId: matCategory.id,
+      createdById: catalogueManager.id,
+    },
+  });
+
+  await prisma.product.upsert({
+    where: { slug: 'commercial-automatic-hydraulic-swing-gate-opener' },
+    update: { featured: false },
+    create: {
+      name: 'Commercial Heavy-Duty Automatic Hydraulic Swing Gate Opener',
+      slug: 'commercial-automatic-hydraulic-swing-gate-opener',
+      description: 'Industrial grade automated dual swing gate actuator kit for heavy iron gates up to 800kg per leaf.',
+      sku: 'GATE-AUTO-HYD-500',
+      price: 4800.00,
+      currency: 'GHS',
+      unit: 'per set',
+      stockQuantity: 18,
+      stockStatus: 'IN_STOCK',
+      originCountry: 'China',
+      moq: 1,
+      status: 'PUBLISHED',
+      featured: false,
+      categoryId: toolsCategory.id,
+      createdById: catalogueManager.id,
+    },
+  });
+
+  await prisma.product.upsert({
+    where: { slug: 'turkish-engineered-natural-oak-hardwood-flooring' },
+    update: { featured: false },
+    create: {
+      name: 'Turkish Engineered Natural Oak Hardwood Flooring (15x190mm)',
+      slug: 'turkish-engineered-natural-oak-hardwood-flooring',
+      description: 'Authentic European oak hardwood plank flooring with multi-ply birch plywood core and click system.',
+      sku: 'WOOD-TURK-OAK-15190',
+      price: 280.00,
+      currency: 'GHS',
+      unit: 'per sqm',
+      stockQuantity: 600,
+      stockStatus: 'IN_STOCK',
+      originCountry: 'Turkey',
+      moq: 25,
+      status: 'PUBLISHED',
+      featured: false,
+      categoryId: tilesSubCategory.id,
+      createdById: catalogueManager.id,
+    },
+  });
+
+  await prisma.product.upsert({
+    where: { slug: 'ultra-hd-outdoor-4k-solar-ai-security-camera-kit' },
+    update: { featured: false },
+    create: {
+      name: 'Ultra-HD Outdoor 4K Solar Powered AI Security Camera System',
+      slug: 'ultra-hd-outdoor-4k-solar-ai-security-camera-kit',
+      description: 'Wireless 100% wire-free 4K Ultra HD smart security camera set with integrated solar panel.',
+      sku: 'SEC-4K-SOLAR-CAM-KIT',
+      price: 1650.00,
+      currency: 'GHS',
+      unit: 'per kit (4 cameras)',
+      stockQuantity: 40,
+      stockStatus: 'IN_STOCK',
+      originCountry: 'China',
+      moq: 1,
+      status: 'PUBLISHED',
+      featured: false,
+      categoryId: toolsCategory.id,
+      createdById: catalogueManager.id,
+    },
+  });
+
+  await prisma.product.upsert({
+    where: { slug: 'industrial-portable-electric-concrete-mixer-350l' },
+    update: { featured: false },
+    create: {
+      name: 'Industrial Portable Electric Concrete Mixer (350L Capacity)',
+      slug: 'industrial-portable-electric-concrete-mixer-350l',
+      description: 'Heavy duty site concrete and mortar batch mixer powered by a 3.0HP copper wire induction electric motor.',
+      sku: 'EQP-MIXER-350L-ELE',
+      price: 6200.00,
+      currency: 'GHS',
+      unit: 'per unit',
+      stockQuantity: 10,
+      stockStatus: 'IN_STOCK',
+      originCountry: 'China',
+      moq: 1,
+      status: 'PUBLISHED',
+      featured: false,
+      categoryId: toolsCategory.id,
+      createdById: catalogueManager.id,
+    },
+  });
+  console.log('✅ Sample products created (10 products total)');
 
   console.log('🚀 DATABASE SEED COMPLETE! All data successfully pushed to Supabase!');
 }

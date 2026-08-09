@@ -5,7 +5,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import PropertyCard from '@/components/PropertyCard';
 import InquiryModal from '@/components/InquiryModal';
-import { MapPin, Bed, Bath, Maximize2, Shield, Calendar, ChevronLeft, CheckCircle2, Images, X } from 'lucide-react';
+import { MapPin, Bed, Bath, Maximize2, Shield, Calendar, ChevronLeft, CheckCircle2, Images, X, PhoneCall } from 'lucide-react';
 import Link from 'next/link';
 
 const SEED_PROPERTIES: Record<string, any> = {
@@ -26,7 +26,7 @@ const SEED_PROPERTIES: Record<string, any> = {
     city: 'Accra',
     region: 'Greater Accra',
     imageUrl: '/property_villa.png',
-    images: ['/property_villa.png', '/property_apartment.png', '/property_land.png'],
+    galleryUrls: ['/property_villa.png', '/property_apartment.png', '/property_land.png'],
     agent: { name: 'Kwame Appiah', phone: '+233 55 666 7777' },
     amenities: [
       { amenity: { name: 'Private Swimming Pool' } },
@@ -54,7 +54,7 @@ const SEED_PROPERTIES: Record<string, any> = {
     city: 'Accra',
     region: 'Greater Accra',
     imageUrl: '/property_apartment.png',
-    images: ['/property_apartment.png', '/property_villa.png', '/property_land.png'],
+    galleryUrls: ['/property_apartment.png', '/property_villa.png', '/property_land.png'],
     agent: { name: 'Kwame Appiah', phone: '+233 55 666 7777' },
     amenities: [
       { amenity: { name: 'Fully Furnished Designer Interior' } },
@@ -82,7 +82,7 @@ const SEED_PROPERTIES: Record<string, any> = {
     city: 'Accra',
     region: 'Greater Accra',
     imageUrl: '/property_land.png',
-    images: ['/property_land.png', '/property_villa.png', '/property_apartment.png'],
+    galleryUrls: ['/property_land.png', '/property_office.png', '/property_warehouse.png'],
     agent: { name: 'Kwame Appiah', phone: '+233 55 666 7777' },
     amenities: [
       { amenity: { name: 'Lands Commission Title Certificate' } },
@@ -100,7 +100,7 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
   const [similar, setSimilar] = useState<any[]>(Object.values(SEED_PROPERTIES).filter((p) => p.slug !== initialProp.slug));
   const [modalOpen, setModalOpen] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [selectedGalleryImage, setSelectedGalleryImage] = useState<string>('');
+  const [activePhoto, setActivePhoto] = useState<string>('');
 
   useEffect(() => {
     async function syncData() {
@@ -113,6 +113,9 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
           if (data.similar && data.similar.length > 0) {
             setSimilar(data.similar);
           }
+          if (data.property.imageUrl) {
+            setActivePhoto(data.property.imageUrl);
+          }
         }
       } catch (err) {
         console.error('Quiet sync error:', err);
@@ -122,20 +125,38 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
   }, [params?.slug]);
 
   // Determine cover image
-  let heroImage = property.imageUrl;
-  if (!heroImage) {
-    if (property.slug?.includes('apartment') || property.propertyType === 'APARTMENT') {
-      heroImage = '/property_apartment.png';
+  let defaultCover = property.imageUrl;
+  if (!defaultCover) {
+    if (property.slug?.includes('office') || property.propertyType === 'OFFICE_SPACE') {
+      defaultCover = '/property_office.png';
+    } else if (property.slug?.includes('warehouse') || property.propertyType === 'WAREHOUSE') {
+      defaultCover = '/property_warehouse.png';
     } else if (property.slug?.includes('land') || property.propertyType === 'LAND') {
-      heroImage = '/property_land.png';
+      defaultCover = '/property_land.png';
+    } else if (property.slug?.includes('apartment') || property.propertyType === 'APARTMENT') {
+      defaultCover = '/property_apartment.png';
     } else {
-      heroImage = '/property_villa.png';
+      defaultCover = '/property_villa.png';
     }
   }
 
-  const galleryImages = property.images && property.images.length > 0
-    ? property.images
-    : ['/property_apartment.png', '/property_villa.png', '/property_land.png'];
+  const currentCover = activePhoto || defaultCover;
+
+  // Multi-photo gallery list
+  const galleryImages = Array.from(
+    new Set(
+      [
+        currentCover,
+        defaultCover,
+        ...(Array.isArray(property.galleryUrls) ? property.galleryUrls : []),
+        ...(Array.isArray(property.images) ? property.images : []),
+        '/property_land.png',
+        '/property_office.png',
+        '/property_warehouse.png',
+        '/property_villa.png',
+      ].filter(Boolean)
+    )
+  );
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between bg-grid-pattern">
@@ -150,9 +171,9 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
         </Link>
 
         {/* Gallery / Header Hero Showcase */}
-        <div className="relative h-[300px] sm:h-[440px] rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl border border-slate-200 flex items-center justify-center p-4 sm:p-8 group">
+        <div className="relative h-[320px] sm:h-[480px] rounded-3xl overflow-hidden shadow-2xl border border-slate-200 flex items-center justify-center p-4 sm:p-8 group bg-slate-900">
           <img
-            src={heroImage}
+            src={currentCover}
             alt={property.title}
             className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
           />
@@ -160,10 +181,10 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
 
           <div className="relative z-20 max-w-3xl text-center space-y-3 sm:space-y-4">
             <div className="flex items-center justify-center gap-2">
-              <span className="px-3 py-1 bg-emerald-800 text-white text-[10px] sm:text-xs font-bold uppercase rounded-full shadow-sm">
+              <span className="px-3.5 py-1 bg-emerald-800 text-white text-[10px] sm:text-xs font-bold uppercase rounded-full shadow-sm">
                 FOR {property.listingType}
               </span>
-              <span className="px-3 py-1 bg-white/90 text-slate-900 text-[10px] sm:text-xs font-bold rounded-full shadow-sm">
+              <span className="px-3.5 py-1 bg-white/95 text-slate-900 text-[10px] sm:text-xs font-bold rounded-full shadow-sm">
                 {property.propertyType}
               </span>
             </div>
@@ -174,7 +195,7 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
 
             <div className="flex items-center justify-center gap-1.5 text-emerald-200 text-xs sm:text-sm font-semibold">
               <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 shrink-0" />
-              <span className="truncate">{property.locationAddress}, {property.city}, {property.region}</span>
+              <span className="truncate">{property.locationAddress}, {property.city}, {property.region || 'Ghana'}</span>
             </div>
           </div>
         </div>
@@ -202,7 +223,7 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
               <div>
                 <span className="text-xs text-slate-500 font-medium block">Property Size</span>
                 <span className="text-2xl font-black text-slate-900 flex items-center justify-center gap-2 mt-1">
-                  <Maximize2 className="w-5 h-5 text-emerald-700" /> {property.sizeSqft || 'N/A'} <span className="text-xs font-normal">sqft</span>
+                  <Maximize2 className="w-5 h-5 text-emerald-700" /> {property.sizeSqft ? `${property.sizeSqft} sqft` : 'N/A'}
                 </span>
               </div>
 
@@ -222,37 +243,23 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
               </p>
             </div>
 
-            {/* Features & Amenities */}
-            {property.amenities && property.amenities.length > 0 && (
-              <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                <h2 className="text-xl font-bold text-slate-900">Features & Amenities</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {property.amenities.map((item: any, idx: number) => (
-                    <div key={idx} className="flex items-center gap-3 text-slate-800 text-sm font-semibold">
-                      <CheckCircle2 className="w-5 h-5 text-emerald-700 shrink-0" />
-                      <span>{item.amenity?.name || item.name || item}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Property Photo Gallery Section (Positioned under Features) */}
-            <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            {/* Property Photo Gallery Section (Interactive Thumbnail Switcher) */}
+            <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-slate-900">Property Photo Gallery</h2>
-                <span className="text-xs text-slate-500 font-medium">Click photo to expand</span>
+                <h2 className="text-xl font-bold text-slate-900">Property Photo Gallery ({galleryImages.length} Photos)</h2>
+                <span className="text-xs text-slate-500 font-medium">Click photo to switch main view</span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {galleryImages.map((imgUrl: string, idx: number) => (
                   <div
                     key={idx}
-                    onClick={() => {
-                      setSelectedGalleryImage(imgUrl);
-                      setLightboxOpen(true);
-                    }}
-                    className="relative h-44 rounded-xl overflow-hidden border border-slate-200 cursor-pointer group bg-slate-50"
+                    onClick={() => setActivePhoto(imgUrl)}
+                    className={`relative h-36 rounded-2xl overflow-hidden border-2 cursor-pointer group bg-slate-50 transition-all ${
+                      currentCover === imgUrl
+                        ? 'border-emerald-800 shadow-md ring-2 ring-emerald-800/20 scale-105'
+                        : 'border-slate-200 hover:border-slate-400 opacity-90'
+                    }`}
                   >
                     <img
                       src={imgUrl}
@@ -260,8 +267,8 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 bg-slate-950/20 group-hover:bg-slate-950/0 transition-colors flex items-center justify-center">
-                      <span className="opacity-0 group-hover:opacity-100 bg-white/95 text-slate-900 text-xs font-bold px-3 py-1.5 rounded-full transition-opacity shadow-md flex items-center gap-1.5">
-                        <Images className="w-3.5 h-3.5" /> Expand
+                      <span className="opacity-0 group-hover:opacity-100 bg-white/95 text-slate-900 text-[10px] font-bold px-2.5 py-1 rounded-full transition-opacity shadow-md flex items-center gap-1">
+                        <Images className="w-3 h-3" /> View
                       </span>
                     </div>
                   </div>
@@ -272,23 +279,27 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
 
           {/* Right Column: Price & Agent Card */}
           <div className="space-y-8">
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xl space-y-6 lg:sticky lg:top-24">
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xl space-y-6 lg:sticky lg:top-24">
               <div>
-                <span className="text-xs text-slate-500 font-semibold block uppercase tracking-wider">LISTING PRICE</span>
-                <div className="text-3xl font-black text-emerald-900 mt-1">
-                  {property.currency === 'USD' ? '$' : 'GHS '}
-                  {property.price?.toLocaleString()}
+                <span className="text-xs text-slate-500 font-bold block uppercase tracking-wider">LISTING PRICE</span>
+                <div className="flex flex-wrap items-baseline gap-2 mt-1">
+                  <span className="text-3xl font-black text-emerald-950">
+                    {property.currency === 'USD' ? '$' : 'GHS '}
+                    {property.price?.toLocaleString()}
+                  </span>
                   {property.pricePeriod && (
-                    <span className="text-xs text-slate-500 font-medium ml-1">{property.pricePeriod}</span>
+                    <span className="inline-flex items-center text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 rounded-lg">
+                      {property.pricePeriod.toLowerCase() === 'outright purchase' ? 'Outright Purchase' : property.pricePeriod.toLowerCase() === 'per month' ? 'Per Month' : property.pricePeriod}
+                    </span>
                   )}
                 </div>
               </div>
 
               <button
                 onClick={() => setModalOpen(true)}
-                className="gradient-btn w-full py-3.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
+                className="gradient-btn w-full py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg"
               >
-                <Calendar className="w-4 h-4" /> Schedule Physical Viewing
+                <Calendar className="w-4 h-4" /> Book Physical Viewing
               </button>
 
               <div className="pt-4 border-t border-slate-100 space-y-4">
@@ -298,22 +309,33 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
                     {property.agent?.name?.charAt(0) || 'K'}
                   </div>
                   <div>
-                    <h5 className="text-sm font-bold text-slate-900">{property.agent?.name || 'Kwame Appiah'}</h5>
-                    <p className="text-xs text-slate-500 font-medium">{property.agent?.phone || '+233 55 666 7777'}</p>
+                    <h5 className="text-sm font-bold text-slate-900">{property.agent?.name || 'Loveridge Staff Agent'}</h5>
+                    <p className="text-xs text-slate-500 font-medium">{property.agent?.phone || '+233 24 000 1111'}</p>
                   </div>
                 </div>
+
+                <a
+                  href={`https://wa.me/233240001111?text=Hello,%20I%20am%20interested%20in%20viewing%20${encodeURIComponent(property.title)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full py-3 rounded-2xl bg-slate-900 text-white font-bold text-xs flex items-center justify-center gap-2 hover:bg-slate-800 transition"
+                >
+                  <PhoneCall className="w-3.5 h-3.5 text-emerald-400" /> Chat With Agent on WhatsApp
+                </a>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Similar Listings */}
+        {/* Similar Properties */}
         {similar.length > 0 && (
-          <div className="space-y-6 pt-10 border-t border-slate-200">
-            <h3 className="text-2xl font-bold text-slate-900">Similar Properties</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {similar.map((prop) => (
-                <PropertyCard key={prop.id} property={prop} />
+          <div className="space-y-6 pt-6 border-t border-slate-200">
+            <h2 className="text-2xl font-extrabold text-slate-900">
+              Similar Listed Properties
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {similar.map((sim) => (
+                <PropertyCard key={sim.id} property={sim} />
               ))}
             </div>
           </div>
@@ -330,44 +352,6 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
         propertyId={property.id}
         itemName={property.title}
       />
-
-      {/* Lightbox Modal */}
-      {lightboxOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex flex-col justify-between p-4 sm:p-8">
-          <div className="flex items-center justify-between text-white max-w-6xl mx-auto w-full">
-            <div className="text-sm font-bold">{property.title} - Photo Gallery</div>
-            <button
-              onClick={() => setLightboxOpen(false)}
-              className="p-2 text-slate-300 hover:text-white rounded-full hover:bg-white/10"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-
-          <div className="max-w-4xl mx-auto w-full h-[60vh] sm:h-[70vh] flex items-center justify-center p-4">
-            <img
-              src={selectedGalleryImage || heroImage}
-              alt="Gallery Full View"
-              className="max-h-full max-w-full object-contain rounded-2xl shadow-2xl"
-            />
-          </div>
-
-          {/* Lightbox Bottom Thumbnails */}
-          <div className="flex items-center justify-center gap-3 overflow-x-auto py-2 no-scrollbar max-w-xl mx-auto">
-            {galleryImages.map((imgUrl: string, idx: number) => (
-              <button
-                key={idx}
-                onClick={() => setSelectedGalleryImage(imgUrl)}
-                className={`w-16 h-12 rounded-xl overflow-hidden border shrink-0 transition-all ${
-                  selectedGalleryImage === imgUrl ? 'border-2 border-emerald-400 scale-110 shadow-lg' : 'border-white/20 opacity-60 hover:opacity-100'
-                }`}
-              >
-                <img src={imgUrl} alt="Thumbnail" className="w-full h-full object-cover" />
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
