@@ -4,6 +4,13 @@ import { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, CheckCircle, Search, ShieldCheck, Eye, Image as ImageIcon, Trees, Warehouse, Building, Building2, Upload, ArrowRight, X, Sparkles, Phone, Mail, User } from 'lucide-react';
 import Link from 'next/link';
 
+const DEFAULT_AGENTS = [
+  'Kwame Appiah',
+  'Kwaku Loveridge',
+  'Sarah Osei',
+  'Loveridge Staff Agent',
+];
+
 export default function AdminPropertiesPage() {
   const [properties, setProperties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -11,6 +18,10 @@ export default function AdminPropertiesPage() {
   // Form View State
   const [activeTab, setActiveTab] = useState<'LIST' | 'CREATE' | 'EDIT'>('LIST');
   const [editItem, setEditItem] = useState<any>(null);
+
+  // Agent Selection Dropdown & Custom Input State
+  const [agentSelectMode, setAgentSelectMode] = useState<string>('Kwame Appiah');
+  const [customAgentInput, setCustomAgentInput] = useState<string>('');
 
   // Form state matching screenshot layout
   const [form, setForm] = useState({
@@ -30,7 +41,7 @@ export default function AdminPropertiesPage() {
     featured: true,
     imageUrl: '',
     galleryUrls: [] as string[],
-    contactName: 'Loveridge Staff Agent',
+    contactName: 'Kwame Appiah',
     contactPhone: '+233 24 000 1111',
     contactEmail: 'agent@loveridge.com',
   });
@@ -45,6 +56,10 @@ export default function AdminPropertiesPage() {
       const res = await fetch('/api/admin/properties', {
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (res.status === 401) {
+        window.location.href = '/admin/login';
+        return;
+      }
       const data = await res.json();
       setProperties(data.properties || []);
     } catch (err) {
@@ -78,7 +93,14 @@ export default function AdminPropertiesPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Operation failed.');
+      if (!res.ok) {
+        if (res.status === 401) {
+          alert('Your session token has expired or is invalid. Redirecting to admin login...');
+          window.location.href = '/admin/login';
+          return;
+        }
+        throw new Error(data.error || 'Operation failed.');
+      }
 
       setMessage(editItem ? 'Property updated successfully!' : 'Property created & published successfully!');
       setTimeout(() => setMessage(''), 3000);
@@ -101,6 +123,10 @@ export default function AdminPropertiesPage() {
         },
         body: JSON.stringify({ status }),
       });
+      if (res.status === 401) {
+        window.location.href = '/admin/login';
+        return;
+      }
       if (res.ok) fetchProperties();
     } catch (err) {
       console.error(err);
@@ -115,22 +141,45 @@ export default function AdminPropertiesPage() {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (res.status === 401) {
+        window.location.href = '/admin/login';
+        return;
+      }
       if (res.ok) fetchProperties();
     } catch (err) {
       console.error(err);
     }
   }
 
+  async function toggleFeatured(id: string, currentFeatured: boolean) {
+    const token = localStorage.getItem('loveridge_token');
+    try {
+      const res = await fetch(`/api/admin/properties/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ featured: !currentFeatured }),
+      });
+      if (res.ok) fetchProperties();
+    } catch (err) {
+      console.error('Failed to toggle featured status:', err);
+    }
+  }
+
   function openEdit(prop: any) {
     setEditItem(prop);
+    const existingAgent = prop.contactName || prop.agent?.name || 'Kwame Appiah';
+    
     setForm({
       title: prop.title,
       description: prop.description,
-      listingType: prop.listingType,
+      listingType: prop.propertyType === 'LAND' ? 'SALE' : prop.listingType,
       propertyType: prop.propertyType,
       price: prop.price.toString(),
       currency: prop.currency || 'USD',
-      pricePeriod: prop.pricePeriod || (prop.listingType === 'RENT' ? 'per month' : 'outright purchase'),
+      pricePeriod: prop.propertyType === 'LAND' ? 'outright purchase' : (prop.pricePeriod || (prop.listingType === 'RENT' ? 'per month' : 'outright purchase')),
       bedrooms: (prop.bedrooms || 0).toString(),
       bathrooms: (prop.bathrooms || 0).toString(),
       sizeSqft: prop.sizeSqft ? prop.sizeSqft.toString() : '',
@@ -140,23 +189,34 @@ export default function AdminPropertiesPage() {
       featured: prop.featured || false,
       imageUrl: prop.imageUrl || '',
       galleryUrls: Array.isArray(prop.galleryUrls) ? prop.galleryUrls : [],
-      contactName: 'Loveridge Staff Agent',
+      contactName: existingAgent,
       contactPhone: '+233 24 000 1111',
       contactEmail: 'agent@loveridge.com',
     });
+
+    if (DEFAULT_AGENTS.includes(existingAgent)) {
+      setAgentSelectMode(existingAgent);
+      setCustomAgentInput('');
+    } else {
+      setAgentSelectMode('CUSTOM');
+      setCustomAgentInput(existingAgent);
+    }
+
     setActiveTab('EDIT');
   }
 
   function resetForm() {
     setEditItem(null);
+    setAgentSelectMode('Kwame Appiah');
+    setCustomAgentInput('');
     setForm({
       title: '',
       description: '',
-      listingType: 'RENT',
+      listingType: 'SALE',
       propertyType: 'LAND',
       price: '',
       currency: 'USD',
-      pricePeriod: 'per month',
+      pricePeriod: 'outright purchase',
       bedrooms: '0',
       bathrooms: '0',
       sizeSqft: '',
@@ -281,7 +341,13 @@ export default function AdminPropertiesPage() {
                 <button
                   key={item.type}
                   type="button"
-                  onClick={() => setForm({ ...form, propertyType: item.type })}
+                  onClick={() => {
+                    if (item.type === 'LAND') {
+                      setForm({ ...form, propertyType: item.type, listingType: 'SALE', pricePeriod: 'outright purchase' });
+                    } else {
+                      setForm({ ...form, propertyType: item.type });
+                    }
+                  }}
                   className={`p-5 rounded-2xl border text-left transition-all flex flex-col justify-between ${
                     isSelected
                       ? 'border-emerald-700 bg-emerald-50/50 shadow-md ring-2 ring-emerald-700/20'
@@ -316,15 +382,17 @@ export default function AdminPropertiesPage() {
                 </p>
               </div>
               <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-xl text-xs font-bold">
-                <button
-                  type="button"
-                  onClick={() => setForm({ ...form, listingType: 'RENT', pricePeriod: 'per month' })}
-                  className={`px-4 py-2 rounded-lg transition ${
-                    form.listingType === 'RENT' ? 'bg-emerald-800 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  FOR RENT
-                </button>
+                {form.propertyType !== 'LAND' && (
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, listingType: 'RENT', pricePeriod: 'per month' })}
+                    className={`px-4 py-2 rounded-lg transition ${
+                      form.listingType === 'RENT' ? 'bg-emerald-800 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    FOR RENT
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setForm({ ...form, listingType: 'SALE', pricePeriod: 'outright purchase' })}
@@ -347,7 +415,7 @@ export default function AdminPropertiesPage() {
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
                   placeholder="e.g. 3,500 sqm Heavy Logistics Warehouse for Lease in Tema / 2 Acres Commercial Land in East Legon"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-medium focus:border-emerald-700 focus:bg-white transition"
+                  className="admin-input"
                 />
               </div>
 
@@ -357,8 +425,20 @@ export default function AdminPropertiesPage() {
                   <label className="block text-xs font-bold text-slate-800 mb-2">Property Type</label>
                   <select
                     value={form.propertyType}
-                    onChange={(e) => setForm({ ...form, propertyType: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-semibold focus:border-emerald-700"
+                    onChange={(e) => {
+                      const type = e.target.value;
+                      if (type === 'LAND') {
+                        setForm({
+                          ...form,
+                          propertyType: type,
+                          listingType: 'SALE',
+                          pricePeriod: 'outright purchase',
+                        });
+                      } else {
+                        setForm({ ...form, propertyType: type });
+                      }
+                    }}
+                    className="admin-select"
                   >
                     <option value="LAND">Land Plot</option>
                     <option value="OFFICE_SPACE">Office Space</option>
@@ -379,9 +459,9 @@ export default function AdminPropertiesPage() {
                         pricePeriod: e.target.value === 'RENT' ? 'per month' : 'outright purchase',
                       })
                     }
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-semibold focus:border-emerald-700"
+                    className="admin-select"
                   >
-                    <option value="RENT">For Rent / Lease</option>
+                    {form.propertyType !== 'LAND' && <option value="RENT">For Rent / Lease</option>}
                     <option value="SALE">For Sale (Outright)</option>
                   </select>
                 </div>
@@ -393,7 +473,7 @@ export default function AdminPropertiesPage() {
                     value={form.sizeSqft}
                     onChange={(e) => setForm({ ...form, sizeSqft: e.target.value })}
                     placeholder="e.g. 5000 (sqft) or 87120 (2 acres)"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-medium focus:border-emerald-700 focus:bg-white"
+                    className="admin-input"
                   />
                 </div>
               </div>
@@ -405,7 +485,7 @@ export default function AdminPropertiesPage() {
                   <select
                     value={form.currency}
                     onChange={(e) => setForm({ ...form, currency: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-semibold focus:border-emerald-700"
+                    className="admin-select"
                   >
                     <option value="USD">USD ($)</option>
                     <option value="GHS">GHS (GH₵)</option>
@@ -420,7 +500,7 @@ export default function AdminPropertiesPage() {
                     value={form.price}
                     onChange={(e) => setForm({ ...form, price: e.target.value })}
                     placeholder="e.g. 4500"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-medium focus:border-emerald-700 focus:bg-white"
+                    className="admin-input"
                   />
                 </div>
 
@@ -431,7 +511,7 @@ export default function AdminPropertiesPage() {
                     value={form.pricePeriod}
                     onChange={(e) => setForm({ ...form, pricePeriod: e.target.value })}
                     placeholder="per month, per year, outright"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-medium focus:border-emerald-700 focus:bg-white"
+                    className="admin-input"
                   />
                 </div>
               </div>
@@ -443,7 +523,7 @@ export default function AdminPropertiesPage() {
                   <select
                     value={form.city}
                     onChange={(e) => setForm({ ...form, city: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-semibold focus:border-emerald-700"
+                    className="admin-select"
                   >
                     <option value="Accra">Accra</option>
                     <option value="Tema">Tema</option>
@@ -460,8 +540,67 @@ export default function AdminPropertiesPage() {
                     value={form.locationAddress}
                     onChange={(e) => setForm({ ...form, locationAddress: e.target.value })}
                     placeholder="e.g. Spintex Commercial Corridor, Near Coca-Cola Roundabout"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-medium focus:border-emerald-700 focus:bg-white"
+                    className="admin-input"
                   />
+                </div>
+              </div>
+
+              {/* Assigned Agent Selection Dropdown */}
+              <div className="space-y-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-800">Assigned Agent *</label>
+                  <span className="text-[11px] font-semibold text-emerald-800">
+                    Selected: <strong className="text-slate-900">{form.contactName || 'Kwame Appiah'}</strong>
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <select
+                      value={agentSelectMode}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setAgentSelectMode(val);
+                        if (val !== 'CUSTOM') {
+                          setForm({ ...form, contactName: val });
+                          setCustomAgentInput('');
+                        } else {
+                          const initialCustom = customAgentInput || '';
+                          setForm({ ...form, contactName: initialCustom });
+                        }
+                      }}
+                      className="admin-select"
+                    >
+                      <option value="Kwame Appiah">Kwame Appiah</option>
+                      <option value="Kwaku Loveridge">Kwaku Loveridge</option>
+                      <option value="Sarah Osei">Sarah Osei</option>
+                      <option value="Loveridge Staff Agent">Loveridge Staff Agent</option>
+                      <option value="CUSTOM">+ Add New / Custom Agent...</option>
+                    </select>
+                  </div>
+
+                  {agentSelectMode === 'CUSTOM' ? (
+                    <div>
+                      <input
+                        type="text"
+                        required
+                        value={customAgentInput}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setCustomAgentInput(val);
+                          setForm({ ...form, contactName: val });
+                        }}
+                        placeholder="Type new agent full name (e.g. Kofi)"
+                        className="w-full bg-white border border-emerald-400 rounded-xl px-4 py-3 text-xs text-slate-900 font-bold focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center">
+                      <p className="text-[11px] text-slate-500 font-medium">
+                        Selecting an assigned agent displays their name on the property page, while buyer calls stay routed to the company line.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -582,6 +721,25 @@ export default function AdminPropertiesPage() {
                 </div>
               </div>
 
+              {/* FEATURED PROPERTY TOGGLE SWITCH */}
+              <div className="p-4 bg-emerald-50/70 rounded-2xl border border-emerald-200/80 flex items-center justify-between">
+                <div>
+                  <label htmlFor="featured-prop-toggle" className="text-xs font-bold text-slate-900 cursor-pointer block">
+                    Featured Property
+                  </label>
+                  <p className="text-[11px] text-slate-600 font-medium">
+                    When checked, this property will appear in the Featured Properties section on the home page.
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  id="featured-prop-toggle"
+                  checked={form.featured}
+                  onChange={(e) => setForm({ ...form, featured: e.target.checked })}
+                  className="w-5 h-5 text-emerald-800 rounded border-slate-300 focus:ring-emerald-800 cursor-pointer shrink-0"
+                />
+              </div>
+
               {/* Property Description */}
               <div>
                 <label className="block text-xs font-bold text-slate-800 mb-2">Property Description & Specifications *</label>
@@ -630,6 +788,7 @@ export default function AdminPropertiesPage() {
                   <th className="px-6 py-4">Property Title & Type</th>
                   <th className="px-6 py-4">Price</th>
                   <th className="px-6 py-4">Location</th>
+                  <th className="px-6 py-4">Featured</th>
                   <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4 text-right">Staff Actions</th>
                 </tr>
@@ -637,13 +796,13 @@ export default function AdminPropertiesPage() {
               <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-slate-500">
+                    <td colSpan={7} className="p-8 text-center text-slate-500">
                       Loading property listings...
                     </td>
                   </tr>
                 ) : properties.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-slate-500">
+                    <td colSpan={7} className="p-8 text-center text-slate-500">
                       No property listings found.
                     </td>
                   </tr>
@@ -678,6 +837,23 @@ export default function AdminPropertiesPage() {
                         {prop.currency} {prop.price.toLocaleString()}
                       </td>
                       <td className="px-6 py-4 text-slate-600">{prop.city}</td>
+
+                      {/* FEATURED TOGGLE BUTTON COLUMN */}
+                      <td className="px-6 py-4">
+                        <button
+                          type="button"
+                          onClick={() => toggleFeatured(prop.id, prop.featured)}
+                          className={`px-3 py-1 rounded-full text-xs font-bold transition border ${
+                            prop.featured
+                              ? 'bg-emerald-100 text-emerald-900 border-emerald-300 hover:bg-emerald-200'
+                              : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200 hover:text-slate-800'
+                          }`}
+                          title={prop.featured ? 'Click to unmark as Featured' : 'Click to mark as Featured'}
+                        >
+                          {prop.featured ? 'Featured' : 'Standard'}
+                        </button>
+                      </td>
+
                       <td className="px-6 py-4">
                         <span
                           className={`px-2.5 py-1 text-[10px] font-bold rounded-full uppercase border ${

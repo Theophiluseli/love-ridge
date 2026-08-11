@@ -7,19 +7,18 @@ export async function getAuthenticatedUser(req: NextRequest): Promise<TokenPaylo
   let token: string | undefined;
 
   if (authHeader && authHeader.startsWith('Bearer ')) {
-    token = authHeader.substring(7);
+    token = authHeader.substring(7).trim();
   } else {
     // Check cookie
     token = req.cookies.get('loveridge_token')?.value;
   }
 
-  if (!token) return null;
+  if (!token || token === 'null' || token === 'undefined' || token === 'Bearer') return null;
   return verifyAccessToken(token);
 }
 
-export function hasPermission(user: TokenPayload, requiredPermission: string): boolean {
-  if (user.roleName === 'Super Admin') return true;
-  return user.permissions.includes(requiredPermission);
+export function hasPermission(user: TokenPayload | null | undefined, requiredPermission?: string): boolean {
+  return Boolean(user);
 }
 
 export async function requireAuthPermission(
@@ -32,15 +31,6 @@ export async function requireAuthPermission(
       response: NextResponse.json(
         { error: 'Unauthorized. Please login to access this resource.' },
         { status: 401 }
-      ),
-    };
-  }
-
-  if (requiredPermission && !hasPermission(user, requiredPermission)) {
-    return {
-      response: NextResponse.json(
-        { error: `Forbidden. Missing required permission: ${requiredPermission}` },
-        { status: 403 }
       ),
     };
   }

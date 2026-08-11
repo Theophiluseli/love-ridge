@@ -282,41 +282,44 @@ export default function AdminProductsPage() {
             </div>
 
             <form onSubmit={handleSave} className="space-y-6">
-              {/* Product Name & SKU */}
+              {/* Name & SKU */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-slate-800 mb-2">Product Item Name *</label>
+                  <label className="block text-xs font-bold text-slate-800 mb-2">Product Full Name *</label>
                   <input
                     type="text"
                     required
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    placeholder="e.g. Italian Carrara Porcelain Floor Tiles (60x120cm) / Industrial 20V Cordless Drill"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-medium focus:border-emerald-700 focus:bg-white"
+                    placeholder="e.g. 60x120 High-Gloss Italian Porcelain Tiles / 20V Cordless Hammer Drill"
+                    className="admin-input"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-800 mb-2">SKU Code *</label>
+                  <label className="block text-xs font-bold text-slate-800 mb-2">Product Stock SKU *</label>
                   <input
                     type="text"
                     required
                     value={form.sku}
                     onChange={(e) => setForm({ ...form, sku: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-mono focus:border-emerald-700"
+                    placeholder="e.g. TILE-PORC-60120"
+                    className="admin-input"
                   />
                 </div>
               </div>
 
-              {/* Category, Price & Unit */}
+              {/* Category, Unit Price & Unit */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-800 mb-2">Category *</label>
+                  <label className="block text-xs font-bold text-slate-800 mb-2">Catalogue Category *</label>
                   <select
+                    required
                     value={form.categoryId}
                     onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-semibold focus:border-emerald-700"
+                    className="admin-select"
                   >
+                    <option value="">Select Category...</option>
                     {categories.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name}
@@ -334,7 +337,7 @@ export default function AdminProductsPage() {
                     value={form.price}
                     onChange={(e) => setForm({ ...form, price: e.target.value })}
                     placeholder="e.g. 145.00"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-medium focus:border-emerald-700 focus:bg-white"
+                    className="admin-input"
                   />
                 </div>
 
@@ -345,20 +348,32 @@ export default function AdminProductsPage() {
                     value={form.unit}
                     onChange={(e) => setForm({ ...form, unit: e.target.value })}
                     placeholder="e.g. per box, per set, per piece"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-medium focus:border-emerald-700 focus:bg-white"
+                    className="admin-input"
                   />
                 </div>
               </div>
 
-              {/* Stock Quantity, Origin & MOQ */}
-              <div className="grid grid-cols-3 gap-4">
+              {/* Stock Quantity, Availability Status, Origin & MOQ */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 mb-2">Availability Status *</label>
+                  <select
+                    value={form.stockStatus}
+                    onChange={(e) => setForm({ ...form, stockStatus: e.target.value })}
+                    className="admin-select"
+                  >
+                    <option value="IN_STOCK">In Stock (Available Now)</option>
+                    <option value="PRE_ORDER">Available on Pre-Order</option>
+                    <option value="OUT_OF_STOCK">Out of Stock</option>
+                  </select>
+                </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-800 mb-2">Stock Quantity</label>
                   <input
                     type="number"
                     value={form.stockQuantity}
                     onChange={(e) => setForm({ ...form, stockQuantity: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-medium focus:border-emerald-700 focus:bg-white"
+                    className="admin-input"
                   />
                 </div>
                 <div>
@@ -368,7 +383,7 @@ export default function AdminProductsPage() {
                     value={form.originCountry}
                     onChange={(e) => setForm({ ...form, originCountry: e.target.value })}
                     placeholder="e.g. Italy, China, Germany"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-medium focus:border-emerald-700 focus:bg-white"
+                    className="admin-input"
                   />
                 </div>
                 <div>
@@ -377,7 +392,7 @@ export default function AdminProductsPage() {
                     type="number"
                     value={form.moq}
                     onChange={(e) => setForm({ ...form, moq: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-medium focus:border-emerald-700 focus:bg-white"
+                    className="admin-input"
                   />
                 </div>
               </div>
@@ -498,19 +513,14 @@ export default function AdminProductsPage() {
               </div>
 
               {/* FEATURED PRODUCT TOGGLE SWITCH */}
-              <div className="p-4 bg-amber-50/70 rounded-2xl border border-amber-200/80 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-amber-100 text-amber-800 shrink-0">
-                    <Sparkles className="w-5 h-5 fill-amber-500 text-amber-600" />
-                  </div>
-                  <div>
-                    <label htmlFor="featured-toggle" className="text-xs font-bold text-slate-900 cursor-pointer block">
-                      Showcase as Featured Product on Landing Page
-                    </label>
-                    <p className="text-[11px] text-slate-600 font-medium">
-                      When checked, this item will appear in the high-visibility Featured Store section on the home page.
-                    </p>
-                  </div>
+              <div className="p-4 bg-emerald-50/70 rounded-2xl border border-emerald-200/80 flex items-center justify-between">
+                <div>
+                  <label htmlFor="featured-toggle" className="text-xs font-bold text-slate-900 cursor-pointer block">
+                    Featured Product
+                  </label>
+                  <p className="text-[11px] text-slate-600 font-medium">
+                    When checked, this item will appear in the Featured Store section on the home page.
+                  </p>
                 </div>
                 <input
                   type="checkbox"
@@ -569,7 +579,7 @@ export default function AdminProductsPage() {
                   <th className="px-6 py-4">Product & SKU</th>
                   <th className="px-6 py-4">Category</th>
                   <th className="px-6 py-4">Unit Price</th>
-                  <th className="px-6 py-4">Landing Display</th>
+                  <th className="px-6 py-4">Featured</th>
                   <th className="px-6 py-4">Stock</th>
                   <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
@@ -620,21 +630,33 @@ export default function AdminProductsPage() {
                         <button
                           type="button"
                           onClick={() => toggleFeatured(prod.id, prod.featured)}
-                          className={`px-3 py-1.5 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5 transition border shadow-2xs ${
+                          className={`px-3 py-1 rounded-full text-xs font-bold transition border ${
                             prod.featured
-                              ? 'bg-amber-50 text-amber-900 border-amber-300/90 hover:bg-amber-100'
-                              : 'bg-slate-100 text-slate-600 border-slate-200/80 hover:bg-slate-200 hover:text-slate-900'
+                              ? 'bg-emerald-100 text-emerald-900 border-emerald-300 hover:bg-emerald-200'
+                              : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200 hover:text-slate-800'
                           }`}
-                          title={prod.featured ? 'Click to unmark from Landing Page' : 'Click to mark as Featured on Landing Page'}
+                          title={prod.featured ? 'Click to unmark as Featured' : 'Click to mark as Featured'}
                         >
-                          <Sparkles className={`w-3.5 h-3.5 ${prod.featured ? 'text-amber-500 fill-amber-400' : 'text-slate-400'}`} />
-                          {prod.featured ? 'Featured on Landing' : 'Standard'}
+                          {prod.featured ? 'Featured' : 'Standard'}
                         </button>
                       </td>
 
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-2.5 py-1 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          {prod.stockStatus} ({prod.stockQuantity})
+                        <span
+                          className={`px-3 py-1 text-xs font-bold rounded-full border inline-block ${
+                            prod.stockStatus === 'PRE_ORDER' || prod.stockStatus === 'PREORDER'
+                              ? 'bg-amber-100 text-amber-900 border-amber-300'
+                              : prod.stockStatus === 'OUT_OF_STOCK'
+                              ? 'bg-rose-100 text-rose-900 border-rose-300'
+                              : 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                          }`}
+                        >
+                          {prod.stockStatus === 'PRE_ORDER' || prod.stockStatus === 'PREORDER'
+                            ? 'Available on Pre-Order'
+                            : prod.stockStatus === 'OUT_OF_STOCK'
+                            ? 'Out of Stock'
+                            : 'In Stock'}{' '}
+                          <span className="text-[10px] opacity-80">({prod.stockQuantity})</span>
                         </span>
                       </td>
 

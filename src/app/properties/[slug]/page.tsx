@@ -182,7 +182,7 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
           <div className="relative z-20 max-w-3xl text-center space-y-3 sm:space-y-4">
             <div className="flex items-center justify-center gap-2">
               <span className="px-3.5 py-1 bg-emerald-800 text-white text-[10px] sm:text-xs font-bold uppercase rounded-full shadow-sm">
-                FOR {property.listingType}
+                FOR {property.propertyType === 'LAND' ? 'SALE' : property.listingType}
               </span>
               <span className="px-3.5 py-1 bg-white/95 text-slate-900 text-[10px] sm:text-xs font-bold rounded-full shadow-sm">
                 {property.propertyType}
@@ -305,20 +305,20 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
               <div className="pt-4 border-t border-slate-100 space-y-4">
                 <h4 className="text-xs uppercase tracking-wider text-slate-500 font-bold">ASSIGNED AGENT</h4>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-emerald-100 border border-emerald-300 flex items-center justify-center font-bold text-emerald-900">
-                    {property.agent?.name?.charAt(0) || 'K'}
+                  <div className="w-10 h-10 rounded-full bg-emerald-100 border border-emerald-300 flex items-center justify-center font-bold text-emerald-900 shrink-0">
+                    {(property.contactName || property.agent?.name || 'Kwame Appiah').charAt(0)}
                   </div>
                   <div>
-                    <h5 className="text-sm font-bold text-slate-900">{property.agent?.name || 'Loveridge Staff Agent'}</h5>
-                    <p className="text-xs text-slate-500 font-medium">{property.agent?.phone || '+233 24 000 1111'}</p>
+                    <h5 className="text-sm font-bold text-slate-900">{property.contactName || property.agent?.name || 'Kwame Appiah'}</h5>
+                    <p className="text-xs text-slate-500 font-medium">+233 (0) 24 000 1111</p>
                   </div>
                 </div>
 
                 <a
-                  href={`https://wa.me/233240001111?text=Hello,%20I%20am%20interested%20in%20viewing%20${encodeURIComponent(property.title)}`}
+                  href={`https://wa.me/233240001111?text=Hello%20${encodeURIComponent(property.contactName || property.agent?.name || 'Agent')},%20I%20am%20interested%20in%20viewing%20${encodeURIComponent(property.title)}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full py-3 rounded-2xl bg-slate-900 text-white font-bold text-xs flex items-center justify-center gap-2 hover:bg-slate-800 transition"
+                  className="w-full py-3 rounded-2xl bg-slate-900 text-white font-bold text-xs flex items-center justify-center gap-2 hover:bg-slate-800 transition shadow-sm"
                 >
                   <PhoneCall className="w-3.5 h-3.5 text-emerald-400" /> Chat With Agent on WhatsApp
                 </a>

@@ -7,23 +7,33 @@ export async function GET(req: NextRequest) {
   if ('response' in auth) return auth.response;
 
   try {
-    const totalProperties = await prisma.property.count();
-    const publishedProperties = await prisma.property.count({ where: { status: 'PUBLISHED' } });
-    const pendingProperties = await prisma.property.count({ where: { status: 'PENDING_REVIEW' } });
-
-    const totalProducts = await prisma.product.count();
-    const lowStockProducts = await prisma.product.count({ where: { stockQuantity: { lte: 5 } } });
-
-    const totalLeads = await prisma.lead.count();
-    const newLeads = await prisma.lead.count({ where: { status: 'NEW' } });
-    const viewingLeads = await prisma.lead.count({ where: { type: 'PROPERTY_VIEWING' } });
-    const quoteLeads = await prisma.lead.count({ where: { type: 'PRODUCT_QUOTE' } });
-
-    const recentLeads = await prisma.lead.findMany({
-      take: 5,
-      orderBy: { createdAt: 'desc' },
-      include: { property: true, product: true },
-    });
+    const [
+      totalProperties,
+      publishedProperties,
+      pendingProperties,
+      totalProducts,
+      lowStockProducts,
+      totalLeads,
+      newLeads,
+      viewingLeads,
+      quoteLeads,
+      recentLeads,
+    ] = await Promise.all([
+      prisma.property.count(),
+      prisma.property.count({ where: { status: 'PUBLISHED' } }),
+      prisma.property.count({ where: { status: 'PENDING_REVIEW' } }),
+      prisma.product.count(),
+      prisma.product.count({ where: { stockQuantity: { lte: 5 } } }),
+      prisma.lead.count(),
+      prisma.lead.count({ where: { status: 'NEW' } }),
+      prisma.lead.count({ where: { type: 'PROPERTY_VIEWING' } }),
+      prisma.lead.count({ where: { type: 'PRODUCT_QUOTE' } }),
+      prisma.lead.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        include: { property: true, product: true },
+      }),
+    ]);
 
     return NextResponse.json({
       kpis: {

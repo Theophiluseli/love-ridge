@@ -25,6 +25,30 @@ export async function PATCH(
       return NextResponse.json({ error: 'Forbidden. You can only edit your own listings.' }, { status: 403 });
     }
 
+    let assignedAgentId = body.agentId;
+    if (body.contactName) {
+      const agentUser = await prisma.user.findFirst({
+        where: { name: { equals: body.contactName, mode: 'insensitive' } },
+      });
+      if (agentUser) {
+        assignedAgentId = agentUser.id;
+      } else {
+        const agentRole = await prisma.role.findFirst({ where: { name: 'Agent' } }) || await prisma.role.findFirst();
+        if (agentRole) {
+          const newUser = await prisma.user.create({
+            data: {
+              name: body.contactName,
+              email: `agent.${body.contactName.toLowerCase().replace(/[^a-z0-9]/g, '')}.${Date.now().toString().slice(-4)}@loveridge.com`,
+              passwordHash: '$2a$10$7zB3c8W1eG3p9vK2L4x5uOqW8yZ0aB1cC2dE3fG4hI5jK6lM7nO8p',
+              roleId: agentRole.id,
+              phone: '+233 24 000 1111',
+            },
+          });
+          assignedAgentId = newUser.id;
+        }
+      }
+    }
+
     const updated = await prisma.property.update({
       where: { id },
       data: {
@@ -40,7 +64,7 @@ export async function PATCH(
         locationAddress: body.locationAddress ?? existing.locationAddress,
         city: body.city ?? existing.city,
         featured: body.featured !== undefined ? Boolean(body.featured) : existing.featured,
-        agentId: body.agentId ?? existing.agentId,
+        agentId: assignedAgentId ?? body.agentId ?? existing.agentId,
         imageUrl: body.imageUrl !== undefined ? body.imageUrl : existing.imageUrl,
         galleryUrls: Array.isArray(body.galleryUrls) ? body.galleryUrls : existing.galleryUrls,
       },

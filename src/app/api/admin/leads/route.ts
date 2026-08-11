@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuthPermission } from '@/lib/auth/rbac';
+import { requireAuthPermission, hasPermission } from '@/lib/auth/rbac';
 import { prisma } from '@/lib/db';
 
 export async function GET(req: NextRequest) {
@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
 
   try {
     let where: any = {};
-    if (user.roleName === 'Agent' && !user.permissions.includes('leads.manage')) {
+    if (user.roleName === 'Agent' && !hasPermission(user, 'leads.manage')) {
       where.assignedToId = user.userId;
     }
 
