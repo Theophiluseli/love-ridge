@@ -104,7 +104,13 @@ export default function PropertiesPage() {
                 <div className="relative">
                   <select
                     value={propertyType}
-                    onChange={(e) => setPropertyType(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setPropertyType(val);
+                      if (val === 'LAND') {
+                        setListingType('SALE');
+                      }
+                    }}
                     className="w-full bg-slate-50/90 border border-slate-200 rounded-2xl px-4 py-3 text-xs text-slate-900 font-semibold appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-800/20 focus:border-emerald-700 focus:bg-white shadow-2xs pr-10 transition-all cursor-pointer"
                   >
                     <option value="ALL">All Commercial & Lands</option>
@@ -156,7 +162,7 @@ export default function PropertiesPage() {
                   <button
                     onClick={fetchProperties}
                     title="Search"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-emerald-800 text-white hover:bg-emerald-950 flex items-center justify-center transition-all shadow-xs"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-emerald-800 text-white hover:bg-emerald-950 flex items-center justify-center transition-all shadow-sm"
                   >
                     <Search className="w-3.5 h-3.5" />
                   </button>

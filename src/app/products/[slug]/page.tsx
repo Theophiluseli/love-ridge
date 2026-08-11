@@ -5,7 +5,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import ProductCard from '@/components/ProductCard';
 import InquiryModal from '@/components/InquiryModal';
-import { ChevronLeft, Plus, Minus, Truck, ArrowRight, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { ChevronLeft, Plus, Minus, Truck, ArrowRight, ShieldCheck, CheckCircle2, Clock } from 'lucide-react';
 import Link from 'next/link';
 
 const SEED_PRODUCTS: Record<string, any> = {
@@ -35,7 +35,7 @@ const SEED_PRODUCTS: Record<string, any> = {
     currency: 'GHS',
     unit: 'per set',
     stockQuantity: 35,
-    stockStatus: 'IN_STOCK',
+    stockStatus: 'PRE_ORDER',
     moq: 1,
     category: { name: 'TOOLS & CONSTRUCTION EQUIPMENT' },
     imageUrl: '/product_drill.png',
@@ -263,7 +263,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
           {/* Left Column: Product Image & Gallery */}
           <div className="lg:col-span-6 space-y-4">
-            <div className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200/80 shadow-xs flex items-center justify-center h-[320px] sm:h-[460px] relative overflow-hidden group">
+            <div className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200/80 shadow-sm flex items-center justify-center h-[320px] sm:h-[460px] relative overflow-hidden group">
               <img
                 src={selectedImage}
                 alt={product.name}
@@ -283,7 +283,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                     onClick={() => setSelectedImage(img)}
                     className={`w-20 h-20 rounded-2xl border bg-white p-2 flex items-center justify-center transition-all shrink-0 ${
                       selectedImage === img
-                        ? 'border-2 border-emerald-800 shadow-xs scale-105 ring-2 ring-emerald-800/20'
+                        ? 'border-2 border-emerald-800 shadow-sm scale-105 ring-2 ring-emerald-800/20'
                         : 'border-slate-200 hover:border-slate-300 opacity-80 hover:opacity-100'
                     }`}
                   >
@@ -295,7 +295,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
           </div>
 
           {/* Right Column: Product Info & Order Action Box */}
-          <div className="lg:col-span-6 space-y-6 bg-white p-6 sm:p-10 rounded-3xl border border-slate-200/80 shadow-xs">
+          <div className="lg:col-span-6 space-y-6 bg-white p-6 sm:p-10 rounded-3xl border border-slate-200/80 shadow-sm">
             <div className="space-y-2">
               <span className="text-xs font-bold uppercase tracking-widest text-emerald-800 block">
                 {product.category?.name || 'STORE INVENTORY'}
@@ -304,9 +304,19 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                 {product.name}
               </h1>
               <div className="flex items-center gap-2 pt-0.5">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80 text-[11px] font-semibold">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" /> In Stock
-                </span>
+                {product.stockStatus === 'PRE_ORDER' || product.stockStatus === 'PREORDER' ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-100 text-amber-950 border border-amber-300 text-xs font-black">
+                    <Clock className="w-4 h-4 text-amber-700" /> Available on Pre-Order
+                  </span>
+                ) : product.stockStatus === 'OUT_OF_STOCK' ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-100 text-rose-950 border border-rose-300 text-xs font-bold">
+                    Out of Stock
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-950 border border-emerald-300 text-xs font-bold">
+                    <ShieldCheck className="w-4 h-4 text-emerald-700" /> In Stock
+                  </span>
+                )}
               </div>
             </div>
 
@@ -374,7 +384,10 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                 rel="noreferrer"
                 className="gradient-btn flex-1 py-3.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-md"
               >
-                Order via WhatsApp Now <ArrowRight className="w-4 h-4" />
+                {product.stockStatus === 'PRE_ORDER' || product.stockStatus === 'PREORDER'
+                  ? 'Place Pre-Order via WhatsApp'
+                  : 'Order via WhatsApp Now'}{' '}
+                <ArrowRight className="w-4 h-4" />
               </a>
 
               <button

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuthPermission } from '@/lib/auth/rbac';
+import { requireAuthPermission, hasPermission } from '@/lib/auth/rbac';
 import { prisma } from '@/lib/db';
 import { logAuditAction } from '@/lib/auth/audit';
 
@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   try {
     let where: any = {};
     // If agent, limit to own listings unless user has property.approve
-    if (user.roleName === 'Agent' && !user.permissions.includes('property.approve')) {
+    if (user.roleName === 'Agent' && !hasPermission(user, 'property.approve')) {
       where.createdById = user.userId;
     }
 
@@ -71,8 +71,32 @@ export async function POST(req: NextRequest) {
       .replace(/(^-|-$)/g, '') + '-' + Date.now().toString().slice(-4);
 
     // Initial status: Agents submit as PENDING_REVIEW, Property Managers/Admins can set PUBLISHED directly
-    const canAutoPublish = user.permissions.includes('property.approve');
+    const canAutoPublish = hasPermission(user, 'property.approve');
     const initialStatus = canAutoPublish ? (body.status || 'PUBLISHED') : 'PENDING_REVIEW';
+
+    let assignedAgentId = agentId;
+    if (body.contactName) {
+      const agentUser = await prisma.user.findFirst({
+        where: { name: { equals: body.contactName, mode: 'insensitive' } },
+      });
+      if (agentUser) {
+        assignedAgentId = agentUser.id;
+      } else {
+        const agentRole = await prisma.role.findFirst({ where: { name: 'Agent' } }) || await prisma.role.findFirst();
+        if (agentRole) {
+          const newUser = await prisma.user.create({
+            data: {
+              name: body.contactName,
+              email: `agent.${body.contactName.toLowerCase().replace(/[^a-z0-9]/g, '')}.${Date.now().toString().slice(-4)}@loveridge.com`,
+              passwordHash: '$2a$10$7zB3c8W1eG3p9vK2L4x5uOqW8yZ0aB1cC2dE3fG4hI5jK6lM7nO8p',
+              roleId: agentRole.id,
+              phone: '+233 24 000 1111',
+            },
+          });
+          assignedAgentId = newUser.id;
+        }
+      }
+    }
 
     const property = await prisma.property.create({
       data: {
@@ -95,7 +119,7 @@ export async function POST(req: NextRequest) {
         featured: Boolean(featured),
         imageUrl: imageUrl || null,
         galleryUrls: Array.isArray(galleryUrls) ? galleryUrls : [],
-        agentId: agentId || user.userId,
+        agentId: assignedAgentId || user.userId,
         createdById: user.userId,
         approvedById: canAutoPublish ? user.userId : null,
         publishedAt: initialStatus === 'PUBLISHED' ? new Date() : null,

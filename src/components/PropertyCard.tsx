@@ -79,10 +79,10 @@ export default function PropertyCard({ property, onRequestViewing, hidePropertyT
         <div className="absolute top-3 left-3 sm:top-4 sm:left-4 z-20 flex gap-2">
           <span
             className={`px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider shadow-sm ${
-              isRent ? 'bg-emerald-800 text-white' : 'bg-emerald-600 text-white'
+              propType === 'LAND' || !isRent ? 'bg-emerald-600 text-white' : 'bg-emerald-800 text-white'
             }`}
           >
-            FOR {property.listingType}
+            FOR {propType === 'LAND' ? 'SALE' : property.listingType}
           </span>
           {property.featured && (
             <span className="bg-red-600 text-white px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-md">

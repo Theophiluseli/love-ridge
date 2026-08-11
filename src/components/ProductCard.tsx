@@ -50,13 +50,21 @@ export default function ProductCard({ product, onRequestQuote }: ProductProps) {
           {/* Badge at top-left */}
           <div className="absolute top-2 left-2 sm:top-2.5 sm:left-2.5 z-10 flex flex-wrap gap-1">
             {product.featured && (
-              <span className="bg-red-600 text-white text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-2 sm:px-2.5 py-0.5 rounded-full shadow-xs">
+              <span className="bg-slate-900 text-white text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider px-2 sm:px-2.5 py-0.5 rounded-full shadow-sm">
                 FEATURED
               </span>
             )}
-            {!isInStock && (
-              <span className="bg-slate-800 text-white text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-2 sm:px-2.5 py-0.5 rounded-full shadow-xs">
-                PRE-ORDER
+            {product.stockStatus === 'PRE_ORDER' || product.stockStatus === 'PREORDER' ? (
+              <span className="bg-amber-500 text-slate-950 text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-2 sm:px-2.5 py-0.5 rounded-full shadow-sm">
+                Available on Pre-Order
+              </span>
+            ) : product.stockStatus === 'OUT_OF_STOCK' ? (
+              <span className="bg-rose-600 text-white text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider px-2 sm:px-2.5 py-0.5 rounded-full shadow-sm">
+                Out of Stock
+              </span>
+            ) : (
+              <span className="bg-emerald-600 text-white text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider px-2 sm:px-2.5 py-0.5 rounded-full shadow-sm">
+                In Stock
               </span>
             )}
           </div>

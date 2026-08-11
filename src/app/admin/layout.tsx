@@ -33,7 +33,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
 
     const localUser = localStorage.getItem('loveridge_user');
-    if (!localUser) {
+    const localToken = localStorage.getItem('loveridge_token');
+    if (!localUser || !localToken) {
       router.push('/admin/login');
       return;
     }
@@ -64,21 +65,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  const roleName = user?.role || 'Staff';
-
   const navigation = [
     { href: '/admin/dashboard', label: 'Dashboard Overview', icon: LayoutDashboard },
     { href: '/admin/properties', label: 'Property Listings', icon: Building2 },
     { href: '/admin/products', label: 'Store', icon: Package },
     { href: '/admin/leads', label: 'Inquiry Inbox', icon: Inbox },
-    ...(roleName === 'Super Admin'
-      ? [
-          { href: '/admin/users', label: 'User Accounts', icon: Users },
-          { href: '/admin/roles-permissions', label: 'Roles & RBAC', icon: ShieldCheck },
-          { href: '/admin/audit-logs', label: 'Audit Logs', icon: FileText },
-        ]
-      : []),
-    { href: '/admin/settings', label: 'Site Settings', icon: Settings },
+    { href: '/admin/settings', label: 'Site Settings & Security', icon: Settings },
   ];
 
   async function handleLogout() {
@@ -100,9 +92,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
           {/* User Badge */}
           <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 space-y-1">
-            <span className="text-xs font-bold text-slate-900 block truncate">{user?.name || 'Staff User'}</span>
+            <span className="text-xs font-bold text-slate-900 block truncate">{user?.name || 'Admin User'}</span>
             <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-800 text-white">
-              {roleName}
+              Administrator
             </span>
           </div>
 
@@ -154,7 +146,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="fixed inset-0 z-50 md:hidden flex">
           {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity"
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm transition-opacity"
             onClick={() => setMobileMenuOpen(false)}
           />
 
@@ -173,9 +165,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
               {/* Mobile User Badge */}
               <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200 space-y-1">
-                <span className="text-xs font-bold text-slate-900 block truncate">{user?.name || 'Staff User'}</span>
+                <span className="text-xs font-bold text-slate-900 block truncate">{user?.name || 'Admin User'}</span>
                 <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-800 text-white">
-                  {roleName}
+                  Administrator
                 </span>
               </div>
 
@@ -229,7 +221,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Main Admin Content */}
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Top Header */}
-        <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-40 shadow-xs">
+        <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-40 shadow-sm">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileMenuOpen(true)}
@@ -246,7 +238,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
           <div className="flex items-center gap-3">
             <span className="text-[11px] sm:text-xs text-emerald-800 font-bold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 shrink-0">
-              Role: {roleName}
+              Administrator Portal
             </span>
           </div>
         </header>

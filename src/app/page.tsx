@@ -115,14 +115,8 @@ export default function HomePage() {
         ]);
         const propData = await propRes.json();
         const prodData = await prodRes.json();
-        let loadedProperties = propData.properties || [];
-        if (loadedProperties.length < 3) {
-          const allPropRes = await fetch('/api/properties');
-          const allPropData = await allPropRes.json();
-          loadedProperties = allPropData.properties || [];
-        }
-        setProperties(loadedProperties.slice(0, 3));
-        setProducts((prodData.products || []).slice(0, 3));
+        setProperties(propData.properties || []);
+        setProducts(prodData.products || []);
       } catch (err) {
         console.error('Failed to load homepage data:', err);
       } finally {
@@ -246,7 +240,7 @@ export default function HomePage() {
 
             {/* TRUST FEATURE CARDS ROW */}
             <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 pt-8 sm:pt-10 px-2 sm:px-4">
-              <div className="bg-white/90 p-5 sm:px-6 sm:py-5.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4 hover:shadow-md transition-all text-left">
+              <div className="bg-white/90 p-5 sm:px-6 sm:py-5.5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:shadow-md transition-all text-left">
                 <div className="w-11 h-11 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 shrink-0">
                   <Home className="w-5 h-5 text-emerald-800" />
                 </div>
@@ -258,7 +252,7 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <div className="bg-white/90 p-5 sm:px-6 sm:py-5.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4 hover:shadow-md transition-all text-left">
+              <div className="bg-white/90 p-5 sm:px-6 sm:py-5.5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:shadow-md transition-all text-left">
                 <div className="w-11 h-11 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 shrink-0">
                   <Clock className="w-5 h-5 text-emerald-800" />
                 </div>
@@ -270,7 +264,7 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <div className="bg-white/90 p-5 sm:px-6 sm:py-5.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4 hover:shadow-md transition-all text-left">
+              <div className="bg-white/90 p-5 sm:px-6 sm:py-5.5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:shadow-md transition-all text-left">
                 <div className="w-11 h-11 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 shrink-0">
                   <Layers className="w-5 h-5 text-emerald-800" />
                 </div>
