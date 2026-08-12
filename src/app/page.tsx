@@ -13,10 +13,121 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
+const INITIAL_PROPERTIES = [
+  {
+    id: 'prop-1',
+    title: 'Luxury 4-Bedroom Smart Villa with Swimming Pool',
+    slug: 'luxury-4-bedroom-smart-villa-east-legon',
+    description: 'Contemporary multi-level smart home in East Legon featuring automated lighting, high security, private pool, and staff quarters.',
+    listingType: 'SALE',
+    propertyType: 'HOUSE',
+    price: 450000,
+    currency: 'USD',
+    pricePeriod: 'outright purchase',
+    bedrooms: 4,
+    bathrooms: 5,
+    sizeSqft: 4500,
+    locationAddress: 'Boundary Road, East Legon',
+    city: 'Accra',
+    region: 'Greater Accra',
+    featured: true,
+    imageUrl: '/property_villa.png',
+  },
+  {
+    id: 'prop-2',
+    title: 'Prime Commercial Land Plot (1.2 Acres) - Cantonments',
+    slug: 'prime-commercial-land-cantonments-embassy-quarter',
+    description: '1.2 acres of prime commercial land located in Cantonments Embassy Quarter.',
+    listingType: 'SALE',
+    propertyType: 'LAND',
+    price: 1800000,
+    currency: 'USD',
+    pricePeriod: 'outright purchase',
+    bedrooms: 0,
+    bathrooms: 0,
+    sizeSqft: 52272,
+    locationAddress: 'Cantonments Embassy Quarter',
+    city: 'Accra',
+    region: 'Greater Accra',
+    featured: true,
+    imageUrl: '/property_land.png',
+  },
+  {
+    id: 'prop-3',
+    title: 'High-Bay Logistics & Distribution Warehouse (2,500 sqm)',
+    slug: 'high-bay-logistics-distribution-warehouse-tema',
+    description: 'Modern 2,500 sqm high-bay logistics warehouse facility in Tema Heavy Industrial Area.',
+    listingType: 'RENT',
+    propertyType: 'WAREHOUSE',
+    price: 15000,
+    currency: 'USD',
+    pricePeriod: 'per month',
+    bedrooms: 0,
+    bathrooms: 4,
+    sizeSqft: 26910,
+    locationAddress: 'Harbour Commercial Expressway',
+    city: 'Tema',
+    region: 'Greater Accra',
+    featured: true,
+    imageUrl: '/property_warehouse.png',
+  },
+];
+
+const INITIAL_PRODUCTS = [
+  {
+    id: 'prod-1',
+    name: 'Italian Carrara Porcelain Floor Tiles (60x120cm)',
+    slug: 'italian-60x120-porcelain-floor-tiles',
+    description: 'Premium nano-polished porcelain floor tiles with authentic Carrara marble pattern. High wear resistance.',
+    sku: 'TILE-ITA-60120-CAR',
+    price: 145.00,
+    currency: 'GHS',
+    unit: 'per box (1.44 sqm)',
+    stockQuantity: 450,
+    stockStatus: 'IN_STOCK',
+    moq: 20,
+    featured: true,
+    category: { name: 'TILES & MARBLE SLABS' },
+    imageUrl: '/product_tiles.png',
+  },
+  {
+    id: 'prod-2',
+    name: 'Industrial 20V Brushless Cordless Drill & Impact Driver Set',
+    slug: 'industrial-20v-brushless-cordless-drill-kit',
+    description: 'Heavy duty construction grade cordless power tool combo kit.',
+    sku: 'TOOL-20V-DRILL-KIT',
+    price: 1850.00,
+    currency: 'GHS',
+    unit: 'per set',
+    stockQuantity: 35,
+    stockStatus: 'IN_STOCK',
+    moq: 1,
+    featured: true,
+    category: { name: 'TOOLS & CONSTRUCTION EQUIPMENT' },
+    imageUrl: '/product_drill.png',
+  },
+  {
+    id: 'prod-3',
+    name: 'Smart Biometric Fingerprint & Keypad Front Door Lock',
+    slug: 'smart-biometric-fingerprint-front-door-lock',
+    description: 'High-security 5-in-1 smart lock.',
+    sku: 'SEC-SMART-LOCK-01',
+    price: 1200.00,
+    currency: 'GHS',
+    unit: 'per piece',
+    stockQuantity: 15,
+    stockStatus: 'IN_STOCK',
+    moq: 5,
+    featured: true,
+    category: { name: 'TOOLS & CONSTRUCTION EQUIPMENT' },
+    imageUrl: '/product_lock.png',
+  },
+];
+
 export default function HomePage() {
-  const [properties, setProperties] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [properties, setProperties] = useState<any[]>(INITIAL_PROPERTIES);
+  const [products, setProducts] = useState<any[]>(INITIAL_PRODUCTS);
+  const [loading, setLoading] = useState(false);
 
   // Search tab state
   const [activeTab, setActiveTab] = useState<'properties' | 'products'>('properties');

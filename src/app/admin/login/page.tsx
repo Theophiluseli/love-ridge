@@ -8,8 +8,8 @@ import Logo from '@/components/Logo';
 export default function AdminLoginPage() {
   const router = useRouter();
   const [mode, setMode] = useState<'LOGIN' | 'RESET'>('LOGIN');
-  const [email, setEmail] = useState('admin@loveridge.com');
-  const [password, setPassword] = useState('Password123!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -206,12 +206,6 @@ export default function AdminLoginPage() {
           </form>
         )}
 
-        <div className="pt-4 border-t border-slate-100 text-center space-y-2 mt-4">
-          <p className="text-[11px] text-slate-500 font-medium">Default Admin Credentials:</p>
-          <div className="text-[10px] text-slate-600 font-mono font-semibold">
-            admin@loveridge.com (Password123!)
-          </div>
-        </div>
       </div>
     </div>
   );

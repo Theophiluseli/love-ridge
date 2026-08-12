@@ -8,7 +8,7 @@ import Link from 'next/link';
 export default function AboutPage() {
   const teamMembers = [
     {
-      name: 'Kwaku Loveridge',
+      name: 'Desmond Senanu',
       role: 'Founder & Chief Executive Officer',
       bio: 'Over 15 years of experience in luxury real estate investment, property titling, and international building materials procurement.',
     },

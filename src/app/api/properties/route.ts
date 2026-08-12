@@ -61,7 +61,20 @@ const FALLBACK_PROPERTIES = [
   },
 ];
 
+const propCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 15000; // 15s
+
 export async function GET(req: NextRequest) {
+  const cacheKey = req.url;
+  const cached = propCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return NextResponse.json(cached.data, {
+      headers: {
+        'Cache-Control': 'public, max-age=15, stale-while-revalidate=120',
+      },
+    });
+  }
+
   try {
     const { searchParams } = new URL(req.url);
     const search = searchParams.get('search') || '';
@@ -129,7 +142,14 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: 'desc' },
     });
 
-    return NextResponse.json({ properties, count: properties.length });
+    const result = { properties, count: properties.length };
+    propCache.set(cacheKey, { data: result, timestamp: Date.now() });
+
+    return NextResponse.json(result, {
+      headers: {
+        'Cache-Control': 'public, max-age=15, stale-while-revalidate=120',
+      },
+    });
   } catch (error) {
     console.error('Error fetching properties, serving fallback:', error);
     const { searchParams } = new URL(req.url);

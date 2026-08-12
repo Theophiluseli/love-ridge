@@ -5,8 +5,8 @@ import { Plus, Edit2, Trash2, CheckCircle, Search, ShieldCheck, Eye, Image as Im
 import Link from 'next/link';
 
 const DEFAULT_AGENTS = [
+  'Desmond Senanu',
   'Kwame Appiah',
-  'Kwaku Loveridge',
   'Sarah Osei',
   'Loveridge Staff Agent',
 ];
