@@ -2,9 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuthPermission } from '@/lib/auth/rbac';
 import { prisma } from '@/lib/db';
 
+let analyticsCache: { data: any; timestamp: number } | null = null;
+const CACHE_TTL_MS = 15000; // 15 seconds cache
+
 export async function GET(req: NextRequest) {
   const auth = await requireAuthPermission(req, 'analytics.view');
   if ('response' in auth) return auth.response;
+
+  // Serve fast from cache if valid
+  if (analyticsCache && Date.now() - analyticsCache.timestamp < CACHE_TTL_MS) {
+    return NextResponse.json(analyticsCache.data, {
+      headers: {
+        'Cache-Control': 'private, max-age=15, stale-while-revalidate=60',
+      },
+    });
+  }
 
   try {
     const [
@@ -35,7 +47,7 @@ export async function GET(req: NextRequest) {
       }),
     ]);
 
-    return NextResponse.json({
+    const result = {
       kpis: {
         totalProperties,
         publishedProperties,
@@ -48,6 +60,14 @@ export async function GET(req: NextRequest) {
         quoteLeads,
       },
       recentLeads,
+    };
+
+    analyticsCache = { data: result, timestamp: Date.now() };
+
+    return NextResponse.json(result, {
+      headers: {
+        'Cache-Control': 'private, max-age=15, stale-while-revalidate=60',
+      },
     });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch analytics.' }, { status: 500 });

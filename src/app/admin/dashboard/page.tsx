@@ -4,9 +4,45 @@ import { useState, useEffect } from 'react';
 import { Building2, Package, Inbox, TrendingUp, ArrowUpRight } from 'lucide-react';
 import Link from 'next/link';
 
+const INITIAL_ANALYTICS = {
+  kpis: {
+    totalProperties: 4,
+    publishedProperties: 4,
+    pendingProperties: 0,
+    totalProducts: 10,
+    lowStockProducts: 2,
+    totalLeads: 6,
+    newLeads: 2,
+    viewingLeads: 4,
+    quoteLeads: 2,
+  },
+  recentLeads: [
+    {
+      id: 'lead-1',
+      name: 'Dr. Kwame Adjei',
+      email: 'kwame.adjei@gmail.com',
+      phone: '+233 24 111 2222',
+      message: 'Requesting viewing booking for Luxury 4-Bedroom Villa in East Legon.',
+      type: 'PROPERTY_VIEWING',
+      status: 'NEW',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'lead-2',
+      name: 'Arch. Sandra Mensah',
+      email: 'sandra@mensahdesign.com',
+      phone: '+233 20 333 4444',
+      message: 'Requesting wholesale quote for 450 sqm Italian Carrara Porcelain Tiles.',
+      type: 'PRODUCT_QUOTE',
+      status: 'NEW',
+      createdAt: new Date().toISOString(),
+    },
+  ],
+};
+
 export default function AdminDashboardPage() {
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<any>(INITIAL_ANALYTICS);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     async function loadAnalytics() {

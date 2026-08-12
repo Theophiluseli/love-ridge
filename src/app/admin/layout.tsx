@@ -40,7 +40,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
 
     try {
-      setUser(JSON.parse(localUser));
+      const parsed = JSON.parse(localUser);
+      if (!parsed.name || parsed.name === 'Kwaku Loveridge' || parsed.name === 'Super Admin' || parsed.name === 'Admin User') {
+        parsed.name = 'Desmond Senanu';
+        localStorage.setItem('loveridge_user', JSON.stringify(parsed));
+      }
+      setUser(parsed);
     } catch (e) {
       router.push('/admin/login');
     } finally {
@@ -92,7 +97,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
           {/* User Badge */}
           <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 space-y-1">
-            <span className="text-xs font-bold text-slate-900 block truncate">{user?.name || 'Admin User'}</span>
+            <span className="text-xs font-bold text-slate-900 block truncate">{user?.name || 'Desmond Senanu'}</span>
             <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-800 text-white">
               Administrator
             </span>
@@ -165,7 +170,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
               {/* Mobile User Badge */}
               <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200 space-y-1">
-                <span className="text-xs font-bold text-slate-900 block truncate">{user?.name || 'Admin User'}</span>
+                <span className="text-xs font-bold text-slate-900 block truncate">{user?.name || 'Desmond Senanu'}</span>
                 <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-800 text-white">
                   Administrator
                 </span>

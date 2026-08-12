@@ -8,9 +8,88 @@ import InquiryModal from '@/components/InquiryModal';
 import { Search, SlidersHorizontal, Building2, RotateCcw, ChevronDown, Trees, Warehouse, Building } from 'lucide-react';
 import Link from 'next/link';
 
+const INITIAL_PROPERTIES = [
+  {
+    id: 'prop-1',
+    title: 'Luxury 4-Bedroom Smart Villa with Swimming Pool',
+    slug: 'luxury-4-bedroom-smart-villa-east-legon',
+    description: 'Contemporary multi-level smart home in East Legon featuring automated lighting, high security, private pool, and staff quarters.',
+    listingType: 'SALE',
+    propertyType: 'HOUSE',
+    price: 450000,
+    currency: 'USD',
+    pricePeriod: 'outright purchase',
+    bedrooms: 4,
+    bathrooms: 5,
+    sizeSqft: 4500,
+    locationAddress: 'Boundary Road, East Legon',
+    city: 'Accra',
+    region: 'Greater Accra',
+    featured: true,
+    imageUrl: '/property_villa.png',
+  },
+  {
+    id: 'prop-2',
+    title: 'Prime Commercial Land Plot (1.2 Acres) - Cantonments',
+    slug: 'prime-commercial-land-cantonments-embassy-quarter',
+    description: '1.2 acres of prime commercial land located in Cantonments Embassy Quarter. Fully registered title with Lands Commission clearance.',
+    listingType: 'SALE',
+    propertyType: 'LAND',
+    price: 1800000,
+    currency: 'USD',
+    pricePeriod: 'outright purchase',
+    bedrooms: 0,
+    bathrooms: 0,
+    sizeSqft: 52272,
+    locationAddress: 'Cantonments Embassy Quarter',
+    city: 'Accra',
+    region: 'Greater Accra',
+    featured: true,
+    imageUrl: '/property_land.png',
+  },
+  {
+    id: 'prop-3',
+    title: 'High-Bay Logistics & Distribution Warehouse (2,500 sqm)',
+    slug: 'high-bay-logistics-distribution-warehouse-tema',
+    description: 'Modern 2,500 sqm high-bay logistics warehouse facility in Tema Heavy Industrial Area.',
+    listingType: 'RENT',
+    propertyType: 'WAREHOUSE',
+    price: 15000,
+    currency: 'USD',
+    pricePeriod: 'per month',
+    bedrooms: 0,
+    bathrooms: 4,
+    sizeSqft: 26910,
+    locationAddress: 'Harbour Commercial Expressway',
+    city: 'Tema',
+    region: 'Greater Accra',
+    featured: true,
+    imageUrl: '/property_warehouse.png',
+  },
+  {
+    id: 'prop-4',
+    title: 'Grade-A Executive Office Suite (350 sqm) - Ridge',
+    slug: 'grade-a-executive-office-suite-ridge-financial-district',
+    description: 'Ultra-modern 350 sqm open-plan commercial office space located in Accra’s premier financial hub in Ridge.',
+    listingType: 'RENT',
+    propertyType: 'OFFICE_SPACE',
+    price: 8750,
+    currency: 'USD',
+    pricePeriod: 'per month',
+    bedrooms: 0,
+    bathrooms: 4,
+    sizeSqft: 3767,
+    locationAddress: 'Financial District, Ridge',
+    city: 'Accra',
+    region: 'Greater Accra',
+    featured: true,
+    imageUrl: '/property_villa.png',
+  },
+];
+
 export default function PropertiesPage() {
-  const [properties, setProperties] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [properties, setProperties] = useState<any[]>(INITIAL_PROPERTIES);
+  const [loading, setLoading] = useState(false);
 
   // Filter States
   const [listingType, setListingType] = useState('ALL');

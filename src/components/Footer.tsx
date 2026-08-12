@@ -114,21 +114,10 @@ export default function Footer() {
 
       {/* Lower Footer */}
       <div className="bg-slate-950 border-t border-slate-800 text-slate-400 py-6 px-4 sm:px-6 lg:px-8 text-center text-xs font-medium">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© {new Date().getFullYear()} LOVERIDGE Properties & Consult. All rights reserved.</p>
-          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-slate-400 text-xs">
-            <Link href="/about" className="hover:text-emerald-400 transition">About</Link>
-            <span>•</span>
-            <Link href="/services" className="hover:text-emerald-400 transition">Services</Link>
-            <span>•</span>
-            <Link href="/products" className="hover:text-emerald-400 transition">Our Store</Link>
-            <span>•</span>
-            <Link href="/contact" className="hover:text-emerald-400 transition">Contact</Link>
-            <span>•</span>
-            <Link href="/admin/login" className="hover:text-emerald-400 transition flex items-center gap-1">
-              <Shield className="w-3 h-3 text-emerald-400" /> Staff Login
-            </Link>
-          </div>
+        <div className="max-w-7xl mx-auto flex items-center justify-center">
+          <p className="text-slate-400 text-xs font-semibold">
+            © {new Date().getFullYear()} LOVERIDGE Properties & Consult. All rights reserved.
+          </p>
         </div>
       </div>
     </footer>

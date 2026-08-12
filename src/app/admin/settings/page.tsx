@@ -17,11 +17,50 @@ export default function AdminSettingsPage() {
     currencyDefault: 'USD',
   });
 
+  const [adminEmail, setAdminEmail] = useState('admin@loveridge.com');
+  const [emailMsg, setEmailMsg] = useState('');
+  const [emailErr, setEmailErr] = useState('');
+  const [emailLoading, setEmailLoading] = useState(false);
+
   const [passForm, setPassForm] = useState({
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
+
+  async function handleEmailChange(e: React.FormEvent) {
+    e.preventDefault();
+    setEmailMsg('');
+    setEmailErr('');
+    setEmailLoading(true);
+
+    try {
+      const token = localStorage.getItem('loveridge_token');
+      const res = await fetch('/api/auth/update-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ newEmail: adminEmail }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update email.');
+
+      setEmailMsg('Admin login email updated successfully!');
+      const localUser = localStorage.getItem('loveridge_user');
+      if (localUser) {
+        const u = JSON.parse(localUser);
+        u.email = adminEmail;
+        localStorage.setItem('loveridge_user', JSON.stringify(u));
+      }
+    } catch (err: any) {
+      setEmailErr(err.message || 'Error updating email.');
+    } finally {
+      setEmailLoading(false);
+    }
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -80,6 +119,54 @@ export default function AdminSettingsPage() {
           <CheckCircle className="w-4 h-4 text-emerald-600" /> System settings updated successfully.
         </div>
       )}
+
+      {/* Admin Email Update Card */}
+      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xl space-y-6">
+        <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
+          <div>
+            <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+              <Shield className="w-4 h-4 text-emerald-700" /> Admin Account Login Email
+            </h3>
+            <p className="text-xs text-slate-500 font-medium">Update the primary email address used for admin authentication.</p>
+          </div>
+          <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 text-[11px] font-bold border border-emerald-200">
+            Account Email
+          </span>
+        </div>
+
+        {emailMsg && (
+          <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs rounded-xl font-bold">
+            {emailMsg}
+          </div>
+        )}
+
+        {emailErr && (
+          <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl font-bold">
+            {emailErr}
+          </div>
+        )}
+
+        <form onSubmit={handleEmailChange} className="flex flex-col sm:flex-row items-end gap-4">
+          <div className="flex-1 w-full">
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">New Admin Login Email</label>
+            <input
+              type="email"
+              required
+              value={adminEmail}
+              onChange={(e) => setAdminEmail(e.target.value)}
+              placeholder="e.g. desmond@loveridge.com or admin@loveridge.com"
+              className="admin-input"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={emailLoading}
+            className="gradient-btn px-6 py-3 rounded-xl text-xs font-bold shrink-0 w-full sm:w-auto shadow-md"
+          >
+            {emailLoading ? 'Updating Email...' : 'Update Login Email'}
+          </button>
+        </form>
+      </div>
 
       {/* Admin Account & Password Change Card */}
       <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xl space-y-6">
