@@ -451,25 +451,6 @@ export default function AdminProductsPage() {
                         <input type="file" accept="image/*" onChange={handleCoverFileUpload} className="hidden" />
                       </label>
                     </div>
-
-                    {/* Presets */}
-                    <div className="flex items-center gap-1.5 pt-1 overflow-x-auto">
-                      <span className="text-[10px] font-bold text-slate-500 shrink-0">Quick Presets:</span>
-                      {[
-                        { label: 'Porcelain Tiles', url: '/product_tiles.png' },
-                        { label: 'Cordless Drill', url: '/product_drill.png' },
-                        { label: 'Smart Lock', url: '/product_lock.png' },
-                      ].map((preset) => (
-                        <button
-                          key={preset.label}
-                          type="button"
-                          onClick={() => setForm((prev) => ({ ...prev, imageUrl: preset.url }))}
-                          className="px-2 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-semibold text-slate-700 hover:bg-slate-100 shrink-0"
-                        >
-                          {preset.label}
-                        </button>
-                      ))}
-                    </div>
                   </div>
 
                   {/* Cover Image Preview */}
