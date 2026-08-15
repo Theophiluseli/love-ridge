@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, CheckCircle, Search, ShieldCheck, Eye, Image as ImageIcon, Trees, Warehouse, Building, Building2, Upload, ArrowRight, X, Sparkles, Phone, Mail, User } from 'lucide-react';
+import { Plus, Edit2, Trash2, CheckCircle, Search, ShieldCheck, Eye, Image as ImageIcon, Trees, Warehouse, Building, Building2, Upload, ArrowRight, X, Sparkles, Phone, Mail, User, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { compressImage } from '@/lib/utils/imageCompressor';
 
 const DEFAULT_AGENTS = [
   'Desmond Senanu',
@@ -48,6 +49,8 @@ export default function AdminPropertiesPage() {
 
   const [galleryInput, setGalleryInput] = useState('');
   const [message, setMessage] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   async function fetchProperties() {
     setLoading(true);
@@ -75,6 +78,7 @@ export default function AdminPropertiesPage() {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    setSubmitting(true);
     const token = localStorage.getItem('loveridge_token');
     const url = editItem ? `/api/admin/properties/${editItem.id}` : '/api/admin/properties';
     const method = editItem ? 'PATCH' : 'POST';
@@ -92,7 +96,25 @@ export default function AdminPropertiesPage() {
         }),
       });
 
-      const data = await res.json();
+      const contentType = res.headers.get('content-type');
+      let data: any = {};
+      if (contentType && contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        if (!res.ok) {
+          if (res.status === 413) {
+            throw new Error('Image payload size is too large for server upload limit. Please reduce image count or select smaller photos.');
+          }
+          if (res.status === 401) {
+            alert('Your session token has expired or is invalid. Redirecting to admin login...');
+            window.location.href = '/admin/login';
+            return;
+          }
+          throw new Error(`Server error (${res.status}): ${text || res.statusText}`);
+        }
+      }
+
       if (!res.ok) {
         if (res.status === 401) {
           alert('Your session token has expired or is invalid. Redirecting to admin login...');
@@ -109,6 +131,8 @@ export default function AdminPropertiesPage() {
       fetchProperties();
     } catch (err: any) {
       alert(err.message);
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -233,36 +257,41 @@ export default function AdminPropertiesPage() {
     setGalleryInput('');
   }
 
-  // Cover Image File Upload Handler (Converts file to base64 Data URL)
-  function handleCoverFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  // Cover Image File Upload Handler (Compresses image client-side to prevent Vercel 413 payload limit error)
+  async function handleCoverFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        setForm((prev) => ({ ...prev, imageUrl: event.target!.result as string }));
-      }
-    };
-    reader.readAsDataURL(file);
+    setUploading(true);
+    try {
+      const compressed = await compressImage(file, 1200, 1200, 0.8);
+      setForm((prev) => ({ ...prev, imageUrl: compressed }));
+    } catch (err) {
+      console.error('Failed to compress cover image:', err);
+      alert('Failed to process image file.');
+    } finally {
+      setUploading(false);
+    }
   }
 
-  // Gallery File Upload Handler
-  function handleGalleryFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  // Gallery File Upload Handler (Compresses all gallery files client-side)
+  async function handleGalleryFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
-    if (!files) return;
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          const newUrl = event.target!.result as string;
-          setForm((prev) => ({
-            ...prev,
-            galleryUrls: [...prev.galleryUrls, newUrl],
-          }));
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    try {
+      const compressedImages = await Promise.all(
+        Array.from(files).map((file) => compressImage(file, 1200, 1200, 0.8))
+      );
+      setForm((prev) => ({
+        ...prev,
+        galleryUrls: [...prev.galleryUrls, ...compressedImages],
+      }));
+    } catch (err) {
+      console.error('Failed to compress gallery images:', err);
+      alert('Failed to process gallery images.');
+    } finally {
+      setUploading(false);
+    }
   }
 
   function addGalleryUrl() {
@@ -765,8 +794,26 @@ export default function AdminPropertiesPage() {
                 >
                   Cancel
                 </button>
-                <button type="submit" className="gradient-btn flex-1 py-3.5 rounded-2xl text-xs font-bold shadow-lg">
-                  {editItem ? 'Update Property Listing' : 'Publish Property Listing Now'}
+                <button
+                  type="submit"
+                  disabled={submitting || uploading}
+                  className="gradient-btn flex-1 py-3.5 rounded-2xl text-xs font-bold shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Saving Property...
+                    </>
+                  ) : uploading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Optimizing Images...
+                    </>
+                  ) : editItem ? (
+                    'Update Property Listing'
+                  ) : (
+                    'Publish Property Listing Now'
+                  )}
                 </button>
               </div>
             </form>
