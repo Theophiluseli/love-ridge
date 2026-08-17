@@ -1,11 +1,24 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { MessageSquare } from 'lucide-react';
 
 export default function WhatsAppWidget() {
-  const whatsappNumber = '233240001111';
+  const [whatsappNumber, setWhatsappNumber] = useState('233240001111');
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('loveridge_system_settings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.whatsappNumber) setWhatsappNumber(parsed.whatsappNumber);
+      }
+    } catch (e) {}
+  }, []);
+
   const message = 'Hello Loveridge Properties, I would like to make an inquiry regarding your listings & products.';
-  const link = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+  const sanitizedNum = whatsappNumber.replace(/[^0-9]/g, '') || '233240001111';
+  const link = `https://wa.me/${sanitizedNum}?text=${encodeURIComponent(message)}`;
 
   return (
     <a
