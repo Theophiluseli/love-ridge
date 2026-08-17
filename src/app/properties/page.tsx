@@ -105,7 +105,10 @@ export default function PropertiesPage() {
   }>({ isOpen: false });
 
   async function fetchProperties() {
-    setLoading(true);
+    // Only show loading spinner if no property items exist to ensure instant page load
+    if (properties.length === 0) {
+      setLoading(true);
+    }
     try {
       const params = new URLSearchParams();
       if (listingType !== 'ALL') params.append('listingType', listingType);
@@ -115,7 +118,9 @@ export default function PropertiesPage() {
 
       const res = await fetch(`/api/properties?${params.toString()}`);
       const data = await res.json();
-      setProperties(data.properties || []);
+      if (data.properties && data.properties.length > 0) {
+        setProperties(data.properties);
+      }
     } catch (err) {
       console.error('Error loading properties:', err);
     } finally {
