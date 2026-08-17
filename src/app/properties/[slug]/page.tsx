@@ -26,7 +26,7 @@ const SEED_PROPERTIES: Record<string, any> = {
     city: 'Accra',
     region: 'Greater Accra',
     imageUrl: '/property_villa.png',
-    galleryUrls: ['/property_villa.png', '/property_apartment.png', '/property_land.png'],
+    galleryUrls: ['/property_villa.png'],
     agent: { name: 'Kwame Appiah', phone: '+233 55 666 7777' },
     amenities: [
       { amenity: { name: 'Private Swimming Pool' } },
@@ -54,7 +54,7 @@ const SEED_PROPERTIES: Record<string, any> = {
     city: 'Accra',
     region: 'Greater Accra',
     imageUrl: '/property_apartment.png',
-    galleryUrls: ['/property_apartment.png', '/property_villa.png', '/property_land.png'],
+    galleryUrls: ['/property_apartment.png'],
     agent: { name: 'Kwame Appiah', phone: '+233 55 666 7777' },
     amenities: [
       { amenity: { name: 'Fully Furnished Designer Interior' } },
@@ -82,7 +82,7 @@ const SEED_PROPERTIES: Record<string, any> = {
     city: 'Accra',
     region: 'Greater Accra',
     imageUrl: '/property_land.png',
-    galleryUrls: ['/property_land.png', '/property_office.png', '/property_warehouse.png'],
+    galleryUrls: ['/property_land.png'],
     agent: { name: 'Kwame Appiah', phone: '+233 55 666 7777' },
     amenities: [
       { amenity: { name: 'Lands Commission Title Certificate' } },
@@ -94,13 +94,14 @@ const SEED_PROPERTIES: Record<string, any> = {
 };
 
 export default function PropertyDetailPage({ params }: { params: { slug: string } }) {
-  const initialProp = SEED_PROPERTIES[params?.slug] || SEED_PROPERTIES['executive-2-bedroom-serviced-apartment-airport-residential'];
+  const initialProp = SEED_PROPERTIES[params?.slug];
 
-  const [property, setProperty] = useState<any>(initialProp);
-  const [similar, setSimilar] = useState<any[]>(Object.values(SEED_PROPERTIES).filter((p) => p.slug !== initialProp.slug));
+  const [property, setProperty] = useState<any>(initialProp || null);
+  const [similar, setSimilar] = useState<any[]>(
+    initialProp ? Object.values(SEED_PROPERTIES).filter((p) => p.slug !== initialProp.slug) : []
+  );
   const [modalOpen, setModalOpen] = useState(false);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [activePhoto, setActivePhoto] = useState<string>('');
+  const [activePhoto, setActivePhoto] = useState<string>(initialProp?.imageUrl || '');
 
   useEffect(() => {
     async function syncData() {
@@ -124,16 +125,29 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
     syncData();
   }, [params?.slug]);
 
-  // Determine cover image
+  if (!property) {
+    return (
+      <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between">
+        <Navbar />
+        <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-20 text-center space-y-4">
+          <div className="w-12 h-12 border-4 border-slate-200 border-t-emerald-800 rounded-full animate-spin mx-auto" />
+          <h2 className="text-xl font-bold text-slate-900">Loading Property Details...</h2>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  // Determine cover image: strictly use uploaded imageUrl first
   let defaultCover = property.imageUrl;
   if (!defaultCover) {
-    if (property.slug?.includes('office') || property.propertyType === 'OFFICE_SPACE') {
+    if (property.propertyType === 'OFFICE_SPACE' || property.slug?.includes('office')) {
       defaultCover = '/property_office.png';
-    } else if (property.slug?.includes('warehouse') || property.propertyType === 'WAREHOUSE') {
+    } else if (property.propertyType === 'WAREHOUSE' || property.slug?.includes('warehouse')) {
       defaultCover = '/property_warehouse.png';
-    } else if (property.slug?.includes('land') || property.propertyType === 'LAND') {
+    } else if (property.propertyType === 'LAND' || property.slug?.includes('land')) {
       defaultCover = '/property_land.png';
-    } else if (property.slug?.includes('apartment') || property.propertyType === 'APARTMENT') {
+    } else if (property.propertyType === 'APARTMENT' || property.slug?.includes('apartment')) {
       defaultCover = '/property_apartment.png';
     } else {
       defaultCover = '/property_villa.png';
@@ -142,19 +156,24 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
 
   const currentCover = activePhoto || defaultCover;
 
-  // Multi-photo gallery list
+  // Multi-photo gallery list: STRICTLY take ONLY photos uploaded for this property
+  const uploadedGallery = Array.isArray(property.galleryUrls) ? property.galleryUrls : [];
+  const uploadedMedia = Array.isArray(property.media)
+    ? property.media.map((m: any) => m.media?.fileUrl).filter(Boolean)
+    : [];
+  const uploadedImages = Array.isArray(property.images) ? property.images : [];
+
+  const userUploadedList = [
+    property.imageUrl,
+    ...uploadedGallery,
+    ...uploadedMedia,
+    ...uploadedImages,
+  ].filter(Boolean);
+
+  // Remove duplicates and ensure NO default fallback images are appended if user uploaded photos
   const galleryImages = Array.from(
     new Set(
-      [
-        currentCover,
-        defaultCover,
-        ...(Array.isArray(property.galleryUrls) ? property.galleryUrls : []),
-        ...(Array.isArray(property.images) ? property.images : []),
-        '/property_land.png',
-        '/property_office.png',
-        '/property_warehouse.png',
-        '/property_villa.png',
-      ].filter(Boolean)
+      userUploadedList.length > 0 ? userUploadedList : [currentCover].filter(Boolean)
     )
   );
 
