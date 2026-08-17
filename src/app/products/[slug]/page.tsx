@@ -225,18 +225,16 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
     syncData();
   }, [params?.slug]);
 
-  // Combine product main image + gallery images
+  // Combine product main image + uploaded gallery images strictly
+  const uploadedGallery = Array.isArray(product.galleryUrls) ? product.galleryUrls : [];
+  const rawList = [
+    selectedImage,
+    product.imageUrl,
+    ...uploadedGallery,
+  ].filter(Boolean);
+
   const allImages = Array.from(
-    new Set(
-      [
-        selectedImage,
-        product.imageUrl,
-        ...(Array.isArray(product.galleryUrls) ? product.galleryUrls : []),
-        '/product_tiles.png',
-        '/product_drill.png',
-        '/product_lock.png',
-      ].filter(Boolean)
-    )
+    new Set(rawList.length > 0 ? rawList : [selectedImage || '/product_tiles.png'].filter(Boolean))
   );
 
   // Calculated Price according to Quantity
