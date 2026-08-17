@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Save, Key, MessageSquare, Globe, CheckCircle, Shield } from 'lucide-react';
 
 export default function AdminSettingsPage() {
@@ -27,6 +27,23 @@ export default function AdminSettingsPage() {
     newPassword: '',
     confirmPassword: '',
   });
+
+  // Load saved system settings & user email on page mount
+  useEffect(() => {
+    try {
+      const savedSettings = localStorage.getItem('loveridge_system_settings');
+      if (savedSettings) {
+        setSettings(JSON.parse(savedSettings));
+      }
+      const localUser = localStorage.getItem('loveridge_user');
+      if (localUser) {
+        const u = JSON.parse(localUser);
+        if (u.email) setAdminEmail(u.email);
+      }
+    } catch (e) {
+      console.error('Failed to load settings:', e);
+    }
+  }, []);
 
   async function handleEmailChange(e: React.FormEvent) {
     e.preventDefault();
@@ -64,8 +81,13 @@ export default function AdminSettingsPage() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    try {
+      localStorage.setItem('loveridge_system_settings', JSON.stringify(settings));
+      setSaved(true);
+      setTimeout(() => setSaved(false), 4000);
+    } catch (e) {
+      console.error('Failed to save settings:', e);
+    }
   }
 
   async function handlePasswordChange(e: React.FormEvent) {
