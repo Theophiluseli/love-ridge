@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { MessageSquare } from 'lucide-react';
 
 export default function WhatsAppWidget() {
-  const [whatsappNumber, setWhatsappNumber] = useState('233240001111');
+  const [whatsappNumber, setWhatsappNumber] = useState('233246432493');
 
   useEffect(() => {
     try {
@@ -17,7 +17,7 @@ export default function WhatsAppWidget() {
   }, []);
 
   const message = 'Hello Loveridge Properties, I would like to make an inquiry regarding your listings & products.';
-  const sanitizedNum = whatsappNumber.replace(/[^0-9]/g, '') || '233240001111';
+  const sanitizedNum = whatsappNumber.replace(/[^0-9]/g, '') || '233246432493';
   const link = `https://wa.me/${sanitizedNum}?text=${encodeURIComponent(message)}`;
 
   return (

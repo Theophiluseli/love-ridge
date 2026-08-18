@@ -25,7 +25,7 @@ export default function AdminProductsPage() {
     stockStatus: 'IN_STOCK',
     originCountry: 'China',
     moq: '1',
-    status: 'PUBLISHED',
+    status: 'DRAFT',
     featured: true,
     imageUrl: '',
     galleryUrls: [] as string[],
@@ -69,12 +69,14 @@ export default function AdminProductsPage() {
     fetchProducts();
   }, []);
 
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSave(e: React.FormEvent, targetStatus?: 'DRAFT' | 'PUBLISHED') {
+    if (e) e.preventDefault();
     setSubmitting(true);
     const token = localStorage.getItem('loveridge_token');
     const url = editItem ? `/api/admin/products/${editItem.id}` : '/api/admin/products';
     const method = editItem ? 'PATCH' : 'POST';
+
+    const chosenStatus = targetStatus || form.status || 'DRAFT';
 
     try {
       const res = await fetch(url, {
@@ -85,6 +87,7 @@ export default function AdminProductsPage() {
         },
         body: JSON.stringify({
           ...form,
+          status: chosenStatus,
           galleryUrls: form.galleryUrls,
         }),
       });
@@ -105,7 +108,15 @@ export default function AdminProductsPage() {
 
       if (!res.ok) throw new Error(data.error || 'Operation failed.');
 
-      setMessage(editItem ? 'Product item updated successfully!' : 'Store product created & published successfully!');
+      setMessage(
+        editItem
+          ? chosenStatus === 'DRAFT'
+            ? 'Store product updated & saved as Draft!'
+            : 'Store product updated & published successfully!'
+          : chosenStatus === 'DRAFT'
+          ? 'Store product saved as Draft successfully!'
+          : 'Store product created & published successfully!'
+      );
       setTimeout(() => setMessage(''), 3000);
       resetForm();
       setActiveTab('LIST');
@@ -114,6 +125,24 @@ export default function AdminProductsPage() {
       alert(err.message);
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function toggleProductStatus(id: string, currentStatus: string) {
+    const newStatus = currentStatus === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED';
+    const token = localStorage.getItem('loveridge_token');
+    try {
+      const res = await fetch(`/api/admin/products/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) fetchProducts();
+    } catch (err) {
+      console.error('Failed to toggle product status:', err);
     }
   }
 
@@ -186,7 +215,7 @@ export default function AdminProductsPage() {
       stockStatus: 'IN_STOCK',
       originCountry: 'China',
       moq: '1',
-      status: 'PUBLISHED',
+      status: 'DRAFT',
       featured: false,
       imageUrl: '',
       galleryUrls: [],
@@ -549,20 +578,31 @@ export default function AdminProductsPage() {
                 />
               </div>
 
-              {/* Submit Buttons */}
-              <div className="flex gap-4 pt-4 border-t border-slate-100">
+              {/* Submit Buttons: Save Draft vs Publish */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => {
                     resetForm();
                     setActiveTab('LIST');
                   }}
-                  className="flex-1 py-3.5 rounded-2xl border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                  className="py-3.5 px-5 rounded-2xl border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-50"
                 >
                   Cancel
                 </button>
+
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={(e) => handleSave(e, 'DRAFT')}
+                  disabled={submitting || uploading}
+                  className="py-3.5 px-6 rounded-2xl border-2 border-amber-600 text-amber-800 hover:bg-amber-50 text-xs font-extrabold disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  Save as Draft
+                </button>
+
+                <button
+                  type="button"
+                  onClick={(e) => handleSave(e, 'PUBLISHED')}
                   disabled={submitting || uploading}
                   className="gradient-btn flex-1 py-3.5 rounded-2xl text-xs font-bold shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
                 >
@@ -577,7 +617,7 @@ export default function AdminProductsPage() {
                       Optimizing Images...
                     </>
                   ) : editItem ? (
-                    'Update Store Product'
+                    'Publish Product Updates'
                   ) : (
                     'Publish Store Product Now'
                   )}
@@ -602,6 +642,7 @@ export default function AdminProductsPage() {
                   <th className="px-6 py-4">Product & SKU</th>
                   <th className="px-6 py-4">Category</th>
                   <th className="px-6 py-4">Unit Price</th>
+                  <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4">Featured</th>
                   <th className="px-6 py-4">Stock</th>
                   <th className="px-6 py-4 text-right">Actions</th>
@@ -610,13 +651,13 @@ export default function AdminProductsPage() {
               <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="p-8 text-center text-slate-500 font-semibold">
+                    <td colSpan={8} className="p-8 text-center text-slate-500 font-semibold">
                       Loading store inventory...
                     </td>
                   </tr>
                 ) : products.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-8 text-center text-slate-500 font-semibold">
+                    <td colSpan={8} className="p-8 text-center text-slate-500 font-semibold">
                       No products found.
                     </td>
                   </tr>
@@ -624,7 +665,7 @@ export default function AdminProductsPage() {
                   products.map((prod) => (
                     <tr key={prod.id} className="hover:bg-slate-50 transition">
                       <td className="px-6 py-3">
-                        <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-200 overflow-hidden flex items-center justify-center p-1 shadow-2xs">
+                        <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-200 overflow-hidden flex items-center justify-center shadow-2xs">
                           <img
                             src={
                               prod.imageUrl ||
@@ -635,7 +676,7 @@ export default function AdminProductsPage() {
                                 : '/product_tiles.png')
                             }
                             alt={prod.name}
-                            className="max-h-full max-w-full object-contain"
+                            className="w-full h-full object-cover"
                           />
                         </div>
                       </td>
@@ -646,6 +687,22 @@ export default function AdminProductsPage() {
                       <td className="px-6 py-4 text-slate-600 font-semibold">{prod.category?.name || 'Store Item'}</td>
                       <td className="px-6 py-4 font-extrabold text-slate-900">
                         {prod.currency || 'GHS'} {prod.price.toLocaleString()}
+                      </td>
+
+                      {/* STATUS TOGGLE BUTTON COLUMN */}
+                      <td className="px-6 py-4">
+                        <button
+                          type="button"
+                          onClick={() => toggleProductStatus(prod.id, prod.status || 'DRAFT')}
+                          className={`px-3 py-1 text-[10px] font-bold rounded-full uppercase border transition ${
+                            prod.status === 'PUBLISHED'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                              : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                          }`}
+                          title={`Status is ${prod.status || 'DRAFT'}. Click to change to ${prod.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED'}`}
+                        >
+                          {prod.status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT'}
+                        </button>
                       </td>
 
                       {/* FEATURED TOGGLE BUTTON COLUMN */}

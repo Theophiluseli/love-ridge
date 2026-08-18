@@ -48,7 +48,11 @@ export async function POST(req: NextRequest) {
       pricePeriod,
       bedrooms = 0,
       bathrooms = 0,
+      guestRooms = 0,
+      boysQuarters = 0,
+      garage = 0,
       sizeSqft,
+      livingAreaSqft,
       locationAddress,
       city,
       region,
@@ -70,9 +74,8 @@ export async function POST(req: NextRequest) {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '') + '-' + Date.now().toString().slice(-4);
 
-    // Initial status: Agents submit as PENDING_REVIEW, Property Managers/Admins can set PUBLISHED directly
-    const canAutoPublish = hasPermission(user, 'property.approve');
-    const initialStatus = canAutoPublish ? (body.status || 'PUBLISHED') : 'PENDING_REVIEW';
+    // Initial status: Defaults to DRAFT so listing appears as Draft on admin dashboard until explicitly published
+    const initialStatus = body.status || 'DRAFT';
 
     let assignedAgentId = agentId;
     if (body.contactName) {
@@ -98,6 +101,18 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const parseNumberOrNull = (val: any, fallback: number | null = null) => {
+      if (val === undefined || val === null || val === '') return fallback;
+      const parsed = parseFloat(val);
+      return isNaN(parsed) ? fallback : parsed;
+    };
+
+    const parseIntOrFallback = (val: any, fallback: number = 0) => {
+      if (val === undefined || val === null || val === '') return fallback;
+      const parsed = parseInt(val);
+      return isNaN(parsed) ? fallback : parsed;
+    };
+
     const property = await prisma.property.create({
       data: {
         title,
@@ -106,12 +121,16 @@ export async function POST(req: NextRequest) {
         listingType,
         propertyType,
         status: initialStatus,
-        price: parseFloat(price),
+        price: parseNumberOrNull(price, 0) || 0,
         currency,
         pricePeriod,
-        bedrooms: parseInt(bedrooms || 0),
-        bathrooms: parseInt(bathrooms || 0),
-        sizeSqft: sizeSqft ? parseFloat(sizeSqft) : null,
+        bedrooms: parseIntOrFallback(bedrooms, 0),
+        bathrooms: parseIntOrFallback(bathrooms, 0),
+        guestRooms: parseIntOrFallback(guestRooms, 0),
+        boysQuarters: parseIntOrFallback(boysQuarters, 0),
+        garage: parseIntOrFallback(garage, 0),
+        sizeSqft: parseNumberOrNull(sizeSqft, null),
+        livingAreaSqft: parseNumberOrNull(livingAreaSqft, null),
         locationAddress,
         city,
         region: region || 'Greater Accra',
@@ -121,7 +140,7 @@ export async function POST(req: NextRequest) {
         galleryUrls: Array.isArray(galleryUrls) ? galleryUrls : [],
         agentId: assignedAgentId || user.userId,
         createdById: user.userId,
-        approvedById: canAutoPublish ? user.userId : null,
+        approvedById: initialStatus === 'PUBLISHED' ? user.userId : null,
         publishedAt: initialStatus === 'PUBLISHED' ? new Date() : null,
       },
     });

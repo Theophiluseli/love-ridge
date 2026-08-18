@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Bed, Bath, Maximize2, MapPin, Building, Warehouse as WarehouseIcon, Trees } from 'lucide-react';
+import { Bed, Bath, Maximize2, MapPin, Building, Warehouse as WarehouseIcon, Trees, Clock, Home } from 'lucide-react';
+import { useCurrency } from '@/context/CurrencyContext';
 
 interface PropertyProps {
   property: {
@@ -16,30 +17,37 @@ interface PropertyProps {
     pricePeriod?: string | null;
     bedrooms: number;
     bathrooms: number;
+    guestRooms?: number | null;
+    boysQuarters?: number | null;
+    garage?: number | null;
     sizeSqft?: number | null;
+    livingAreaSqft?: number | null;
     locationAddress: string;
     city: string;
     featured?: boolean;
     imageUrl?: string;
+    updatedAt?: string | Date;
+    createdAt?: string | Date;
   };
   onRequestViewing?: (propertyId: string, title: string) => void;
   hidePropertyType?: boolean;
 }
 
 export default function PropertyCard({ property, onRequestViewing, hidePropertyType = false }: PropertyProps) {
+  const { formatPrice } = useCurrency();
   const isRent = property.listingType === 'RENT';
   const propType = (property.propertyType || '').toUpperCase();
 
   // Determine property picture
   let imgSrc = property.imageUrl;
   if (!imgSrc) {
-    if (propType === 'OFFICE_SPACE' || propType === 'OFFICE' || property.slug.includes('office')) {
+    if (propType === 'OFFICE_SPACE' || propType === 'OFFICE' || property.slug?.includes('office')) {
       imgSrc = '/property_office.png';
-    } else if (propType === 'WAREHOUSE' || property.slug.includes('warehouse')) {
+    } else if (propType === 'WAREHOUSE' || property.slug?.includes('warehouse')) {
       imgSrc = '/property_warehouse.png';
-    } else if (propType === 'LAND' || property.slug.includes('land')) {
+    } else if (propType === 'LAND' || property.slug?.includes('land')) {
       imgSrc = '/property_land.png';
-    } else if (property.slug.includes('apartment') || propType === 'APARTMENT') {
+    } else if (property.slug?.includes('apartment') || propType === 'APARTMENT') {
       imgSrc = '/property_apartment.png';
     } else {
       imgSrc = '/property_villa.png';
@@ -64,6 +72,13 @@ export default function PropertyCard({ property, onRequestViewing, hidePropertyT
     return p;
   };
 
+  const formattedPrice = formatPrice(property.price, property.currency || 'GHS');
+
+  const updatedDate = property.updatedAt || property.createdAt;
+  const timeAgo = updatedDate
+    ? new Date(updatedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : null;
+
   return (
     <div className="glass-card rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col justify-between group h-full border border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300">
       {/* Property Cover Image */}
@@ -71,6 +86,7 @@ export default function PropertyCard({ property, onRequestViewing, hidePropertyT
         <img
           src={imgSrc}
           alt={property.title}
+          loading="lazy"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent z-10" />
@@ -95,8 +111,7 @@ export default function PropertyCard({ property, onRequestViewing, hidePropertyT
           <div className="flex flex-col min-w-0 max-w-full">
             <div className="flex items-baseline flex-wrap gap-1.5 sm:gap-2">
               <span className="text-xl sm:text-2xl font-black text-white tracking-tight drop-shadow-md">
-                {property.currency === 'USD' ? '$' : 'GHS '}
-                {property.price.toLocaleString()}
+                {formattedPrice}
               </span>
               {property.pricePeriod && (
                 <span className="inline-flex items-center text-[10px] sm:text-xs font-bold text-emerald-300 bg-slate-950/85 backdrop-blur-md px-2.5 py-0.5 rounded-md border border-emerald-500/40 whitespace-nowrap shadow-sm">
@@ -116,9 +131,16 @@ export default function PropertyCard({ property, onRequestViewing, hidePropertyT
       {/* Body */}
       <div className="p-4 sm:p-6 flex-1 flex flex-col justify-between space-y-3 sm:space-y-4">
         <div>
-          <div className="flex items-center text-slate-500 text-[11px] sm:text-xs gap-1 mb-1.5 font-medium">
-            <MapPin className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-            <span className="truncate">{property.locationAddress}, {property.city}</span>
+          <div className="flex items-center justify-between text-slate-500 text-[11px] sm:text-xs mb-1.5 font-medium">
+            <div className="flex items-center gap-1 min-w-0 pr-2">
+              <MapPin className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+              <span className="truncate">{property.locationAddress}, {property.city}</span>
+            </div>
+            {timeAgo && (
+              <span className="text-[10px] text-slate-400 shrink-0 flex items-center gap-1">
+                <Clock className="w-3 h-3 text-slate-400" /> {timeAgo}
+              </span>
+            )}
           </div>
 
           <h3 className="text-base sm:text-lg font-bold text-slate-900 group-hover:text-emerald-800 transition-colors line-clamp-2 leading-snug">
@@ -130,66 +152,40 @@ export default function PropertyCard({ property, onRequestViewing, hidePropertyT
           </p>
         </div>
 
-        {/* Specs */}
-        <div className="grid grid-cols-3 gap-1 py-2 sm:py-3 border-y border-slate-100 text-[11px] sm:text-xs text-slate-700 font-medium">
+        {/* Specs Grid matching exact user screenshot design */}
+        <div className="grid grid-cols-4 sm:grid-cols-4 gap-1 py-2 sm:py-3 border-y border-slate-100 text-[10px] sm:text-xs text-slate-700 font-semibold text-center">
           {propType === 'LAND' ? (
             <>
-              <div className="flex items-center gap-1">
-                <Trees className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                <span>Commercial Land</span>
+              <div className="flex flex-col items-center">
+                <Trees className="w-3.5 h-3.5 text-emerald-700 mb-0.5" />
+                <span>Land</span>
               </div>
-              <div className="flex items-center gap-1">
-                <MapPin className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                <span>Titled Plot</span>
+              <div className="flex flex-col items-center">
+                <MapPin className="w-3.5 h-3.5 text-emerald-700 mb-0.5" />
+                <span>Titled</span>
               </div>
-              <div className="flex items-center gap-1">
-                <Maximize2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+              <div className="col-span-2 flex flex-col items-center">
+                <Maximize2 className="w-3.5 h-3.5 text-emerald-700 mb-0.5" />
                 <span>{property.sizeSqft ? `${(property.sizeSqft / 43560).toFixed(1)} Acres` : 'Land Plot'}</span>
-              </div>
-            </>
-          ) : propType === 'OFFICE_SPACE' || propType === 'OFFICE' ? (
-            <>
-              <div className="flex items-center gap-1">
-                <Building className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                <span>Office Suite</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Bath className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                <span>{property.bathrooms || 2} Restrooms</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Maximize2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                <span>{property.sizeSqft ? `${property.sizeSqft} sqft` : 'Executive Floor'}</span>
-              </div>
-            </>
-          ) : propType === 'WAREHOUSE' ? (
-            <>
-              <div className="flex items-center gap-1">
-                <WarehouseIcon className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                <span>Logistics Facility</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Bath className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                <span>{property.bathrooms || 4} Washrooms</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Maximize2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                <span>{property.sizeSqft ? `${property.sizeSqft} sqft` : 'High-Bay Space'}</span>
               </div>
             </>
           ) : (
             <>
-              <div className="flex items-center gap-1">
-                <Bed className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                <span>{property.bedrooms} Beds</span>
+              <div className="flex flex-col items-center" title="Bedrooms">
+                <Bed className="w-3.5 h-3.5 text-emerald-700 mb-0.5" />
+                <span>{property.bedrooms || 0} Beds</span>
               </div>
-              <div className="flex items-center gap-1">
-                <Bath className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                <span>{property.bathrooms} Baths</span>
+              <div className="flex flex-col items-center" title="Bathrooms">
+                <Bath className="w-3.5 h-3.5 text-emerald-700 mb-0.5" />
+                <span>{property.bathrooms || 0} Baths</span>
               </div>
-              <div className="flex items-center gap-1">
-                <Maximize2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                <span>{property.sizeSqft ? `${property.sizeSqft} sqft` : 'N/A'}</span>
+              <div className="flex flex-col items-center" title="Guest Rooms">
+                <Home className="w-3.5 h-3.5 text-emerald-700 mb-0.5" />
+                <span>{property.guestRooms || 0} Guest</span>
+              </div>
+              <div className="flex flex-col items-center" title="Total Size Sqft">
+                <Maximize2 className="w-3.5 h-3.5 text-emerald-700 mb-0.5" />
+                <span>{property.livingAreaSqft || property.sizeSqft || 100} sqft</span>
               </div>
             </>
           )}

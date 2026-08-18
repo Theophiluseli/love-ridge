@@ -98,6 +98,7 @@ export async function GET(req: NextRequest) {
         { city: { contains: search } },
       ];
     }
+    where.status = 'PUBLISHED';
 
     if (listingType && listingType !== 'ALL') {
       where.listingType = listingType.toUpperCase();

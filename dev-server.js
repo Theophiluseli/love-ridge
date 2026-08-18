@@ -61,6 +61,35 @@ nextProcess.on('error', (err) => {
     req.pipe(proxyReq, { end: true });
   });
 
+  // Handle WebSocket upgrade for Next.js HMR
+  server.on('upgrade', (req, socket, head) => {
+    const proxyReq = http.request({
+      hostname: '127.0.0.1',
+      port: 3000,
+      path: req.url,
+      method: req.method,
+      headers: req.headers,
+    });
+
+    proxyReq.on('upgrade', (proxyRes, proxySocket, proxyHead) => {
+      socket.write(
+        `HTTP/1.1 101 Switching Protocols\r\n` +
+          Object.keys(proxyRes.headers)
+            .map((h) => `${h}: ${proxyRes.headers[h]}`)
+            .join('\r\n') +
+          '\r\n\r\n'
+      );
+      proxySocket.pipe(socket);
+      socket.pipe(proxySocket);
+    });
+
+    proxyReq.on('error', () => {
+      socket.destroy();
+    });
+
+    proxyReq.end();
+  });
+
   server.listen(port, '0.0.0.0', () => {
     console.log(`[Multi-Port Listener] Active on http://localhost:${port} -> forwarding to http://localhost:3000`);
   });

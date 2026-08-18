@@ -49,6 +49,18 @@ export async function PATCH(
       }
     }
 
+    const parseNumberOrNull = (val: any, fallback: number | null = null) => {
+      if (val === undefined || val === null || val === '') return fallback;
+      const parsed = parseFloat(val);
+      return isNaN(parsed) ? fallback : parsed;
+    };
+
+    const parseIntOrFallback = (val: any, fallback: number = 0) => {
+      if (val === undefined || val === null || val === '') return fallback;
+      const parsed = parseInt(val);
+      return isNaN(parsed) ? fallback : parsed;
+    };
+
     const updated = await prisma.property.update({
       where: { id },
       data: {
@@ -57,10 +69,14 @@ export async function PATCH(
         listingType: body.listingType ?? existing.listingType,
         propertyType: body.propertyType ?? existing.propertyType,
         status: body.status ?? existing.status,
-        price: body.price !== undefined ? parseFloat(body.price) : existing.price,
-        bedrooms: body.bedrooms !== undefined ? parseInt(body.bedrooms) : existing.bedrooms,
-        bathrooms: body.bathrooms !== undefined ? parseInt(body.bathrooms) : existing.bathrooms,
-        sizeSqft: body.sizeSqft !== undefined ? parseFloat(body.sizeSqft) : existing.sizeSqft,
+        price: parseNumberOrNull(body.price, existing.price) ?? existing.price,
+        bedrooms: parseIntOrFallback(body.bedrooms, existing.bedrooms ?? 0),
+        bathrooms: parseIntOrFallback(body.bathrooms, existing.bathrooms ?? 0),
+        guestRooms: parseIntOrFallback(body.guestRooms, existing.guestRooms ?? 0),
+        boysQuarters: parseIntOrFallback(body.boysQuarters, existing.boysQuarters ?? 0),
+        garage: parseIntOrFallback(body.garage, existing.garage ?? 0),
+        sizeSqft: parseNumberOrNull(body.sizeSqft, existing.sizeSqft ?? null),
+        livingAreaSqft: parseNumberOrNull(body.livingAreaSqft, existing.livingAreaSqft ?? null),
         locationAddress: body.locationAddress ?? existing.locationAddress,
         city: body.city ?? existing.city,
         featured: body.featured !== undefined ? Boolean(body.featured) : existing.featured,

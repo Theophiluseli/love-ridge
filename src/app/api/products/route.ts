@@ -87,6 +87,7 @@ export async function GET(req: NextRequest) {
         { sku: { contains: search } },
       ];
     }
+    where.status = 'PUBLISHED';
 
     if (categorySlug && categorySlug !== 'ALL') {
       const category = await prisma.productCategory.findUnique({

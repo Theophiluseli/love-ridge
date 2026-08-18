@@ -79,7 +79,11 @@ model Property {
   pricePeriod     String?            // per month, per year (for rent)
   bedrooms        Int                @default(0)
   bathrooms       Int                @default(0)
+  guestRooms      Int                @default(0)
+  boysQuarters    Int                @default(0)
+  garage          Int                @default(0)
   sizeSqft        Float?
+  livingAreaSqft  Float?
   locationAddress String
   city            String
   region          String

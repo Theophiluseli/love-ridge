@@ -94,7 +94,7 @@ export default function Footer() {
             </li>
             <li className="flex items-center justify-center sm:justify-start gap-2 text-slate-700">
               <Phone className="w-4 h-4 text-emerald-800 shrink-0" />
-              <span>+233 (0) 24 000 1111 / +233 (0) 20 222 3333</span>
+              <span>+233 (0) 24 643 2493 / 0246432493</span>
             </li>
             <li className="flex items-center justify-center sm:justify-start gap-2 text-slate-700">
               <Mail className="w-4 h-4 text-emerald-800 shrink-0" />
@@ -113,9 +113,9 @@ export default function Footer() {
       </div>
 
       {/* Lower Footer */}
-      <div className="bg-slate-950 border-t border-slate-800 text-slate-400 py-6 px-4 sm:px-6 lg:px-8 text-center text-xs font-medium">
+      <div className="bg-emerald-950 border-t border-emerald-900/60 text-emerald-100 py-6 px-4 sm:px-6 lg:px-8 text-center text-xs font-medium">
         <div className="max-w-7xl mx-auto flex items-center justify-center">
-          <p className="text-slate-400 text-xs font-semibold">
+          <p className="text-emerald-200 text-xs font-semibold">
             © {new Date().getFullYear()} LOVERIDGE Properties & Consult. All rights reserved.
           </p>
         </div>
