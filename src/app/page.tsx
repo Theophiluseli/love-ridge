@@ -124,10 +124,54 @@ const INITIAL_PRODUCTS = [
   },
 ];
 
+const DEFAULT_HERO_SLIDES = [
+  '/hero_carousel_1.jpg',
+  '/hero_carousel_2.jpg',
+  '/hero_carousel_3.jpg',
+  '/hero_carousel_4.jpg',
+];
+
 export default function HomePage() {
   const [properties, setProperties] = useState<any[]>(INITIAL_PROPERTIES);
   const [products, setProducts] = useState<any[]>(INITIAL_PRODUCTS);
   const [loading, setLoading] = useState(false);
+
+  // Background Hero Carousel State
+  const [heroSlidesList, setHeroSlidesList] = useState<string[]>(DEFAULT_HERO_SLIDES);
+  const [heroSlide, setHeroSlide] = useState(0);
+
+  useEffect(() => {
+    async function loadHeroSlides() {
+      try {
+        const localSaved = localStorage.getItem('loveridge_hero_slides');
+        if (localSaved) {
+          const parsed = JSON.parse(localSaved);
+          const activeList = parsed.filter((s: any) => s.active).map((s: any) => s.imageUrl);
+          if (activeList.length > 0) setHeroSlidesList(activeList);
+        }
+
+        const res = await fetch('/api/hero-slides');
+        const data = await res.json();
+        if (data.slides && Array.isArray(data.slides)) {
+          const activeList = data.slides.filter((s: any) => s.active).map((s: any) => s.imageUrl);
+          if (activeList.length > 0) {
+            setHeroSlidesList(activeList);
+          }
+        }
+      } catch (err) {
+        console.warn('Quiet notice: using default hero slides:', err);
+      }
+    }
+    loadHeroSlides();
+  }, []);
+
+  useEffect(() => {
+    if (heroSlidesList.length === 0) return;
+    const timer = setInterval(() => {
+      setHeroSlide((prev) => (prev + 1) % heroSlidesList.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [heroSlidesList.length]);
 
   // Search tab state
   const [activeTab, setActiveTab] = useState<'properties' | 'products'>('properties');
@@ -269,34 +313,49 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between bg-grid-pattern relative">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between relative">
       <Navbar />
 
-      <main className="flex-1 space-y-20 pt-16 sm:pt-24 lg:pt-28 pb-20">
-        {/* HERO SECTION */}
-        <section className="relative py-12 sm:py-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[950px] h-[480px] bg-emerald-500/10 rounded-full blur-3xl -z-10 pointer-events-none" />
+      <main className="flex-1 space-y-20 -mt-20 pb-20">
+        {/* HERO SECTION WITH LIGHT BRAND-GREEN OVERLAY & CAROUSEL */}
+        <section className="relative bg-slate-50 pt-36 sm:pt-44 lg:pt-52 pb-20 sm:pb-28 px-4 sm:px-6 lg:px-8 overflow-hidden min-h-[650px] sm:min-h-[720px] flex flex-col justify-start border-b border-slate-200">
+          {/* Background Carousel Layer */}
+          <div className="absolute inset-0 z-0 overflow-hidden">
+            {heroSlidesList.map((img, idx) => (
+              <div
+                key={`${img}-${idx}`}
+                className={`absolute inset-0 bg-cover bg-center transition-all duration-1000 transform ${
+                  idx === heroSlide ? 'opacity-100 scale-105' : 'opacity-0 scale-100'
+                }`}
+                style={{ backgroundImage: `url('${img}')` }}
+              />
+            ))}
 
-          <div className="max-w-5xl mx-auto text-center space-y-8 relative z-10">
-            {/* Main Headline & Refined Subtexts */}
+            {/* Light Neutral & Soft Green Brand Overlay */}
+            <div className="absolute inset-0 bg-white/20 backdrop-blur-[0.2px]" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-50/80 via-white/10 to-emerald-950/20" />
+          </div>
+
+          <div className="max-w-5xl mx-auto text-center space-y-8 relative z-10 w-full pt-6 sm:pt-10">
+            {/* Main Headline & Slogan */}
             <div className="space-y-4 max-w-3xl mx-auto">
-              <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-slate-900 tracking-tight leading-tight sm:leading-none">
-                Welcome To <span className="gradient-text">Loveridge</span>
+              <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-slate-900 tracking-tight leading-tight sm:leading-none drop-shadow-sm">
+                Welcome To <span className="text-emerald-800 font-black">Loveridge</span>
               </h1>
               
               {/* Refined Subtext 1 */}
-              <p className="text-emerald-950 font-bold text-xs sm:text-sm tracking-wider uppercase max-w-xl mx-auto">
+              <p className="text-emerald-900 font-black text-xs sm:text-sm tracking-wider uppercase max-w-xl mx-auto">
                 Your Ultimate Destination for Premium Properties & Smart Building Solutions
               </p>
 
               {/* Refined Intro Subtext 2 */}
-              <p className="text-slate-600 text-xs sm:text-sm font-medium max-w-2xl mx-auto leading-relaxed pt-1">
+              <p className="text-slate-700 text-xs sm:text-sm font-semibold max-w-2xl mx-auto leading-relaxed pt-1">
                 Loveridge Properties and Consult bridges luxury real estate brokerage in Ghana with direct factory procurement of high-grade building materials, porcelain tiles, and construction tools globally.
               </p>
             </div>
 
             {/* Dual Search Box */}
-            <div className="max-w-3xl mx-auto bg-white/95 backdrop-blur-xl p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-2xl shadow-emerald-950/10 space-y-4">
+            <div className="max-w-3xl mx-auto bg-white/95 backdrop-blur-xl p-4 sm:p-5 rounded-3xl border border-white/30 shadow-2xl shadow-slate-950/50 space-y-4">
               <div className="flex flex-col sm:flex-row bg-slate-100 p-1.5 rounded-2xl border border-slate-200 gap-1.5">
                 <button
                   onClick={() => setActiveTab('properties')}
@@ -350,10 +409,10 @@ export default function HomePage() {
             </div>
 
             {/* TRUST FEATURE CARDS ROW */}
-            <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 pt-8 sm:pt-10 px-2 sm:px-4">
-              <div className="bg-white/90 p-5 sm:px-6 sm:py-5.5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:shadow-md transition-all text-left">
-                <div className="w-11 h-11 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 shrink-0">
-                  <Home className="w-5 h-5 text-emerald-800" />
+            <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 pt-4 sm:pt-6 px-2 sm:px-4">
+              <div className="bg-white/95 backdrop-blur-md p-4 sm:px-5 sm:py-4.5 rounded-2xl border border-white/20 shadow-xl flex items-center gap-4 hover:bg-white transition-all text-left">
+                <div className="w-11 h-11 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-800 shrink-0">
+                  <Home className="w-5 h-5" />
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-slate-900 tracking-tight">Luxury Homes</h4>
@@ -363,9 +422,9 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <div className="bg-white/90 p-5 sm:px-6 sm:py-5.5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:shadow-md transition-all text-left">
-                <div className="w-11 h-11 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 shrink-0">
-                  <Clock className="w-5 h-5 text-emerald-800" />
+              <div className="bg-white/95 backdrop-blur-md p-4 sm:px-5 sm:py-4.5 rounded-2xl border border-white/20 shadow-xl flex items-center gap-4 hover:bg-white transition-all text-left">
+                <div className="w-11 h-11 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-800 shrink-0">
+                  <Clock className="w-5 h-5" />
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-slate-900 tracking-tight">100% Trusted</h4>
@@ -375,9 +434,9 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <div className="bg-white/90 p-5 sm:px-6 sm:py-5.5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:shadow-md transition-all text-left">
-                <div className="w-11 h-11 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 shrink-0">
-                  <Layers className="w-5 h-5 text-emerald-800" />
+              <div className="bg-white/95 backdrop-blur-md p-4 sm:px-5 sm:py-4.5 rounded-2xl border border-white/20 shadow-xl flex items-center gap-4 hover:bg-white transition-all text-left">
+                <div className="w-11 h-11 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-800 shrink-0">
+                  <Layers className="w-5 h-5" />
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-slate-900 tracking-tight">Quality Materials</h4>
@@ -386,6 +445,21 @@ export default function HomePage() {
                   </p>
                 </div>
               </div>
+            </div>
+
+            {/* Carousel Navigation Indicators */}
+            <div className="flex items-center justify-center gap-2 pt-2">
+              {heroSlidesList.map((_: string, idx: number) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setHeroSlide(idx)}
+                  className={`h-2 rounded-full transition-all duration-500 ${
+                    idx === heroSlide ? 'w-8 bg-emerald-800' : 'w-2.5 bg-slate-300 hover:bg-emerald-600'
+                  }`}
+                  title={`Background Slide ${idx + 1}`}
+                />
+              ))}
             </div>
           </div>
         </section>

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { Plus, ArrowRight } from 'lucide-react';
+import { useCurrency } from '@/context/CurrencyContext';
 
 interface ProductProps {
   product: {
@@ -11,7 +12,7 @@ interface ProductProps {
     description: string;
     sku: string;
     price: number;
-    currency: string;
+    currency?: string;
     unit: string;
     stockQuantity: number;
     stockStatus: string;
@@ -21,32 +22,36 @@ interface ProductProps {
     imageUrl?: string;
     featured?: boolean;
     popular?: boolean;
+    updatedAt?: string | Date;
   };
   onRequestQuote?: (productId: string, productName: string) => void;
 }
 
 export default function ProductCard({ product, onRequestQuote }: ProductProps) {
+  const { formatPrice } = useCurrency();
   const isInStock = product.stockStatus === 'IN_STOCK' && product.stockQuantity > 0;
 
   // Determine product image
   let imgSrc = product.imageUrl;
   if (!imgSrc) {
-    if (product.slug.includes('tile') || product.slug.includes('marble') || product.name.toLowerCase().includes('tile')) {
+    if (product.slug?.includes('tile') || product.slug?.includes('marble') || product.name?.toLowerCase().includes('tile')) {
       imgSrc = '/product_tiles.png';
-    } else if (product.slug.includes('drill') || product.slug.includes('tool') || product.name.toLowerCase().includes('drill')) {
+    } else if (product.slug?.includes('drill') || product.slug?.includes('tool') || product.name?.toLowerCase().includes('drill')) {
       imgSrc = '/product_drill.png';
-    } else if (product.slug.includes('lock') || product.name.toLowerCase().includes('lock')) {
+    } else if (product.slug?.includes('lock') || product.name?.toLowerCase().includes('lock')) {
       imgSrc = '/product_lock.png';
     } else {
       imgSrc = '/product_tiles.png';
     }
   }
 
+  const formattedPrice = formatPrice(product.price, product.currency || 'GHS');
+
   return (
     <div className="bg-white rounded-2xl p-3 sm:p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between group h-full relative">
       <div>
         {/* Image Frame Container */}
-        <div className="relative w-full h-36 sm:h-52 bg-slate-50/80 rounded-xl p-2.5 sm:p-4 flex items-center justify-center overflow-hidden mb-2.5 sm:mb-3 border border-slate-100/90">
+        <div className="relative w-full h-44 sm:h-56 bg-slate-100 rounded-xl overflow-hidden mb-2.5 sm:mb-3 border border-slate-100/90">
           {/* Badge at top-left */}
           <div className="absolute top-2 left-2 sm:top-2.5 sm:left-2.5 z-10 flex flex-wrap gap-1">
             {product.featured && (
@@ -73,7 +78,8 @@ export default function ProductCard({ product, onRequestQuote }: ProductProps) {
           <img
             src={imgSrc}
             alt={product.name}
-            className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500"
+            loading="lazy"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
 
           {/* Floating Circle "+" Button */}
@@ -107,7 +113,7 @@ export default function ProductCard({ product, onRequestQuote }: ProductProps) {
       <div className="pt-2 sm:pt-2.5 border-t border-slate-100 flex items-end justify-between gap-1">
         <div className="min-w-0">
           <span className="text-xs sm:text-sm font-bold text-slate-900 block truncate">
-            GHS {product.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {formattedPrice}
           </span>
           <span className="text-[10px] sm:text-[11px] text-slate-400 font-normal block truncate">
             {product.unit || 'per item'}

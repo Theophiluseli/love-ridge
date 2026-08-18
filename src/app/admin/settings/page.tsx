@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Save, Key, MessageSquare, Globe, CheckCircle, Shield } from 'lucide-react';
+import Link from 'next/link';
+import { Save, Key, MessageSquare, Globe, CheckCircle, Shield, Sparkles, ArrowRight } from 'lucide-react';
 
 export default function AdminSettingsPage() {
   const [saved, setSaved] = useState(false);
@@ -12,8 +13,8 @@ export default function AdminSettingsPage() {
   const [settings, setSettings] = useState({
     siteName: 'Love Ridge Properties & Store',
     contactEmail: 'info@loveridgeproperty.com',
-    contactPhone: '+233 24 000 1111',
-    whatsappNumber: '233240001111',
+    contactPhone: '0246432493',
+    whatsappNumber: '233246432493',
     currencyDefault: 'USD',
   });
 
@@ -141,6 +142,26 @@ export default function AdminSettingsPage() {
           <CheckCircle className="w-4 h-4 text-emerald-600" /> System settings updated successfully.
         </div>
       )}
+
+      {/* Hero Background Carousel Shortcut Card */}
+      <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-900 p-6 sm:p-8 rounded-3xl text-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 border border-emerald-500/30">
+        <div className="space-y-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-extrabold uppercase border border-emerald-500/30">
+            <Sparkles className="w-3.5 h-3.5" /> Homepage Hero Customization
+          </div>
+          <h3 className="text-xl font-black tracking-tight">Hero Section Background Carousel Manager</h3>
+          <p className="text-xs text-emerald-100/80 font-medium max-w-lg">
+            Upload custom background images, reorder sequence, toggle active slides, and preview live transitions in real-time.
+          </p>
+        </div>
+
+        <Link
+          href="/admin/hero"
+          className="bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black px-6 py-3 rounded-2xl text-xs flex items-center gap-2 shadow-lg transition shrink-0"
+        >
+          Manage Hero Slides <ArrowRight className="w-4 h-4" />
+        </Link>
+      </div>
 
       {/* Admin Email Update Card */}
       <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xl space-y-6">

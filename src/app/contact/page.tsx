@@ -94,8 +94,7 @@ export default function ContactPage() {
                     </div>
                     <div>
                       <span className="font-bold text-slate-900 block text-sm">Sales & Advisory Lines</span>
-                      <span>+233 (0) 24 000 1111</span>
-                      <span className="block">+233 (0) 20 222 3333</span>
+                      <span>+233 (0) 24 643 2493 / 0246432493</span>
                     </div>
                   </div>
 
@@ -122,7 +121,7 @@ export default function ContactPage() {
 
                 <div className="pt-4 border-t border-slate-100">
                   <a
-                    href="https://wa.me/233240001111?text=Hello%20Loveridge,%20I%20have%20an%20inquiry."
+                    href="https://wa.me/233246432493?text=Hello%20Loveridge,%20I%20have%20an%20inquiry."
                     target="_blank"
                     rel="noreferrer"
                     className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-3 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-md transition"

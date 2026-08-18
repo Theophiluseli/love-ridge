@@ -35,11 +35,16 @@ export default function AdminPropertiesPage() {
     pricePeriod: 'per month',
     bedrooms: '0',
     bathrooms: '0',
+    guestRooms: '0',
+    boysQuarters: '0',
+    garage: '0',
     sizeSqft: '',
+    livingAreaSqft: '',
     locationAddress: '',
     city: 'Accra',
     region: 'Greater Accra',
     featured: true,
+    status: 'DRAFT',
     imageUrl: '',
     galleryUrls: [] as string[],
     contactName: 'Kwame Appiah',
@@ -76,12 +81,14 @@ export default function AdminPropertiesPage() {
     fetchProperties();
   }, []);
 
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSave(e: React.FormEvent, targetStatus?: 'DRAFT' | 'PUBLISHED') {
+    if (e) e.preventDefault();
     setSubmitting(true);
     const token = localStorage.getItem('loveridge_token');
     const url = editItem ? `/api/admin/properties/${editItem.id}` : '/api/admin/properties';
     const method = editItem ? 'PATCH' : 'POST';
+
+    const chosenStatus = targetStatus || form.status || 'DRAFT';
 
     try {
       const res = await fetch(url, {
@@ -92,6 +99,7 @@ export default function AdminPropertiesPage() {
         },
         body: JSON.stringify({
           ...form,
+          status: chosenStatus,
           galleryUrls: form.galleryUrls,
         }),
       });
@@ -124,7 +132,15 @@ export default function AdminPropertiesPage() {
         throw new Error(data.error || 'Operation failed.');
       }
 
-      setMessage(editItem ? 'Property updated successfully!' : 'Property created & published successfully!');
+      setMessage(
+        editItem
+          ? chosenStatus === 'DRAFT'
+            ? 'Property updated & saved as Draft!'
+            : 'Property updated & published successfully!'
+          : chosenStatus === 'DRAFT'
+          ? 'Property saved as Draft successfully!'
+          : 'Property created & published successfully!'
+      );
       setTimeout(() => setMessage(''), 3000);
       resetForm();
       setActiveTab('LIST');
@@ -206,11 +222,16 @@ export default function AdminPropertiesPage() {
       pricePeriod: prop.propertyType === 'LAND' ? 'outright purchase' : (prop.pricePeriod || (prop.listingType === 'RENT' ? 'per month' : 'outright purchase')),
       bedrooms: (prop.bedrooms || 0).toString(),
       bathrooms: (prop.bathrooms || 0).toString(),
+      guestRooms: (prop.guestRooms || 0).toString(),
+      boysQuarters: (prop.boysQuarters || 0).toString(),
+      garage: (prop.garage || 0).toString(),
       sizeSqft: prop.sizeSqft ? prop.sizeSqft.toString() : '',
+      livingAreaSqft: prop.livingAreaSqft ? prop.livingAreaSqft.toString() : '',
       locationAddress: prop.locationAddress,
       city: prop.city,
       region: prop.region || 'Greater Accra',
       featured: prop.featured || false,
+      status: prop.status || 'DRAFT',
       imageUrl: prop.imageUrl || '',
       galleryUrls: Array.isArray(prop.galleryUrls) ? prop.galleryUrls : [],
       contactName: existingAgent,
@@ -243,11 +264,16 @@ export default function AdminPropertiesPage() {
       pricePeriod: 'outright purchase',
       bedrooms: '0',
       bathrooms: '0',
+      guestRooms: '0',
+      boysQuarters: '0',
+      garage: '0',
       sizeSqft: '',
+      livingAreaSqft: '',
       locationAddress: '',
       city: 'Accra',
       region: 'Greater Accra',
       featured: true,
+      status: 'DRAFT',
       imageUrl: '',
       galleryUrls: [],
       contactName: 'Loveridge Staff Agent',
@@ -263,7 +289,7 @@ export default function AdminPropertiesPage() {
     if (!file) return;
     setUploading(true);
     try {
-      const compressed = await compressImage(file, 1200, 1200, 0.8);
+      const compressed = await compressImage(file, 900, 900, 0.65);
       setForm((prev) => ({ ...prev, imageUrl: compressed }));
     } catch (err) {
       console.error('Failed to compress cover image:', err);
@@ -280,7 +306,7 @@ export default function AdminPropertiesPage() {
     setUploading(true);
     try {
       const compressedImages = await Promise.all(
-        Array.from(files).map((file) => compressImage(file, 1200, 1200, 0.8))
+        Array.from(files).map((file) => compressImage(file, 900, 900, 0.65))
       );
       setForm((prev) => ({
         ...prev,
@@ -496,16 +522,94 @@ export default function AdminPropertiesPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-800 mb-2">Size (Sqft / Acres)</label>
+                  <label className="block text-xs font-bold text-slate-800 mb-2">Total Plot Size (Sqft)</label>
                   <input
                     type="number"
                     value={form.sizeSqft}
                     onChange={(e) => setForm({ ...form, sizeSqft: e.target.value })}
-                    placeholder="e.g. 5000 (sqft) or 87120 (2 acres)"
+                    placeholder="e.g. 5000 (sqft)"
                     className="admin-input"
                   />
                 </div>
               </div>
+
+              {/* HOUSE & RESIDENTIAL SPECS GRID (Beds, Baths, Guest Rooms, BQ, Garage, Living Area) */}
+              {form.propertyType !== 'LAND' && (
+                <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-200/80 space-y-3">
+                  <span className="text-xs font-black text-emerald-950 uppercase tracking-wider block">
+                    House Specifications & Features Breakdown
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Bedrooms</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={form.bedrooms}
+                        onChange={(e) => setForm({ ...form, bedrooms: e.target.value })}
+                        className="admin-input text-xs"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Bathrooms</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={form.bathrooms}
+                        onChange={(e) => setForm({ ...form, bathrooms: e.target.value })}
+                        className="admin-input text-xs"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Guest Rooms</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={form.guestRooms}
+                        onChange={(e) => setForm({ ...form, guestRooms: e.target.value })}
+                        className="admin-input text-xs"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Boys Quarters (BQ)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={form.boysQuarters}
+                        onChange={(e) => setForm({ ...form, boysQuarters: e.target.value })}
+                        className="admin-input text-xs"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Garage / Parking</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={form.garage}
+                        onChange={(e) => setForm({ ...form, garage: e.target.value })}
+                        className="admin-input text-xs"
+                        placeholder="e.g. 2 cars"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Living Area (Sqft)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={form.livingAreaSqft}
+                        onChange={(e) => setForm({ ...form, livingAreaSqft: e.target.value })}
+                        className="admin-input text-xs"
+                        placeholder="e.g. 3500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Currency, Listing Price & Period */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -761,20 +865,31 @@ export default function AdminPropertiesPage() {
                 />
               </div>
 
-              {/* Submit Buttons */}
-              <div className="flex gap-4 pt-4 border-t border-slate-100">
+              {/* Submit Buttons: Save Draft vs Publish */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => {
                     resetForm();
                     setActiveTab('LIST');
                   }}
-                  className="flex-1 py-3.5 rounded-2xl border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                  className="py-3.5 px-5 rounded-2xl border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-50"
                 >
                   Cancel
                 </button>
+
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={(e) => handleSave(e, 'DRAFT')}
+                  disabled={submitting || uploading}
+                  className="py-3.5 px-6 rounded-2xl border-2 border-amber-600 text-amber-800 hover:bg-amber-50 text-xs font-extrabold disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  Save as Draft
+                </button>
+
+                <button
+                  type="button"
+                  onClick={(e) => handleSave(e, 'PUBLISHED')}
                   disabled={submitting || uploading}
                   className="gradient-btn flex-1 py-3.5 rounded-2xl text-xs font-bold shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
                 >
@@ -789,7 +904,7 @@ export default function AdminPropertiesPage() {
                       Optimizing Images...
                     </>
                   ) : editItem ? (
-                    'Update Property Listing'
+                    'Publish Property Updates'
                   ) : (
                     'Publish Property Listing Now'
                   )}
@@ -881,15 +996,18 @@ export default function AdminPropertiesPage() {
                       </td>
 
                       <td className="px-6 py-4">
-                        <span
-                          className={`px-2.5 py-1 text-[10px] font-bold rounded-full uppercase border ${
+                        <button
+                          type="button"
+                          onClick={() => handlePublish(prop.id, prop.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED')}
+                          className={`px-3 py-1 text-[10px] font-bold rounded-full uppercase border transition ${
                             prop.status === 'PUBLISHED'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : 'bg-amber-50 text-amber-700 border-amber-200'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                              : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
                           }`}
+                          title={`Status is ${prop.status}. Click to change to ${prop.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED'}`}
                         >
-                          {prop.status}
-                        </span>
+                          {prop.status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT'}
+                        </button>
                       </td>
                       <td className="px-6 py-4 text-right space-x-2">
                         <button

@@ -5,7 +5,10 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import PropertyCard from '@/components/PropertyCard';
 import InquiryModal from '@/components/InquiryModal';
-import { MapPin, Bed, Bath, Maximize2, Shield, Calendar, ChevronLeft, CheckCircle2, Images, X, PhoneCall } from 'lucide-react';
+import ImageGalleryModal from '@/components/ImageGalleryModal';
+import SocialShare from '@/components/SocialShare';
+import { useCurrency } from '@/context/CurrencyContext';
+import { MapPin, Bed, Bath, Maximize2, Shield, Calendar, ChevronLeft, CheckCircle2, Images, X, PhoneCall, Mail, UserCheck, Home, Clock } from 'lucide-react';
 import Link from 'next/link';
 
 const SEED_PROPERTIES: Record<string, any> = {
@@ -21,13 +24,16 @@ const SEED_PROPERTIES: Record<string, any> = {
     propertyType: 'HOUSE',
     bedrooms: 4,
     bathrooms: 5,
+    guestRooms: 1,
     sizeSqft: 4500,
+    livingAreaSqft: 3800,
     locationAddress: 'Boundary Road, East Legon',
     city: 'Accra',
     region: 'Greater Accra',
     imageUrl: '/property_villa.png',
-    galleryUrls: ['/property_villa.png'],
-    agent: { name: 'Kwame Appiah', phone: '+233 55 666 7777' },
+    galleryUrls: ['/property_villa.png', '/hero_carousel_1.jpg', '/hero_carousel_2.jpg'],
+    agent: { name: 'Kwame Appiah', email: 'k.appiah@loveridgeproperty.com', phone: '+233 55 666 7777', title: 'Senior Real Estate Consultant' },
+    updatedAt: new Date().toISOString(),
     amenities: [
       { amenity: { name: 'Private Swimming Pool' } },
       { amenity: { name: 'Smart Home Automation' } },
@@ -49,13 +55,16 @@ const SEED_PROPERTIES: Record<string, any> = {
     propertyType: 'APARTMENT',
     bedrooms: 2,
     bathrooms: 2,
+    guestRooms: 0,
     sizeSqft: 1800,
+    livingAreaSqft: 1500,
     locationAddress: 'Airport Residential Area',
     city: 'Accra',
     region: 'Greater Accra',
     imageUrl: '/property_apartment.png',
-    galleryUrls: ['/property_apartment.png'],
-    agent: { name: 'Kwame Appiah', phone: '+233 55 666 7777' },
+    galleryUrls: ['/property_apartment.png', '/hero_carousel_3.jpg'],
+    agent: { name: 'Sandra Mensah', email: 's.mensah@loveridgeproperty.com', phone: '+233 24 111 2222', title: 'Commercial Property Specialist' },
+    updatedAt: new Date().toISOString(),
     amenities: [
       { amenity: { name: 'Fully Furnished Designer Interior' } },
       { amenity: { name: 'Fully Equipped Fitness Gym' } },
@@ -77,13 +86,16 @@ const SEED_PROPERTIES: Record<string, any> = {
     propertyType: 'LAND',
     bedrooms: 0,
     bathrooms: 0,
+    guestRooms: 0,
     sizeSqft: 52272,
+    livingAreaSqft: 0,
     locationAddress: 'Cantonments Embassy Quarter',
     city: 'Accra',
     region: 'Greater Accra',
     imageUrl: '/property_land.png',
     galleryUrls: ['/property_land.png'],
-    agent: { name: 'Kwame Appiah', phone: '+233 55 666 7777' },
+    agent: { name: 'Kwame Appiah', email: 'k.appiah@loveridgeproperty.com', phone: '+233 55 666 7777', title: 'Senior Real Estate Consultant' },
+    updatedAt: new Date().toISOString(),
     amenities: [
       { amenity: { name: 'Lands Commission Title Certificate' } },
       { amenity: { name: 'Prime Diplomatic Zone' } },
@@ -95,13 +107,16 @@ const SEED_PROPERTIES: Record<string, any> = {
 
 export default function PropertyDetailPage({ params }: { params: { slug: string } }) {
   const initialProp = SEED_PROPERTIES[params?.slug];
+  const { formatPrice } = useCurrency();
 
   const [property, setProperty] = useState<any>(initialProp || null);
   const [similar, setSimilar] = useState<any[]>(
     initialProp ? Object.values(SEED_PROPERTIES).filter((p) => p.slug !== initialProp.slug) : []
   );
   const [modalOpen, setModalOpen] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const [activePhoto, setActivePhoto] = useState<string>(initialProp?.imageUrl || '');
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   useEffect(() => {
     async function syncData() {
@@ -156,7 +171,7 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
 
   const currentCover = activePhoto || defaultCover;
 
-  // Multi-photo gallery list: STRICTLY take ONLY photos uploaded for this property
+  // Multi-photo gallery list
   const uploadedGallery = Array.isArray(property.galleryUrls) ? property.galleryUrls : [];
   const uploadedMedia = Array.isArray(property.media)
     ? property.media.map((m: any) => m.media?.fileUrl).filter(Boolean)
@@ -170,35 +185,67 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
     ...uploadedImages,
   ].filter(Boolean);
 
-  // Remove duplicates and ensure NO default fallback images are appended if user uploaded photos
   const galleryImages = Array.from(
     new Set(
       userUploadedList.length > 0 ? userUploadedList : [currentCover].filter(Boolean)
     )
   );
 
+  const formattedPrice = formatPrice(property.price, property.currency || 'GHS');
+  const agentName = property.contactName || property.agent?.name || 'Kwame Appiah';
+  const agentPhone = property.contactPhone || property.agent?.phone || '0246432493';
+  const agentEmail = property.contactEmail || property.agent?.email || 'sales@loveridgeproperty.com';
+  const agentTitle = property.agent?.title || 'Lead Real Estate Broker';
+
+  const updatedDate = property.updatedAt || property.createdAt;
+  const formattedUpdateDate = updatedDate
+    ? new Date(updatedDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : 'Recently Updated';
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between bg-grid-pattern">
       <Navbar />
 
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10 space-y-10">
-        <Link
-          href="/properties"
-          className="text-xs text-slate-500 hover:text-emerald-800 font-bold inline-flex items-center gap-1"
-        >
-          <ChevronLeft className="w-4 h-4" /> Back to Properties
-        </Link>
+        <div className="flex items-center justify-between">
+          <Link
+            href="/properties"
+            className="text-xs text-slate-500 hover:text-emerald-800 font-bold inline-flex items-center gap-1"
+          >
+            <ChevronLeft className="w-4 h-4" /> Back to Properties
+          </Link>
+
+          <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+            <Clock className="w-3.5 h-3.5 text-slate-400" />
+            <span>Last Updated: {formattedUpdateDate}</span>
+          </div>
+        </div>
 
         {/* Gallery / Header Hero Showcase */}
         <div className="relative h-[320px] sm:h-[480px] rounded-3xl overflow-hidden shadow-2xl border border-slate-200 flex items-center justify-center p-4 sm:p-8 group bg-slate-900">
           <img
             src={currentCover}
             alt={property.title}
-            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+            loading="eager"
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 cursor-pointer"
+            onClick={() => {
+              setLightboxIndex(galleryImages.indexOf(currentCover) >= 0 ? galleryImages.indexOf(currentCover) : 0);
+              setLightboxOpen(true);
+            }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent z-10" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent z-10 pointer-events-none" />
 
-          <div className="relative z-20 max-w-3xl text-center space-y-3 sm:space-y-4">
+          <button
+            onClick={() => {
+              setLightboxIndex(galleryImages.indexOf(currentCover) >= 0 ? galleryImages.indexOf(currentCover) : 0);
+              setLightboxOpen(true);
+            }}
+            className="absolute top-4 right-4 z-20 bg-white/95 text-slate-900 hover:bg-emerald-800 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-lg"
+          >
+            <Images className="w-4 h-4" /> View Full Gallery ({galleryImages.length})
+          </button>
+
+          <div className="relative z-20 max-w-3xl text-center space-y-3 sm:space-y-4 pointer-events-none">
             <div className="flex items-center justify-center gap-2">
               <span className="px-3.5 py-1 bg-emerald-800 text-white text-[10px] sm:text-xs font-bold uppercase rounded-full shadow-sm">
                 FOR {property.propertyType === 'LAND' ? 'SALE' : property.listingType}
@@ -221,59 +268,125 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
 
         {/* Main Grid: Details + Sidebar */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-          {/* Left Column: Specs, Description, Amenities, Gallery */}
+          {/* Left Column: Specs, Description, Gallery, Amenities */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Quick Specs Bar */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-              <div>
-                <span className="text-xs text-slate-500 font-medium block">Bedrooms</span>
-                <span className="text-2xl font-black text-slate-900 flex items-center justify-center gap-2 mt-1">
-                  <Bed className="w-5 h-5 text-emerald-700" /> {property.bedrooms || 'N/A'}
+            {/* Comprehensive Quick Specs Bar (Matching exact user screenshot design: Beds, Baths, Guest, BQ, Garage, sqft) */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm grid grid-cols-3 sm:grid-cols-6 gap-3 text-center">
+              <div className="flex flex-col items-center">
+                <span className="text-[11px] text-slate-500 font-medium block">Bedrooms</span>
+                <span className="text-sm sm:text-base font-black text-slate-900 flex items-center justify-center gap-1.5 mt-1">
+                  <Bed className="w-4 h-4 text-emerald-800" /> {property.bedrooms || 0} Beds
                 </span>
               </div>
 
-              <div>
-                <span className="text-xs text-slate-500 font-medium block">Bathrooms</span>
-                <span className="text-2xl font-black text-slate-900 flex items-center justify-center gap-2 mt-1">
-                  <Bath className="w-5 h-5 text-emerald-700" /> {property.bathrooms || 'N/A'}
+              <div className="flex flex-col items-center">
+                <span className="text-[11px] text-slate-500 font-medium block">Bathrooms</span>
+                <span className="text-sm sm:text-base font-black text-slate-900 flex items-center justify-center gap-1.5 mt-1">
+                  <Bath className="w-4 h-4 text-emerald-800" /> {property.bathrooms || 0} Baths
                 </span>
               </div>
 
-              <div>
-                <span className="text-xs text-slate-500 font-medium block">Property Size</span>
-                <span className="text-2xl font-black text-slate-900 flex items-center justify-center gap-2 mt-1">
-                  <Maximize2 className="w-5 h-5 text-emerald-700" /> {property.sizeSqft ? `${property.sizeSqft} sqft` : 'N/A'}
+              <div className="flex flex-col items-center">
+                <span className="text-[11px] text-slate-500 font-medium block">Guest Rooms</span>
+                <span className="text-sm sm:text-base font-black text-slate-900 flex items-center justify-center gap-1.5 mt-1">
+                  <Home className="w-4 h-4 text-emerald-800" /> {property.guestRooms || 0} Guest
                 </span>
               </div>
 
-              <div>
-                <span className="text-xs text-slate-500 font-medium block">Title Verification</span>
-                <span className="text-xs font-bold text-emerald-800 flex items-center justify-center gap-1 mt-2">
-                  <Shield className="w-4 h-4" /> Lands Comm. Verified
+              <div className="flex flex-col items-center">
+                <span className="text-[11px] text-slate-500 font-medium block">Boys Quarters</span>
+                <span className="text-sm sm:text-base font-black text-slate-900 flex items-center justify-center gap-1.5 mt-1">
+                  <UserCheck className="w-4 h-4 text-emerald-800" /> {property.boysQuarters || (property.description?.toLowerCase().includes('staff') || property.description?.toLowerCase().includes('bq') ? 1 : 0)} BQ
+                </span>
+              </div>
+
+              <div className="flex flex-col items-center">
+                <span className="text-[11px] text-slate-500 font-medium block">Garage</span>
+                <span className="text-sm sm:text-base font-black text-slate-900 flex items-center justify-center gap-1.5 mt-1">
+                  <Shield className="w-4 h-4 text-emerald-800" /> {property.garage || (property.description?.toLowerCase().includes('garage') || property.description?.toLowerCase().includes('parking') ? 2 : 0)} Garage
+                </span>
+              </div>
+
+              <div className="flex flex-col items-center">
+                <span className="text-[11px] text-slate-500 font-medium block">Area Size</span>
+                <span className="text-sm sm:text-base font-black text-slate-900 flex items-center justify-center gap-1.5 mt-1">
+                  <Maximize2 className="w-4 h-4 text-emerald-800" /> {property.livingAreaSqft || property.sizeSqft || 100} sqft
                 </span>
               </div>
             </div>
 
-            {/* Description */}
-            <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-              <h2 className="text-xl font-bold text-slate-900">Property Overview</h2>
-              <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-line font-medium">
-                {property.description}
-              </p>
+            {/* Detailed House Specifications Grid */}
+            <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+              <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
+                <h2 className="text-lg font-black text-slate-900 tracking-tight">Property Overview & Specifications</h2>
+                <span className="px-3 py-1 bg-emerald-50 text-emerald-900 text-xs font-bold rounded-full border border-emerald-200">
+                  Verified Property Details
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs font-semibold">
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
+                  <span className="text-slate-500 text-[11px] block">Property Type</span>
+                  <span className="text-slate-900 font-bold block">{property.propertyType || 'Residential House'}</span>
+                </div>
+
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
+                  <span className="text-slate-500 text-[11px] block">Listing Type</span>
+                  <span className="text-slate-900 font-bold block">FOR {property.listingType}</span>
+                </div>
+
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
+                  <span className="text-slate-500 text-[11px] block">Boys Quarters (BQ)</span>
+                  <span className="text-emerald-800 font-bold block">
+                    {property.boysQuarters ? `${property.boysQuarters} Room(s)` : 'Available'}
+                  </span>
+                </div>
+
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
+                  <span className="text-slate-500 text-[11px] block">Garage & Carport</span>
+                  <span className="text-slate-900 font-bold block">
+                    {property.garage ? `${property.garage} Vehicle Space(s)` : 'Private Driveway / Garage'}
+                  </span>
+                </div>
+
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
+                  <span className="text-slate-500 text-[11px] block">Interior Living Space</span>
+                  <span className="text-slate-900 font-bold block">{property.livingAreaSqft || property.sizeSqft || 100} sqft</span>
+                </div>
+
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
+                  <span className="text-slate-500 text-[11px] block">Land Documentation</span>
+                  <span className="text-emerald-800 font-bold block flex items-center gap-1">
+                    <Shield className="w-3.5 h-3.5 text-emerald-600" /> Titled & Indenture Checked
+                  </span>
+                </div>
+              </div>
+
+              {/* Description Body */}
+              <div className="space-y-3 pt-2">
+                <h3 className="text-sm font-bold text-slate-900">Description</h3>
+                <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-line font-medium">
+                  {property.description}
+                </p>
+              </div>
             </div>
 
-            {/* Property Photo Gallery Section (Interactive Thumbnail Switcher) */}
+            {/* Property Photo Gallery Section */}
             <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold text-slate-900">Property Photo Gallery ({galleryImages.length} Photos)</h2>
-                <span className="text-xs text-slate-500 font-medium">Click photo to switch main view</span>
+                <span className="text-xs text-slate-500 font-medium">Click photo to open lightbox viewer</span>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {galleryImages.map((imgUrl: string, idx: number) => (
                   <div
                     key={idx}
-                    onClick={() => setActivePhoto(imgUrl)}
+                    onClick={() => {
+                      setActivePhoto(imgUrl);
+                      setLightboxIndex(idx);
+                      setLightboxOpen(true);
+                    }}
                     className={`relative h-36 rounded-2xl overflow-hidden border-2 cursor-pointer group bg-slate-50 transition-all ${
                       currentCover === imgUrl
                         ? 'border-emerald-800 shadow-md ring-2 ring-emerald-800/20 scale-105'
@@ -283,17 +396,24 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
                     <img
                       src={imgUrl}
                       alt={`Property Photo ${idx + 1}`}
+                      loading="lazy"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 bg-slate-950/20 group-hover:bg-slate-950/0 transition-colors flex items-center justify-center">
                       <span className="opacity-0 group-hover:opacity-100 bg-white/95 text-slate-900 text-[10px] font-bold px-2.5 py-1 rounded-full transition-opacity shadow-md flex items-center gap-1">
-                        <Images className="w-3 h-3" /> View
+                        <Images className="w-3 h-3 text-emerald-800" /> Open Lightbox
                       </span>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
+
+            {/* Social Share Widget */}
+            <SocialShare
+              title={property.title}
+              summary={`Check out ${property.title} in ${property.city} listed on Loveridge Properties.`}
+            />
           </div>
 
           {/* Right Column: Price & Agent Card */}
@@ -303,8 +423,7 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
                 <span className="text-xs text-slate-500 font-bold block uppercase tracking-wider">LISTING PRICE</span>
                 <div className="flex flex-wrap items-baseline gap-2 mt-1">
                   <span className="text-3xl font-black text-emerald-950">
-                    {property.currency === 'USD' ? '$' : 'GHS '}
-                    {property.price?.toLocaleString()}
+                    {formattedPrice}
                   </span>
                   {property.pricePeriod && (
                     <span className="inline-flex items-center text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 rounded-lg">
@@ -321,23 +440,49 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
                 <Calendar className="w-4 h-4" /> Book Physical Viewing
               </button>
 
+              {/* Full Agent Contact Details Card */}
               <div className="pt-4 border-t border-slate-100 space-y-4">
-                <h4 className="text-xs uppercase tracking-wider text-slate-500 font-bold">ASSIGNED AGENT</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs uppercase tracking-wider text-slate-500 font-bold">ASSIGNED AGENT DETAILS</h4>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    <UserCheck className="w-3 h-3" /> Verified Agent
+                  </span>
+                </div>
+
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-emerald-100 border border-emerald-300 flex items-center justify-center font-bold text-emerald-900 shrink-0">
-                    {(property.contactName || property.agent?.name || 'Kwame Appiah').charAt(0)}
+                  <div className="w-12 h-12 rounded-full bg-emerald-900 text-white font-black text-base flex items-center justify-center border border-emerald-700 shadow-md shrink-0">
+                    {agentName.charAt(0)}
                   </div>
                   <div>
-                    <h5 className="text-sm font-bold text-slate-900">{property.contactName || property.agent?.name || 'Kwame Appiah'}</h5>
-                    <p className="text-xs text-slate-500 font-medium">+233 (0) 24 000 1111</p>
+                    <h5 className="text-sm font-bold text-slate-900">{agentName}</h5>
+                    <p className="text-xs text-emerald-800 font-bold">{agentTitle}</p>
+                    <p className="text-xs text-slate-500 font-medium">{agentPhone}</p>
                   </div>
                 </div>
 
+                <div className="space-y-2 text-xs font-semibold text-slate-700">
+                  <a
+                    href={`tel:${agentPhone}`}
+                    className="flex items-center gap-2 p-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 transition"
+                  >
+                    <PhoneCall className="w-4 h-4 text-emerald-700 shrink-0" />
+                    <span>Call Direct: {agentPhone}</span>
+                  </a>
+
+                  <a
+                    href={`mailto:${agentEmail}?subject=Inquiry%20Regarding%20${encodeURIComponent(property.title)}`}
+                    className="flex items-center gap-2 p-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 transition truncate"
+                  >
+                    <Mail className="w-4 h-4 text-emerald-700 shrink-0" />
+                    <span className="truncate">{agentEmail}</span>
+                  </a>
+                </div>
+
                 <a
-                  href={`https://wa.me/233240001111?text=Hello%20${encodeURIComponent(property.contactName || property.agent?.name || 'Agent')},%20I%20am%20interested%20in%20viewing%20${encodeURIComponent(property.title)}`}
+                  href={`https://wa.me/233246432493?text=Hello%20${encodeURIComponent(agentName)},%20I%20am%20interested%20in%20viewing%20${encodeURIComponent(property.title)}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full py-3 rounded-2xl bg-slate-900 text-white font-bold text-xs flex items-center justify-center gap-2 hover:bg-slate-800 transition shadow-sm"
+                  className="w-full py-3.5 rounded-2xl bg-emerald-900 hover:bg-emerald-950 text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow-md"
                 >
                   <PhoneCall className="w-3.5 h-3.5 text-emerald-400" /> Chat With Agent on WhatsApp
                 </a>
@@ -370,6 +515,14 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
         type="PROPERTY_VIEWING"
         propertyId={property.id}
         itemName={property.title}
+      />
+
+      <ImageGalleryModal
+        isOpen={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+        images={galleryImages}
+        initialIndex={lightboxIndex}
+        title={property.title}
       />
     </div>
   );
