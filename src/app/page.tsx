@@ -162,7 +162,16 @@ export default function HomePage() {
         console.warn('Quiet notice: using default hero slides:', err);
       }
     }
+
     loadHeroSlides();
+
+    const handleUpdate = () => loadHeroSlides();
+    window.addEventListener('hero-slides-updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    return () => {
+      window.removeEventListener('hero-slides-updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
   }, []);
 
   useEffect(() => {
@@ -313,12 +322,12 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between relative">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between relative bg-emerald-soft-mesh">
       <Navbar />
 
       <main className="flex-1 space-y-20 -mt-20 pb-20">
-        {/* HERO SECTION WITH LIGHT BRAND-GREEN OVERLAY & CAROUSEL */}
-        <section className="relative bg-slate-50 pt-36 sm:pt-44 lg:pt-52 pb-20 sm:pb-28 px-4 sm:px-6 lg:px-8 overflow-hidden min-h-[650px] sm:min-h-[720px] flex flex-col justify-start border-b border-slate-200">
+        {/* HERO SECTION WITH DARK BRAND OVERLAY & CAROUSEL */}
+        <section className="relative bg-slate-950 pt-36 sm:pt-44 lg:pt-52 pb-20 sm:pb-28 px-4 sm:px-6 lg:px-8 overflow-hidden min-h-[650px] sm:min-h-[720px] flex flex-col justify-start border-b border-slate-800">
           {/* Background Carousel Layer */}
           <div className="absolute inset-0 z-0 overflow-hidden">
             {heroSlidesList.map((img, idx) => (
@@ -331,57 +340,63 @@ export default function HomePage() {
               />
             ))}
 
-            {/* Light Neutral & Soft Green Brand Overlay */}
-            <div className="absolute inset-0 bg-white/20 backdrop-blur-[0.2px]" />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-50/80 via-white/10 to-emerald-950/20" />
+            {/* Dark Sophisticated Backdrop & Brand Gradient Overlay */}
+            <div className="absolute inset-0 bg-slate-950/65 backdrop-blur-[1px]" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/50 to-emerald-950/70" />
           </div>
 
           <div className="max-w-5xl mx-auto text-center space-y-8 relative z-10 w-full pt-6 sm:pt-10">
             {/* Main Headline & Slogan */}
             <div className="space-y-4 max-w-3xl mx-auto">
-              <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-slate-900 tracking-tight leading-tight sm:leading-none drop-shadow-sm">
-                Welcome To <span className="text-emerald-800 font-black">Loveridge</span>
+              <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-white tracking-tight leading-tight sm:leading-none drop-shadow-md">
+                Welcome To <span className="text-emerald-400 font-black">Loveridge</span>
               </h1>
               
               {/* Refined Subtext 1 */}
-              <p className="text-emerald-900 font-black text-xs sm:text-sm tracking-wider uppercase max-w-xl mx-auto">
+              <p className="text-emerald-300 font-extrabold text-xs sm:text-sm tracking-wider uppercase max-w-xl mx-auto drop-shadow-sm">
                 Your Ultimate Destination for Premium Properties & Smart Building Solutions
               </p>
 
               {/* Refined Intro Subtext 2 */}
-              <p className="text-slate-700 text-xs sm:text-sm font-semibold max-w-2xl mx-auto leading-relaxed pt-1">
+              <p className="text-slate-200 text-xs sm:text-sm font-medium max-w-2xl mx-auto leading-relaxed pt-1 drop-shadow-sm">
                 Loveridge Properties and Consult bridges luxury real estate brokerage in Ghana with direct factory procurement of high-grade building materials, porcelain tiles, and construction tools globally.
               </p>
             </div>
 
-            {/* Dual Search Box */}
-            <div className="max-w-3xl mx-auto bg-white/95 backdrop-blur-xl p-4 sm:p-5 rounded-3xl border border-white/30 shadow-2xl shadow-slate-950/50 space-y-4">
-              <div className="flex flex-col sm:flex-row bg-slate-100 p-1.5 rounded-2xl border border-slate-200 gap-1.5">
+            {/* Dual Search Box with Soft Green Accent Glows */}
+            <div className="max-w-3xl mx-auto bg-white/95 backdrop-blur-2xl p-4 sm:p-6 rounded-3xl border border-emerald-100/90 shadow-2xl shadow-slate-950/40 relative overflow-hidden space-y-4 group">
+              {/* Soft Corner Green Accent Glows */}
+              <div className="absolute -top-20 -right-20 w-44 h-44 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute -bottom-20 -left-20 w-44 h-44 bg-teal-500/15 rounded-full blur-3xl pointer-events-none" />
+
+              {/* Tab Selector Bar */}
+              <div className="relative z-10 flex flex-col sm:flex-row bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/90 gap-1.5 shadow-inner">
                 <button
                   onClick={() => setActiveTab('properties')}
-                  className={`flex-1 py-2.5 sm:py-3 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-2 ${
+                  className={`flex-1 py-3 sm:py-3.5 rounded-xl text-xs font-extrabold transition-all duration-300 flex items-center justify-center gap-2 ${
                     activeTab === 'properties'
-                      ? 'bg-slate-900 text-white shadow-md'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-slate-950 text-white shadow-lg shadow-slate-950/20 ring-1 ring-emerald-500/30'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
                   }`}
                 >
-                  <Building2 className="w-4 h-4 text-emerald-400" /> Search Real Estate Properties
+                  <Building2 className={`w-4 h-4 ${activeTab === 'properties' ? 'text-emerald-400' : 'text-slate-500'}`} /> Search Real Estate Properties
                 </button>
                 <button
                   onClick={() => setActiveTab('products')}
-                  className={`flex-1 py-2.5 sm:py-3 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-2 ${
+                  className={`flex-1 py-3 sm:py-3.5 rounded-xl text-xs font-extrabold transition-all duration-300 flex items-center justify-center gap-2 ${
                     activeTab === 'products'
-                      ? 'bg-slate-900 text-white shadow-md'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-slate-950 text-white shadow-lg shadow-slate-950/20 ring-1 ring-emerald-500/30'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
                   }`}
                 >
-                  <Package className="w-4 h-4 text-emerald-400" /> Search Store Products
+                  <Package className={`w-4 h-4 ${activeTab === 'products' ? 'text-emerald-400' : 'text-slate-500'}`} /> Search Store Products
                 </button>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-2.5">
+              {/* Search Field & Action Button */}
+              <div className="relative z-10 flex flex-col sm:flex-row gap-2.5">
                 <div className="relative flex-1">
-                  <Search className="w-4 h-4 absolute left-4 top-3.5 text-slate-400" />
+                  <Search className="w-4 h-4 absolute left-4 top-4 text-slate-400 transition-colors group-focus-within:text-emerald-600" />
                   <input
                     type="text"
                     value={searchQuery}
@@ -391,7 +406,7 @@ export default function HomePage() {
                         ? 'Search location, land, office, villa (e.g. East Legon, Spintex)...'
                         : 'Search store supplies (e.g. porcelain tiles, drill kit, smart lock)...'
                     }
-                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-900 font-semibold focus:border-emerald-700 focus:bg-white transition"
+                    className="w-full pl-11 pr-4 py-3.5 bg-slate-50/90 border border-slate-200 rounded-2xl text-xs sm:text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:border-emerald-600 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:outline-none transition-all duration-200 shadow-inner"
                   />
                 </div>
 
@@ -401,7 +416,7 @@ export default function HomePage() {
                       ? `/properties${searchQuery ? `?search=${encodeURIComponent(searchQuery)}` : ''}`
                       : `/products${searchQuery ? `?search=${encodeURIComponent(searchQuery)}` : ''}`
                   }
-                  className="gradient-btn px-6 py-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 shadow-md shrink-0"
+                  className="gradient-btn px-7 py-3.5 rounded-2xl text-xs font-extrabold tracking-wide flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/25 hover:shadow-emerald-900/40 hover:scale-[1.02] active:scale-[0.98] transition-all shrink-0"
                 >
                   Search Now <ChevronRight className="w-4 h-4" />
                 </Link>
@@ -455,7 +470,7 @@ export default function HomePage() {
                   type="button"
                   onClick={() => setHeroSlide(idx)}
                   className={`h-2 rounded-full transition-all duration-500 ${
-                    idx === heroSlide ? 'w-8 bg-emerald-800' : 'w-2.5 bg-slate-300 hover:bg-emerald-600'
+                    idx === heroSlide ? 'w-8 bg-emerald-400' : 'w-2.5 bg-white/40 hover:bg-white/80'
                   }`}
                   title={`Background Slide ${idx + 1}`}
                 />
@@ -466,7 +481,7 @@ export default function HomePage() {
 
         {/* 1. ABOUT OUR FIRM SECTION */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xl p-8 sm:p-12 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+          <div className="bg-gradient-to-br from-emerald-50/90 via-white to-emerald-50/60 backdrop-blur-md rounded-3xl border border-emerald-200/80 shadow-xl p-8 sm:p-12 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center relative overflow-hidden group">
             {/* Left Skyscraper Image Container */}
             <div className="relative rounded-3xl overflow-hidden shadow-lg h-[420px] sm:h-[480px]">
               <img
@@ -524,7 +539,8 @@ export default function HomePage() {
         </section>
 
         {/* FEATURED PROPERTIES SECTION */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 pt-10 sm:pt-16 lg:pt-20">
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 pt-10 sm:pt-16 lg:pt-20 relative">
+          <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-full max-w-5xl h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-200 pb-4">
             <div>
               <span className="text-emerald-800 font-bold text-xs uppercase tracking-widest block mb-1">
@@ -580,7 +596,7 @@ export default function HomePage() {
 
         {/* 2. STORE PRODUCTS HIGHLIGHT SECTION */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-emerald-50/60 p-8 sm:p-12 rounded-3xl border border-emerald-100/80 shadow-xs space-y-8">
+          <div className="bg-gradient-to-br from-emerald-100/70 via-emerald-50/60 to-teal-50/50 p-8 sm:p-12 rounded-3xl border border-emerald-200/80 shadow-sm space-y-8 relative overflow-hidden">
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-emerald-200/60 pb-4">
               <div>
                 <span className="text-emerald-800 font-extrabold text-xs uppercase tracking-widest block mb-1">
@@ -636,7 +652,7 @@ export default function HomePage() {
 
         {/* 3. CLIENT EXPERIENCES / TESTIMONIALS SECTION */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200 shadow-xl grid grid-cols-1 lg:grid-cols-5 gap-8 items-center">
+          <div className="bg-gradient-to-br from-emerald-50/90 via-white to-emerald-50/70 backdrop-blur-md rounded-3xl p-8 sm:p-12 border border-emerald-200/80 shadow-xl grid grid-cols-1 lg:grid-cols-5 gap-8 items-center relative overflow-hidden">
             {/* Left Header Column */}
             <div className="lg:col-span-2 space-y-4">
               <span className="text-emerald-800 font-bold text-xs uppercase tracking-widest block">
@@ -717,7 +733,7 @@ export default function HomePage() {
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Left Card: Send Us a Direct Message */}
-            <div className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200 shadow-xl space-y-6">
+            <div className="bg-gradient-to-br from-emerald-50/80 via-white to-slate-50 backdrop-blur-md rounded-3xl p-6 sm:p-10 border border-emerald-200/80 shadow-xl space-y-6 relative overflow-hidden">
               <div className="space-y-2">
                 <span className="text-emerald-800 font-extrabold text-xs uppercase tracking-widest block">
                   DIRECT CHANNEL
@@ -827,7 +843,7 @@ export default function HomePage() {
             </div>
 
             {/* Right Card: Accra Office Location */}
-            <div className="bg-white rounded-3xl p-8 sm:p-10 border border-slate-200 shadow-xl space-y-6 flex flex-col justify-between">
+            <div className="bg-gradient-to-br from-emerald-50/80 via-white to-slate-50 backdrop-blur-md rounded-3xl p-8 sm:p-10 border border-emerald-200/80 shadow-xl space-y-6 flex flex-col justify-between relative overflow-hidden">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-emerald-800 font-extrabold text-xs uppercase tracking-widest block">

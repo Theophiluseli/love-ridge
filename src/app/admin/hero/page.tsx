@@ -116,7 +116,10 @@ export default function AdminHeroPage() {
       if (!res.ok) throw new Error(data.error || 'Failed to save hero slides.');
 
       localStorage.setItem('loveridge_hero_slides', JSON.stringify(slides));
-      setMessage('Hero background carousel updated successfully! Homepage background is now live.');
+      window.dispatchEvent(new Event('hero-slides-updated'));
+      window.dispatchEvent(new Event('storage'));
+
+      setMessage('Hero background carousel updated & saved successfully! Homepage background is now live.');
       setTimeout(() => setMessage(''), 4000);
     } catch (err: any) {
       setErrorMessage(err.message || 'Error saving hero background slides.');
@@ -146,13 +149,39 @@ export default function AdminHeroPage() {
 
       setSlides((prev) => [...prev, ...newItems]);
       setShowAddForm(false);
-      setMessage(`Successfully added ${newItems.length} new hero background slide(s)!`);
-      setTimeout(() => setMessage(''), 3000);
+      setMessage(`Successfully added ${newItems.length} new hero background slide(s)! Remember to click "Save All Changes".`);
+      setTimeout(() => setMessage(''), 4000);
     } catch (err: any) {
       alert('Failed to process image file: ' + err.message);
     } finally {
       setUploading(false);
     }
+  }
+
+  async function handleReplaceSingleImage(index: number, e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploading(true);
+
+    try {
+      const file = files[0];
+      const compressedDataUrl = await compressImage(file, 1920, 1080, 0.85);
+      const updated = [...slides];
+      updated[index].imageUrl = compressedDataUrl;
+      setSlides(updated);
+      setMessage(`Image for Slide #${index + 1} updated! Click "Save All Changes" to save and publish.`);
+      setTimeout(() => setMessage(''), 4000);
+    } catch (err: any) {
+      alert('Failed to update slide image: ' + err.message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function updateSlideUrl(index: number, url: string) {
+    const updated = [...slides];
+    updated[index].imageUrl = url;
+    setSlides(updated);
   }
 
   function handleAddByUrl(e: React.FormEvent) {
@@ -222,15 +251,10 @@ export default function AdminHeroPage() {
     <div className="space-y-8 max-w-6xl">
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-emerald-100 text-emerald-900 border border-emerald-300">
-              <Sparkles className="w-5 h-5 text-emerald-800" />
-            </span>
+          <div>
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">
               Hero Section Background Carousel Manager
             </h1>
-          </div>
           <p className="text-xs text-slate-500 font-medium mt-1">
             Manage background images cycling on the main homepage hero section. Add, reorder, or upload custom images.
           </p>
@@ -309,16 +333,17 @@ export default function AdminHeroPage() {
             </div>
           )}
 
-          {/* Light Overlay matching homepage bg-white/20 */}
-          <div className="absolute inset-0 bg-white/20 backdrop-blur-[2px] z-10" />
+          {/* Dark Overlay matching homepage */}
+          <div className="absolute inset-0 bg-slate-950/65 backdrop-blur-[1px] z-10" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/50 to-emerald-950/70 z-10" />
 
           {/* Foreground Hero Content Mockup */}
           <div className="relative z-20 max-w-2xl mx-auto space-y-3 pointer-events-none">
-            <span className="inline-block px-3 py-1 bg-emerald-950/90 border border-emerald-500/40 text-emerald-200 text-[10px] sm:text-xs font-extrabold uppercase rounded-full shadow-md">
+            <span className="inline-block px-3 py-1 bg-emerald-950/90 border border-emerald-500/40 text-emerald-300 text-[10px] sm:text-xs font-extrabold uppercase rounded-full shadow-md">
               {currentPreviewSlide.title || 'Loveridge Properties & Consultancy'}
             </span>
 
-            <h2 className="text-xl sm:text-3xl font-black text-slate-900 leading-tight drop-shadow-md">
+            <h2 className="text-xl sm:text-3xl font-black text-white leading-tight drop-shadow-md">
               Find Premium Titled Lands, Office Suites & Building Materials
             </h2>
 
@@ -490,13 +515,13 @@ export default function AdminHeroPage() {
               }`}
             >
               {/* Image Preview Box */}
-              <div className="relative h-44 rounded-xl bg-slate-900 overflow-hidden border border-slate-100 group">
+              <div className="relative h-48 rounded-xl bg-slate-900 overflow-hidden border border-slate-100 group">
                 <img
                   src={slide.imageUrl}
                   alt={slide.title || `Hero Slide ${idx + 1}`}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent z-10" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent z-10" />
 
                 {/* Status Badges */}
                 <div className="absolute top-2.5 left-2.5 z-20 flex items-center gap-1.5">
@@ -515,7 +540,7 @@ export default function AdminHeroPage() {
                 </div>
 
                 {/* Move Up/Down Controls inside preview overlay */}
-                <div className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1">
+                <div className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1.5">
                   <button
                     onClick={() => moveSlide(idx, 'UP')}
                     disabled={idx === 0}
@@ -534,10 +559,24 @@ export default function AdminHeroPage() {
                     <ArrowDown className="w-3.5 h-3.5" />
                   </button>
                 </div>
+
+                {/* Direct "Change Image" Button overlay on image */}
+                <div className="absolute bottom-2.5 left-2.5 right-2.5 z-20 flex justify-center">
+                  <label className="bg-slate-950/90 hover:bg-emerald-800 text-white px-4 py-1.5 rounded-xl text-xs font-extrabold backdrop-blur-md border border-white/20 cursor-pointer shadow-lg transition flex items-center gap-1.5">
+                    <Upload className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Change Image File</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleReplaceSingleImage(idx, e)}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
               </div>
 
               {/* Slide Details Input & Actions */}
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
                     Slide Title / Label
@@ -549,6 +588,30 @@ export default function AdminHeroPage() {
                     placeholder="e.g. Executive Smart Villa"
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:border-emerald-700"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                    Image URL / File Source
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={slide.imageUrl}
+                      onChange={(e) => updateSlideUrl(idx, e.target.value)}
+                      placeholder="Image URL..."
+                      className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[11px] font-semibold text-slate-700 focus:border-emerald-700 font-mono truncate"
+                    />
+                    <label className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 rounded-xl text-[11px] font-bold cursor-pointer transition shrink-0 flex items-center gap-1">
+                      <ImageIcon className="w-3.5 h-3.5 text-emerald-700" /> Replace
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleReplaceSingleImage(idx, e)}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t border-slate-100">

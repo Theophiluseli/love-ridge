@@ -8,8 +8,13 @@ export async function GET(
   try {
     const { slug } = params;
 
-    const property = await prisma.property.findUnique({
-      where: { slug },
+    const property = await prisma.property.findFirst({
+      where: {
+        OR: [
+          { slug: slug },
+          { id: slug },
+        ],
+      },
       include: {
         agent: {
           select: { id: true, name: true, email: true, phone: true },

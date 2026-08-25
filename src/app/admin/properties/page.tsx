@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, CheckCircle, Search, ShieldCheck, Eye, Image as ImageIcon, Trees, Warehouse, Building, Building2, Upload, ArrowRight, X, Sparkles, Phone, Mail, User, Loader2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, CheckCircle, Search, ShieldCheck, Eye, Image as ImageIcon, Trees, Warehouse, Building, Building2, Upload, ArrowRight, X, Sparkles, Phone, Mail, User, Loader2, Clock } from 'lucide-react';
 import Link from 'next/link';
 import { compressImage } from '@/lib/utils/imageCompressor';
 
@@ -108,19 +108,6 @@ export default function AdminPropertiesPage() {
       let data: any = {};
       if (contentType && contentType.includes('application/json')) {
         data = await res.json();
-      } else {
-        const text = await res.text();
-        if (!res.ok) {
-          if (res.status === 413) {
-            throw new Error('Image payload size is too large for server upload limit. Please reduce image count or select smaller photos.');
-          }
-          if (res.status === 401) {
-            alert('Your session token has expired or is invalid. Redirecting to admin login...');
-            window.location.href = '/admin/login';
-            return;
-          }
-          throw new Error(`Server error (${res.status}): ${text || res.statusText}`);
-        }
       }
 
       if (!res.ok) {
@@ -129,7 +116,7 @@ export default function AdminPropertiesPage() {
           window.location.href = '/admin/login';
           return;
         }
-        throw new Error(data.error || 'Operation failed.');
+        throw new Error(data.error || `Server response status: ${res.status}`);
       }
 
       setMessage(
@@ -141,12 +128,60 @@ export default function AdminPropertiesPage() {
           ? 'Property saved as Draft successfully!'
           : 'Property created & published successfully!'
       );
-      setTimeout(() => setMessage(''), 3000);
+      setTimeout(() => setMessage(''), 4000);
       resetForm();
       setActiveTab('LIST');
       fetchProperties();
     } catch (err: any) {
-      alert(err.message);
+      console.warn('Publish attempt incomplete, performing auto-save as DRAFT fallback:', err);
+      
+      // AUTO-SAVE AS DRAFT FALLBACK when listing/uploading fails or is incomplete
+      try {
+        const draftRes = await fetch(url, {
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            ...form,
+            status: 'DRAFT',
+            title: form.title || 'Untitled Property Listing (Draft)',
+            description: form.description || 'Property listing draft saved automatically.',
+            price: form.price ? parseFloat(form.price) : 0,
+            locationAddress: form.locationAddress || 'Pending Location',
+            city: form.city || 'Accra',
+            galleryUrls: err.message?.includes('payload size') ? [] : form.galleryUrls,
+          }),
+        });
+
+        if (draftRes.ok) {
+          setMessage(`⚠️ Upload couldn't complete fully (${err.message}). Automatically saved as a DRAFT so you can publish it later!`);
+          setTimeout(() => setMessage(''), 6000);
+          resetForm();
+          setActiveTab('LIST');
+          fetchProperties();
+          return;
+        }
+      } catch (draftErr) {
+        console.error('Draft fallback network error:', draftErr);
+      }
+
+      // Local storage backup if API endpoint is completely unreachable
+      const localDrafts = JSON.parse(localStorage.getItem('loveridge_property_drafts') || '[]');
+      localDrafts.unshift({
+        ...form,
+        id: 'draft-' + Date.now(),
+        status: 'DRAFT',
+        createdAt: new Date().toISOString(),
+      });
+      localStorage.setItem('loveridge_property_drafts', JSON.stringify(localDrafts));
+
+      setMessage(`⚠️ Submission incomplete (${err.message}). Saved locally as a DRAFT so you can edit & publish later.`);
+      setTimeout(() => setMessage(''), 6000);
+      resetForm();
+      setActiveTab('LIST');
+      fetchProperties();
     } finally {
       setSubmitting(false);
     }
@@ -678,10 +713,12 @@ export default function AdminPropertiesPage() {
                 </div>
               </div>
 
-              {/* Assigned Agent Selection Dropdown */}
+              {/* Assigned Internal Owner / Agent Selection Dropdown */}
               <div className="space-y-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-800">Assigned Agent *</label>
+                  <label className="text-xs font-bold text-slate-800">
+                    Property Owner / Internal Assigned Agent (Internal Record Only) *
+                  </label>
                   <span className="text-[11px] font-semibold text-emerald-800">
                     Selected: <strong className="text-slate-900">{form.contactName || 'Kwame Appiah'}</strong>
                   </span>
@@ -708,7 +745,7 @@ export default function AdminPropertiesPage() {
                       <option value="Kwaku Loveridge">Kwaku Loveridge</option>
                       <option value="Sarah Osei">Sarah Osei</option>
                       <option value="Loveridge Staff Agent">Loveridge Staff Agent</option>
-                      <option value="CUSTOM">+ Add New / Custom Agent...</option>
+                      <option value="CUSTOM">+ Add Property Owner Name...</option>
                     </select>
                   </div>
 
@@ -723,14 +760,14 @@ export default function AdminPropertiesPage() {
                           setCustomAgentInput(val);
                           setForm({ ...form, contactName: val });
                         }}
-                        placeholder="Type new agent full name (e.g. Kofi)"
+                        placeholder="Type property owner / agent full name"
                         className="w-full bg-white border border-emerald-400 rounded-xl px-4 py-3 text-xs text-slate-900 font-bold focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
                       />
                     </div>
                   ) : (
                     <div className="flex items-center">
                       <p className="text-[11px] text-slate-500 font-medium">
-                        Selecting an assigned agent displays their name on the property page, while buyer calls stay routed to the company line.
+                        🔒 Internal Record Only: Displays property owner / staff agent details on your admin dashboard. Public users only see official Loveridge Properties contact details.
                       </p>
                     </div>
                   )}
@@ -929,6 +966,7 @@ export default function AdminPropertiesPage() {
                   <th className="px-6 py-4">Property Title & Type</th>
                   <th className="px-6 py-4">Price</th>
                   <th className="px-6 py-4">Location</th>
+                  <th className="px-6 py-4">Internal Owner / Agent</th>
                   <th className="px-6 py-4">Featured</th>
                   <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4 text-right">Staff Actions</th>
@@ -937,13 +975,13 @@ export default function AdminPropertiesPage() {
               <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="p-8 text-center text-slate-500">
+                    <td colSpan={8} className="p-8 text-center text-slate-500">
                       Loading property listings...
                     </td>
                   </tr>
                 ) : properties.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-8 text-center text-slate-500">
+                    <td colSpan={8} className="p-8 text-center text-slate-500">
                       No property listings found.
                     </td>
                   </tr>
@@ -979,6 +1017,16 @@ export default function AdminPropertiesPage() {
                       </td>
                       <td className="px-6 py-4 text-slate-600">{prop.city}</td>
 
+                      {/* INTERNAL OWNER / AGENT COLUMN */}
+                      <td className="px-6 py-4 font-bold text-slate-800">
+                        <div className="flex items-center gap-1.5">
+                          <User className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
+                          <span className="truncate max-w-[140px] block" title={prop.contactName || prop.agent?.name || 'Kwame Appiah'}>
+                            {prop.contactName || prop.agent?.name || 'Kwame Appiah'}
+                          </span>
+                        </div>
+                      </td>
+
                       {/* FEATURED TOGGLE BUTTON COLUMN */}
                       <td className="px-6 py-4">
                         <button
@@ -996,18 +1044,33 @@ export default function AdminPropertiesPage() {
                       </td>
 
                       <td className="px-6 py-4">
-                        <button
-                          type="button"
-                          onClick={() => handlePublish(prop.id, prop.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED')}
-                          className={`px-3 py-1 text-[10px] font-bold rounded-full uppercase border transition ${
-                            prop.status === 'PUBLISHED'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                              : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
-                          }`}
-                          title={`Status is ${prop.status}. Click to change to ${prop.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED'}`}
-                        >
-                          {prop.status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT'}
-                        </button>
+                        <div className="flex flex-col gap-1 items-start">
+                          <span
+                            className={`px-2.5 py-1 text-[10px] font-black rounded-full uppercase border flex items-center gap-1.5 shadow-2xs ${
+                              prop.status === 'PUBLISHED'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : 'bg-amber-100 text-amber-900 border-amber-300'
+                            }`}
+                          >
+                            {prop.status === 'PUBLISHED' ? (
+                              <>
+                                <CheckCircle className="w-3 h-3 text-emerald-600" /> PUBLISHED
+                              </>
+                            ) : (
+                              <>
+                                <Clock className="w-3 h-3 text-amber-700" /> DRAFT
+                              </>
+                            )}
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() => handlePublish(prop.id, prop.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED')}
+                            className="text-[10px] font-extrabold text-slate-500 hover:text-emerald-800 underline transition pt-0.5"
+                          >
+                            {prop.status === 'PUBLISHED' ? 'Unpublish to Draft' : '⚡ Publish Now'}
+                          </button>
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-right space-x-2">
                         <button

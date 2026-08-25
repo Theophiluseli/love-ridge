@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Package, Globe, Tag, Image as ImageIcon, Sparkles, CheckCircle, Upload, Layers, X, Loader2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, Package, Globe, Tag, Image as ImageIcon, Sparkles, CheckCircle, Upload, Layers, X, Loader2, Clock } from 'lucide-react';
 import { compressImage } from '@/lib/utils/imageCompressor';
 
 export default function AdminProductsPage() {
@@ -96,17 +96,9 @@ export default function AdminProductsPage() {
       let data: any = {};
       if (contentType && contentType.includes('application/json')) {
         data = await res.json();
-      } else {
-        const text = await res.text();
-        if (!res.ok) {
-          if (res.status === 413) {
-            throw new Error('Image payload size is too large for server upload limit. Please reduce image count or select smaller photos.');
-          }
-          throw new Error(`Server error (${res.status}): ${text || res.statusText}`);
-        }
       }
 
-      if (!res.ok) throw new Error(data.error || 'Operation failed.');
+      if (!res.ok) throw new Error(data.error || `Server error status: ${res.status}`);
 
       setMessage(
         editItem
@@ -117,12 +109,58 @@ export default function AdminProductsPage() {
           ? 'Store product saved as Draft successfully!'
           : 'Store product created & published successfully!'
       );
-      setTimeout(() => setMessage(''), 3000);
+      setTimeout(() => setMessage(''), 4000);
       resetForm();
       setActiveTab('LIST');
       fetchProducts();
     } catch (err: any) {
-      alert(err.message);
+      console.warn('Product publish incomplete, executing auto-save as DRAFT fallback:', err);
+      
+      // AUTO-SAVE AS DRAFT FALLBACK when listing or uploading couldn't complete fully
+      try {
+        const draftRes = await fetch(url, {
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            ...form,
+            status: 'DRAFT',
+            name: form.name || 'Untitled Store Item (Draft)',
+            description: form.description || 'Store item draft created automatically.',
+            price: form.price ? parseFloat(form.price) : 0,
+            galleryUrls: err.message?.includes('payload size') ? [] : form.galleryUrls,
+          }),
+        });
+
+        if (draftRes.ok) {
+          setMessage(`⚠️ Upload couldn't complete fully (${err.message}). Automatically saved as a DRAFT so you can publish it later!`);
+          setTimeout(() => setMessage(''), 6000);
+          resetForm();
+          setActiveTab('LIST');
+          fetchProducts();
+          return;
+        }
+      } catch (draftErr) {
+        console.error('Product draft fallback error:', draftErr);
+      }
+
+      // Local storage backup if API endpoint is completely unreachable
+      const localDrafts = JSON.parse(localStorage.getItem('loveridge_product_drafts') || '[]');
+      localDrafts.unshift({
+        ...form,
+        id: 'draft-prod-' + Date.now(),
+        status: 'DRAFT',
+        createdAt: new Date().toISOString(),
+      });
+      localStorage.setItem('loveridge_product_drafts', JSON.stringify(localDrafts));
+
+      setMessage(`⚠️ Submission incomplete (${err.message}). Saved locally as a DRAFT so you can edit & publish later.`);
+      setTimeout(() => setMessage(''), 6000);
+      resetForm();
+      setActiveTab('LIST');
+      fetchProducts();
     } finally {
       setSubmitting(false);
     }
@@ -691,18 +729,33 @@ export default function AdminProductsPage() {
 
                       {/* STATUS TOGGLE BUTTON COLUMN */}
                       <td className="px-6 py-4">
-                        <button
-                          type="button"
-                          onClick={() => toggleProductStatus(prod.id, prod.status || 'DRAFT')}
-                          className={`px-3 py-1 text-[10px] font-bold rounded-full uppercase border transition ${
-                            prod.status === 'PUBLISHED'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                              : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
-                          }`}
-                          title={`Status is ${prod.status || 'DRAFT'}. Click to change to ${prod.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED'}`}
-                        >
-                          {prod.status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT'}
-                        </button>
+                        <div className="flex flex-col gap-1 items-start">
+                          <span
+                            className={`px-2.5 py-1 text-[10px] font-black rounded-full uppercase border flex items-center gap-1.5 shadow-2xs ${
+                              prod.status === 'PUBLISHED'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : 'bg-amber-100 text-amber-900 border-amber-300'
+                            }`}
+                          >
+                            {prod.status === 'PUBLISHED' ? (
+                              <>
+                                <CheckCircle className="w-3 h-3 text-emerald-600" /> PUBLISHED
+                              </>
+                            ) : (
+                              <>
+                                <Clock className="w-3 h-3 text-amber-700" /> DRAFT
+                              </>
+                            )}
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() => toggleProductStatus(prod.id, prod.status || 'DRAFT')}
+                            className="text-[10px] font-extrabold text-slate-500 hover:text-emerald-800 underline transition pt-0.5"
+                          >
+                            {prod.status === 'PUBLISHED' ? 'Unpublish to Draft' : '⚡ Publish Now'}
+                          </button>
+                        </div>
                       </td>
 
                       {/* FEATURED TOGGLE BUTTON COLUMN */}

@@ -8,8 +8,13 @@ export async function GET(
   try {
     const { slug } = params;
 
-    const product = await prisma.product.findUnique({
-      where: { slug },
+    const product = await prisma.product.findFirst({
+      where: {
+        OR: [
+          { slug: slug },
+          { id: slug },
+        ],
+      },
       include: {
         category: { include: { parent: true } },
         media: { include: { media: true } },

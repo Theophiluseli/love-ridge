@@ -106,21 +106,26 @@ const SEED_PROPERTIES: Record<string, any> = {
 };
 
 export default function PropertyDetailPage({ params }: { params: { slug: string } }) {
-  const initialProp = SEED_PROPERTIES[params?.slug];
+  const seedMatch = SEED_PROPERTIES[params?.slug] || Object.values(SEED_PROPERTIES).find((p) => p.id === params?.slug);
   const { formatPrice } = useCurrency();
 
-  const [property, setProperty] = useState<any>(initialProp || null);
+  const [property, setProperty] = useState<any>(seedMatch || null);
   const [similar, setSimilar] = useState<any[]>(
-    initialProp ? Object.values(SEED_PROPERTIES).filter((p) => p.slug !== initialProp.slug) : []
+    seedMatch ? Object.values(SEED_PROPERTIES).filter((p) => p.slug !== seedMatch.slug) : []
   );
+  const [loading, setLoading] = useState<boolean>(!seedMatch);
+
   const [modalOpen, setModalOpen] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [activePhoto, setActivePhoto] = useState<string>(initialProp?.imageUrl || '');
+  const [activePhoto, setActivePhoto] = useState<string>(seedMatch?.imageUrl || '');
   const [lightboxIndex, setLightboxIndex] = useState(0);
 
   useEffect(() => {
     async function syncData() {
-      if (!params?.slug) return;
+      if (!params?.slug) {
+        setLoading(false);
+        return;
+      }
       try {
         const res = await fetch(`/api/properties/${params.slug}`);
         const data = await res.json();
@@ -132,21 +137,65 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
           if (data.property.imageUrl) {
             setActivePhoto(data.property.imageUrl);
           }
+        } else {
+          // If DB didn't find it, fallback to seed properties by slug or ID
+          const fallback = Object.values(SEED_PROPERTIES).find(
+            (p) => p.slug === params.slug || p.id === params.slug
+          );
+          if (fallback) {
+            setProperty(fallback);
+            if (fallback.imageUrl) setActivePhoto(fallback.imageUrl);
+          }
         }
       } catch (err) {
-        console.error('Quiet sync error:', err);
+        console.error('Property detail sync error:', err);
+        const fallback = Object.values(SEED_PROPERTIES).find(
+          (p) => p.slug === params.slug || p.id === params.slug
+        );
+        if (fallback) {
+          setProperty(fallback);
+          if (fallback.imageUrl) setActivePhoto(fallback.imageUrl);
+        }
+      } finally {
+        setLoading(false);
       }
     }
     syncData();
   }, [params?.slug]);
 
-  if (!property) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between">
         <Navbar />
         <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-20 text-center space-y-4">
           <div className="w-12 h-12 border-4 border-slate-200 border-t-emerald-800 rounded-full animate-spin mx-auto" />
           <h2 className="text-xl font-bold text-slate-900">Loading Property Details...</h2>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!property) {
+    return (
+      <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between">
+        <Navbar />
+        <main className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-20 text-center space-y-6">
+          <div className="w-16 h-16 bg-emerald-100 border border-emerald-300 rounded-full flex items-center justify-center mx-auto text-emerald-800 font-bold text-2xl shadow-sm">
+            🏡
+          </div>
+          <h2 className="text-3xl font-black text-slate-900">Property Listing Not Found</h2>
+          <p className="text-slate-600 text-sm max-w-md mx-auto font-medium leading-relaxed">
+            The property listing you are trying to view might have been moved, unpublished, or is currently unavailable.
+          </p>
+          <div>
+            <Link
+              href="/properties"
+              className="gradient-btn px-6 py-3.5 rounded-2xl text-xs font-bold inline-flex items-center gap-2 shadow-md"
+            >
+              ← Browse All Verified Property Listings
+            </Link>
+          </div>
         </main>
         <Footer />
       </div>
@@ -275,42 +324,42 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
               <div className="flex flex-col items-center">
                 <span className="text-[11px] text-slate-500 font-medium block">Bedrooms</span>
                 <span className="text-sm sm:text-base font-black text-slate-900 flex items-center justify-center gap-1.5 mt-1">
-                  <Bed className="w-4 h-4 text-emerald-800" /> {property.bedrooms || 0} Beds
+                  <Bed className="w-4 h-4 text-emerald-800" /> {property.bedrooms ?? 0} Beds
                 </span>
               </div>
 
               <div className="flex flex-col items-center">
                 <span className="text-[11px] text-slate-500 font-medium block">Bathrooms</span>
                 <span className="text-sm sm:text-base font-black text-slate-900 flex items-center justify-center gap-1.5 mt-1">
-                  <Bath className="w-4 h-4 text-emerald-800" /> {property.bathrooms || 0} Baths
+                  <Bath className="w-4 h-4 text-emerald-800" /> {property.bathrooms ?? 0} Baths
                 </span>
               </div>
 
               <div className="flex flex-col items-center">
                 <span className="text-[11px] text-slate-500 font-medium block">Guest Rooms</span>
                 <span className="text-sm sm:text-base font-black text-slate-900 flex items-center justify-center gap-1.5 mt-1">
-                  <Home className="w-4 h-4 text-emerald-800" /> {property.guestRooms || 0} Guest
+                  <Home className="w-4 h-4 text-emerald-800" /> {property.guestRooms ?? 0} Guest
                 </span>
               </div>
 
               <div className="flex flex-col items-center">
                 <span className="text-[11px] text-slate-500 font-medium block">Boys Quarters</span>
                 <span className="text-sm sm:text-base font-black text-slate-900 flex items-center justify-center gap-1.5 mt-1">
-                  <UserCheck className="w-4 h-4 text-emerald-800" /> {property.boysQuarters || (property.description?.toLowerCase().includes('staff') || property.description?.toLowerCase().includes('bq') ? 1 : 0)} BQ
+                  <UserCheck className="w-4 h-4 text-emerald-800" /> {property.boysQuarters ?? 0} BQ
                 </span>
               </div>
 
               <div className="flex flex-col items-center">
                 <span className="text-[11px] text-slate-500 font-medium block">Garage</span>
                 <span className="text-sm sm:text-base font-black text-slate-900 flex items-center justify-center gap-1.5 mt-1">
-                  <Shield className="w-4 h-4 text-emerald-800" /> {property.garage || (property.description?.toLowerCase().includes('garage') || property.description?.toLowerCase().includes('parking') ? 2 : 0)} Garage
+                  <Shield className="w-4 h-4 text-emerald-800" /> {property.garage ?? 0} Garage
                 </span>
               </div>
 
               <div className="flex flex-col items-center">
                 <span className="text-[11px] text-slate-500 font-medium block">Area Size</span>
                 <span className="text-sm sm:text-base font-black text-slate-900 flex items-center justify-center gap-1.5 mt-1">
-                  <Maximize2 className="w-4 h-4 text-emerald-800" /> {property.livingAreaSqft || property.sizeSqft || 100} sqft
+                  <Maximize2 className="w-4 h-4 text-emerald-800" /> {property.livingAreaSqft || property.sizeSqft || 0} sqft
                 </span>
               </div>
             </div>
@@ -338,20 +387,20 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
                   <span className="text-slate-500 text-[11px] block">Boys Quarters (BQ)</span>
                   <span className="text-emerald-800 font-bold block">
-                    {property.boysQuarters ? `${property.boysQuarters} Room(s)` : 'Available'}
+                    {property.boysQuarters ?? 0} Room(s)
                   </span>
                 </div>
 
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
                   <span className="text-slate-500 text-[11px] block">Garage & Carport</span>
                   <span className="text-slate-900 font-bold block">
-                    {property.garage ? `${property.garage} Vehicle Space(s)` : 'Private Driveway / Garage'}
+                    {property.garage ?? 0} Vehicle Space(s)
                   </span>
                 </div>
 
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
                   <span className="text-slate-500 text-[11px] block">Interior Living Space</span>
-                  <span className="text-slate-900 font-bold block">{property.livingAreaSqft || property.sizeSqft || 100} sqft</span>
+                  <span className="text-slate-900 font-bold block">{property.livingAreaSqft || property.sizeSqft || 0} sqft</span>
                 </div>
 
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
@@ -440,51 +489,51 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
                 <Calendar className="w-4 h-4" /> Book Physical Viewing
               </button>
 
-              {/* Full Agent Contact Details Card */}
+              {/* Full Official Loveridge Contact Details Card */}
               <div className="pt-4 border-t border-slate-100 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs uppercase tracking-wider text-slate-500 font-bold">ASSIGNED AGENT DETAILS</h4>
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                    <UserCheck className="w-3 h-3" /> Verified Agent
+                  <h4 className="text-xs uppercase tracking-wider text-slate-500 font-bold">OFFICIAL PROPERTY BROKERAGE</h4>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                    <UserCheck className="w-3 h-3 text-emerald-700" /> Loveridge Verified
                   </span>
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-emerald-900 text-white font-black text-base flex items-center justify-center border border-emerald-700 shadow-md shrink-0">
-                    {agentName.charAt(0)}
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-900 text-white font-black text-base flex items-center justify-center border border-emerald-700 shadow-md shrink-0">
+                    L
                   </div>
                   <div>
-                    <h5 className="text-sm font-bold text-slate-900">{agentName}</h5>
-                    <p className="text-xs text-emerald-800 font-bold">{agentTitle}</p>
-                    <p className="text-xs text-slate-500 font-medium">{agentPhone}</p>
+                    <h5 className="text-sm font-black text-slate-900">Loveridge Properties & Consult</h5>
+                    <p className="text-xs text-emerald-800 font-bold">Senior Real Estate Advisory Desk</p>
+                    <p className="text-xs text-slate-500 font-medium">+233 24 643 2493</p>
                   </div>
                 </div>
 
                 <div className="space-y-2 text-xs font-semibold text-slate-700">
                   <a
-                    href={`tel:${agentPhone}`}
+                    href="tel:+233246432493"
                     className="flex items-center gap-2 p-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 transition"
                   >
                     <PhoneCall className="w-4 h-4 text-emerald-700 shrink-0" />
-                    <span>Call Direct: {agentPhone}</span>
+                    <span>Call Direct: +233 24 643 2493</span>
                   </a>
 
                   <a
-                    href={`mailto:${agentEmail}?subject=Inquiry%20Regarding%20${encodeURIComponent(property.title)}`}
+                    href={`mailto:sales@loveridgeproperty.com?subject=Inquiry%20Regarding%20${encodeURIComponent(property.title)}`}
                     className="flex items-center gap-2 p-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 transition truncate"
                   >
                     <Mail className="w-4 h-4 text-emerald-700 shrink-0" />
-                    <span className="truncate">{agentEmail}</span>
+                    <span className="truncate">sales@loveridgeproperty.com</span>
                   </a>
                 </div>
 
                 <a
-                  href={`https://wa.me/233246432493?text=Hello%20${encodeURIComponent(agentName)},%20I%20am%20interested%20in%20viewing%20${encodeURIComponent(property.title)}`}
+                  href={`https://wa.me/233246432493?text=Hello%20Loveridge%20Properties,%20I%20am%20interested%20in%20viewing%20${encodeURIComponent(property.title)}`}
                   target="_blank"
                   rel="noreferrer"
                   className="w-full py-3.5 rounded-2xl bg-emerald-900 hover:bg-emerald-950 text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow-md"
                 >
-                  <PhoneCall className="w-3.5 h-3.5 text-emerald-400" /> Chat With Agent on WhatsApp
+                  <PhoneCall className="w-3.5 h-3.5 text-emerald-400" /> Chat With Loveridge Desk on WhatsApp
                 </a>
               </div>
             </div>
