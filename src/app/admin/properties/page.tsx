@@ -57,6 +57,10 @@ export default function AdminPropertiesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
 
+  // Table Search & Filter State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PUBLISHED' | 'DRAFT'>('ALL');
+
   async function fetchProperties() {
     setLoading(true);
     try {
@@ -81,8 +85,20 @@ export default function AdminPropertiesPage() {
     fetchProperties();
   }, []);
 
+  const filteredProperties = properties.filter((prop) => {
+    const matchesStatus = statusFilter === 'ALL' || prop.status === statusFilter;
+    const matchesSearch =
+      !searchQuery.trim() ||
+      prop.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      prop.city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      prop.locationAddress?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      prop.propertyType?.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesStatus && matchesSearch;
+  });
+
   async function handleSave(e: React.FormEvent, targetStatus?: 'DRAFT' | 'PUBLISHED') {
     if (e) e.preventDefault();
+
     setSubmitting(true);
     const token = localStorage.getItem('loveridge_token');
     const url = editItem ? `/api/admin/properties/${editItem.id}` : '/api/admin/properties';
@@ -951,14 +967,147 @@ export default function AdminPropertiesPage() {
           </div>
         </div>
       ) : (
-        /* VIEW: PROPERTY LISTINGS TABLE */
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-            <h3 className="font-bold text-sm text-slate-900">Verified Property Listings Catalog</h3>
-            <span className="text-xs text-slate-500 font-medium">{properties.length} Total Properties</span>
+        /* VIEW: PROPERTY LISTINGS CATALOG (RESPONSIVE TABLE + MOBILE CARDS) */
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden space-y-4 p-4 sm:p-6">
+          {/* Header & Filter Controls Bar */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+            <div>
+              <h3 className="font-extrabold text-base text-slate-900">Verified Property Listings Catalog</h3>
+              <p className="text-xs text-slate-500 font-medium">
+                {filteredProperties.length} of {properties.length} Total Properties Listed
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              {/* Status Filter Tabs */}
+              <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('ALL')}
+                  className={`px-3 py-1.5 rounded-lg transition ${
+                    statusFilter === 'ALL' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  All ({properties.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('PUBLISHED')}
+                  className={`px-3 py-1.5 rounded-lg transition ${
+                    statusFilter === 'PUBLISHED' ? 'bg-emerald-800 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Published ({properties.filter((p) => p.status === 'PUBLISHED').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('DRAFT')}
+                  className={`px-3 py-1.5 rounded-lg transition ${
+                    statusFilter === 'DRAFT' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Drafts ({properties.filter((p) => p.status === 'DRAFT' || p.status === 'PENDING_REVIEW').length})
+                </button>
+              </div>
+
+              {/* Search Box */}
+              <div className="relative flex-1 sm:w-64">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Filter by title, location, type..."
+                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:border-emerald-700 focus:bg-white"
+                />
+              </div>
+            </div>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* MOBILE CARDS VIEW (< 768px) */}
+          <div className="block md:hidden space-y-4">
+            {loading ? (
+              <div className="p-8 text-center text-slate-500 text-xs font-semibold">
+                Loading property listings...
+              </div>
+            ) : filteredProperties.length === 0 ? (
+              <div className="p-8 text-center text-slate-500 text-xs font-semibold">
+                No matching property listings found.
+              </div>
+            ) : (
+              filteredProperties.map((prop) => (
+                <div
+                  key={prop.id}
+                  className="bg-slate-50/80 rounded-2xl border border-slate-200 p-4 space-y-3 shadow-xs"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-20 h-16 rounded-xl bg-white border border-slate-200 overflow-hidden shrink-0">
+                      <img
+                        src={
+                          prop.imageUrl ||
+                          (prop.propertyType === 'LAND'
+                            ? '/property_land.png'
+                            : prop.propertyType === 'OFFICE_SPACE'
+                            ? '/property_office.png'
+                            : prop.propertyType === 'WAREHOUSE'
+                            ? '/property_warehouse.png'
+                            : '/property_villa.png')
+                        }
+                        alt={prop.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-xs text-slate-900 line-clamp-2">{prop.title}</h4>
+                      <span className="text-[10px] text-emerald-800 font-extrabold uppercase mt-0.5 block">
+                        FOR {prop.listingType} • {prop.propertyType}
+                      </span>
+                      <div className="text-xs font-extrabold text-slate-900 mt-1">
+                        {prop.currency} {prop.price ? prop.price.toLocaleString() : '0'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-200/80 text-xs">
+                    <div className="flex items-center gap-1.5 text-slate-600 font-medium">
+                      <User className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
+                      <span className="truncate max-w-[120px]">{prop.contactName || prop.agent?.name || 'Kwame Appiah'}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`px-2 py-0.5 text-[9px] font-black rounded-full uppercase border ${
+                          prop.status === 'PUBLISHED'
+                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                            : 'bg-amber-100 text-amber-900 border-amber-300'
+                        }`}
+                      >
+                        {prop.status}
+                      </span>
+
+                      <button
+                        onClick={() => openEdit(prop)}
+                        className="p-1.5 rounded-lg text-slate-700 bg-white border border-slate-200"
+                        title="Edit Property"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(prop.id)}
+                        className="p-1.5 rounded-lg text-rose-600 bg-white border border-rose-200"
+                        title="Delete Property"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* DESKTOP RESPONSIVE TABLE VIEW (>= 768px) */}
+          <div className="hidden md:block overflow-x-auto rounded-2xl border border-slate-200">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 text-slate-700 uppercase tracking-wider font-bold border-b border-slate-200">
                 <tr>
@@ -979,14 +1128,14 @@ export default function AdminPropertiesPage() {
                       Loading property listings...
                     </td>
                   </tr>
-                ) : properties.length === 0 ? (
+                ) : filteredProperties.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="p-8 text-center text-slate-500">
-                      No property listings found.
+                      No matching property listings found.
                     </td>
                   </tr>
                 ) : (
-                  properties.map((prop) => (
+                  filteredProperties.map((prop) => (
                     <tr key={prop.id} className="hover:bg-slate-50 transition">
                       <td className="px-6 py-3">
                         <div className="w-14 h-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
@@ -1013,7 +1162,7 @@ export default function AdminPropertiesPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 font-extrabold text-slate-900">
-                        {prop.currency} {prop.price.toLocaleString()}
+                        {prop.currency} {prop.price ? prop.price.toLocaleString() : '0'}
                       </td>
                       <td className="px-6 py-4 text-slate-600">{prop.city}</td>
 
@@ -1097,3 +1246,4 @@ export default function AdminPropertiesPage() {
     </div>
   );
 }
+

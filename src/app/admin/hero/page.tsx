@@ -63,21 +63,32 @@ export default function AdminHeroPage() {
   async function fetchSlides() {
     setLoading(true);
     try {
-      const res = await fetch('/api/hero-slides');
+      const localSaved = localStorage.getItem('loveridge_hero_slides');
+      let localSlides: HeroSlideItem[] | null = null;
+      if (localSaved) {
+        try {
+          localSlides = JSON.parse(localSaved);
+        } catch (e) {}
+      }
+
+      const res = await fetch('/api/hero-slides', { cache: 'no-store' });
       const data = await res.json();
       if (data.slides && Array.isArray(data.slides) && data.slides.length > 0) {
         setSlides(data.slides);
+        localStorage.setItem('loveridge_hero_slides', JSON.stringify(data.slides));
+      } else if (localSlides && localSlides.length > 0) {
+        setSlides(localSlides);
       } else {
-        const localSaved = localStorage.getItem('loveridge_hero_slides');
-        if (localSaved) {
-          setSlides(JSON.parse(localSaved));
-        } else {
-          setSlides(DEFAULT_SLIDES);
-        }
+        setSlides(DEFAULT_SLIDES);
       }
     } catch (err) {
       console.error('Error fetching hero slides:', err);
-      setSlides(DEFAULT_SLIDES);
+      const localSaved = localStorage.getItem('loveridge_hero_slides');
+      if (localSaved) {
+        setSlides(JSON.parse(localSaved));
+      } else {
+        setSlides(DEFAULT_SLIDES);
+      }
     } finally {
       setLoading(false);
     }
@@ -101,25 +112,37 @@ export default function AdminHeroPage() {
     title: 'Hero Showcase',
   };
 
+  async function persistSlides(updatedSlides: HeroSlideItem[]) {
+    try {
+      const res = await fetch('/api/hero-slides', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slides: updatedSlides }),
+      });
+      const data = await res.json();
+      const finalSlides = (data && Array.isArray(data.slides)) ? data.slides : updatedSlides;
+
+      localStorage.setItem('loveridge_hero_slides', JSON.stringify(finalSlides));
+      setSlides(finalSlides);
+      window.dispatchEvent(new Event('hero-slides-updated'));
+      window.dispatchEvent(new Event('storage'));
+      return finalSlides;
+    } catch (err) {
+      console.warn('Background sync hero slides error:', err);
+      localStorage.setItem('loveridge_hero_slides', JSON.stringify(updatedSlides));
+      window.dispatchEvent(new Event('hero-slides-updated'));
+      window.dispatchEvent(new Event('storage'));
+      return updatedSlides;
+    }
+  }
+
   async function handleSaveAll() {
     setSaving(true);
     setMessage('');
     setErrorMessage('');
     try {
-      const res = await fetch('/api/hero-slides', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slides }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to save hero slides.');
-
-      localStorage.setItem('loveridge_hero_slides', JSON.stringify(slides));
-      window.dispatchEvent(new Event('hero-slides-updated'));
-      window.dispatchEvent(new Event('storage'));
-
-      setMessage('Hero background carousel updated & saved successfully! Homepage background is now live.');
+      await persistSlides(slides);
+      setMessage('Hero background carousel updated & saved successfully! Homepage background is now live and persistent across refreshes.');
       setTimeout(() => setMessage(''), 4000);
     } catch (err: any) {
       setErrorMessage(err.message || 'Error saving hero background slides.');
@@ -137,19 +160,40 @@ export default function AdminHeroPage() {
       const newItems: HeroSlideItem[] = [];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const compressedDataUrl = await compressImage(file, 1920, 1080, 0.85);
+        let imageUrl = '';
+
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+          const uploadRes = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+          });
+          const uploadData = await uploadRes.json();
+          if (uploadRes.ok && uploadData.url) {
+            imageUrl = uploadData.url;
+          }
+        } catch (upErr) {
+          console.warn('Upload API failed, using compressed fallback:', upErr);
+        }
+
+        if (!imageUrl) {
+          imageUrl = await compressImage(file, 1600, 900, 0.70);
+        }
+
         newItems.push({
           id: `hero-${Date.now()}-${i}`,
-          imageUrl: compressedDataUrl,
+          imageUrl,
           title: file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
           active: true,
           order: slides.length + i + 1,
         });
       }
 
-      setSlides((prev) => [...prev, ...newItems]);
+      const nextSlides = [...slides, ...newItems];
+      await persistSlides(nextSlides);
       setShowAddForm(false);
-      setMessage(`Successfully added ${newItems.length} new hero background slide(s)! Remember to click "Save All Changes".`);
+      setMessage(`Successfully uploaded and saved ${newItems.length} new hero background slide(s)!`);
       setTimeout(() => setMessage(''), 4000);
     } catch (err: any) {
       alert('Failed to process image file: ' + err.message);
@@ -165,11 +209,31 @@ export default function AdminHeroPage() {
 
     try {
       const file = files[0];
-      const compressedDataUrl = await compressImage(file, 1920, 1080, 0.85);
+      let imageUrl = '';
+
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        const uploadData = await uploadRes.json();
+        if (uploadRes.ok && uploadData.url) {
+          imageUrl = uploadData.url;
+        }
+      } catch (upErr) {
+        console.warn('Upload API failed, using compressed fallback:', upErr);
+      }
+
+      if (!imageUrl) {
+        imageUrl = await compressImage(file, 1600, 900, 0.70);
+      }
+
       const updated = [...slides];
-      updated[index].imageUrl = compressedDataUrl;
-      setSlides(updated);
-      setMessage(`Image for Slide #${index + 1} updated! Click "Save All Changes" to save and publish.`);
+      updated[index].imageUrl = imageUrl;
+      await persistSlides(updated);
+      setMessage(`Image for Slide #${index + 1} updated and saved successfully!`);
       setTimeout(() => setMessage(''), 4000);
     } catch (err: any) {
       alert('Failed to update slide image: ' + err.message);
@@ -178,10 +242,12 @@ export default function AdminHeroPage() {
     }
   }
 
+
   function updateSlideUrl(index: number, url: string) {
     const updated = [...slides];
     updated[index].imageUrl = url;
     setSlides(updated);
+    persistSlides(updated);
   }
 
   function handleAddByUrl(e: React.FormEvent) {
@@ -196,10 +262,14 @@ export default function AdminHeroPage() {
       order: slides.length + 1,
     };
 
-    setSlides((prev) => [...prev, newItem]);
+    const nextSlides = [...slides, newItem];
+    setSlides(nextSlides);
+    persistSlides(nextSlides);
     setNewSlideUrl('');
     setNewSlideTitle('');
     setShowAddForm(false);
+    setMessage('Custom URL slide added and saved successfully!');
+    setTimeout(() => setMessage(''), 4000);
   }
 
   function moveSlide(index: number, direction: 'UP' | 'DOWN') {
@@ -211,18 +281,19 @@ export default function AdminHeroPage() {
     newSlides[index] = newSlides[targetIndex];
     newSlides[targetIndex] = temp;
 
-    // re-index order
     newSlides.forEach((item, idx) => {
       item.order = idx + 1;
     });
 
     setSlides(newSlides);
+    persistSlides(newSlides);
   }
 
   function toggleSlideActive(index: number) {
     const updated = [...slides];
     updated[index].active = !updated[index].active;
     setSlides(updated);
+    persistSlides(updated);
   }
 
   function deleteSlide(id: string) {
@@ -231,7 +302,9 @@ export default function AdminHeroPage() {
       return;
     }
     if (confirm('Are you sure you want to remove this background slide from the hero carousel?')) {
-      setSlides((prev) => prev.filter((s) => s.id !== id));
+      const remaining = slides.filter((s) => s.id !== id);
+      setSlides(remaining);
+      persistSlides(remaining);
     }
   }
 
@@ -239,13 +312,16 @@ export default function AdminHeroPage() {
     const updated = [...slides];
     updated[index].title = title;
     setSlides(updated);
+    persistSlides(updated);
   }
 
   function resetToDefault() {
     if (confirm('Reset hero slides back to original 4 default luxury villa images?')) {
       setSlides(DEFAULT_SLIDES);
+      persistSlides(DEFAULT_SLIDES);
     }
   }
+
 
   return (
     <div className="space-y-8 max-w-6xl">

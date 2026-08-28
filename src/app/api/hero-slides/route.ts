@@ -50,19 +50,65 @@ function readSlidesFromFile(): HeroSlide[] {
   return DEFAULT_SLIDES;
 }
 
-function writeSlidesToFile(slides: HeroSlide[]) {
+function writeSlidesToFile(slides: HeroSlide[]): HeroSlide[] {
   ensureDataFile();
+  const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+
+  const cleanSlides = slides.map((slide, idx) => {
+    if (slide.imageUrl && slide.imageUrl.startsWith('data:image')) {
+      try {
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        const matches = slide.imageUrl.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        let buffer: Buffer;
+        let ext = '.jpg';
+
+        if (matches && matches.length === 3) {
+          const mime = matches[1];
+          buffer = Buffer.from(matches[2], 'base64');
+          if (mime.includes('png')) ext = '.png';
+          else if (mime.includes('webp')) ext = '.webp';
+        } else {
+          const cleanBase64 = slide.imageUrl.replace(/^data:image\/\w+;base64,/, '');
+          buffer = Buffer.from(cleanBase64, 'base64');
+        }
+
+        const filename = `hero-${Date.now()}-${idx}${ext}`;
+        const filePath = path.join(uploadsDir, filename);
+        fs.writeFileSync(filePath, buffer);
+
+        return {
+          ...slide,
+          imageUrl: `/uploads/${filename}`,
+        };
+      } catch (err) {
+        console.error('Error saving base64 image to public/uploads:', err);
+      }
+    }
+    return slide;
+  });
+
   try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(slides, null, 2), 'utf-8');
+    fs.writeFileSync(DATA_FILE, JSON.stringify(cleanSlides, null, 2), 'utf-8');
   } catch (err) {
     console.error('Failed writing hero slides to file:', err);
   }
+
+  return cleanSlides;
 }
 
 export async function GET() {
   try {
     const slides = readSlidesFromFile();
-    return NextResponse.json({ slides });
+    return NextResponse.json(
+      { slides },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        },
+      }
+    );
   } catch (err) {
     return NextResponse.json({ slides: DEFAULT_SLIDES });
   }
@@ -75,14 +121,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid payload. Expecting slides array.' }, { status: 400 });
     }
 
-    const slides: HeroSlide[] = body.slides;
-    writeSlidesToFile(slides);
+    const inputSlides: HeroSlide[] = body.slides;
+    const slides = writeSlidesToFile(inputSlides);
 
-    return NextResponse.json({
-      message: 'Hero slides updated successfully!',
-      slides,
-    });
+    return NextResponse.json(
+      {
+        message: 'Hero slides updated successfully!',
+        slides,
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      }
+    );
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Failed to save hero slides' }, { status: 500 });
   }
 }
+
+

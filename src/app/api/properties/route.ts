@@ -1,83 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { getAllProperties } from '@/lib/properties-store';
 
 export const dynamic = 'force-dynamic';
 
-
-const FALLBACK_PROPERTIES = [
-  {
-    id: 'prop-1',
-    title: 'Luxury 4-Bedroom Smart Villa with Swimming Pool',
-    slug: 'luxury-4-bedroom-smart-villa-east-legon',
-    description: 'Contemporary multi-level smart home in East Legon featuring automated lighting, high security, private pool, and staff quarters.',
-    listingType: 'SALE',
-    propertyType: 'HOUSE',
-    price: 680000,
-    currency: 'USD',
-    pricePeriod: 'Outright Purchase',
-    bedrooms: 4,
-    bathrooms: 5,
-    sizeSqft: 4500,
-    locationAddress: 'East Legon, Accra',
-    city: 'Accra',
-    featured: true,
-    imageUrl: '/property_villa.png',
-  },
-  {
-    id: 'prop-2',
-    title: 'Prime Commercial Land Plot in Cantonments Embassy Quarter',
-    slug: 'prime-commercial-land-cantonments-embassy-quarter',
-    description: '0.85-acre prime development land situated in Cantonments. Ideal for diplomatic embassy build or luxury apartment complex.',
-    listingType: 'SALE',
-    propertyType: 'LAND',
-    price: 1200000,
-    currency: 'USD',
-    pricePeriod: 'Outright Purchase',
-    bedrooms: 0,
-    bathrooms: 0,
-    sizeSqft: 37000,
-    locationAddress: 'Cantonments, Accra',
-    city: 'Accra',
-    featured: true,
-    imageUrl: '/property_land.png',
-  },
-  {
-    id: 'prop-3',
-    title: 'High-Bay Logistics & Distribution Warehouse (2,500 sqm)',
-    slug: 'high-bay-logistics-distribution-warehouse-tema',
-    description: 'Industrial distribution facility in Tema Heavy Industrial Area. High clearance, 3-phase industrial power, dock levelers.',
-    listingType: 'RENT',
-    propertyType: 'WAREHOUSE',
-    price: 15000,
-    currency: 'USD',
-    pricePeriod: 'Per Month',
-    bedrooms: 0,
-    bathrooms: 4,
-    sizeSqft: 27000,
-    locationAddress: 'Tema Heavy Industrial Area',
-    city: 'Tema',
-    featured: true,
-    imageUrl: '/property_warehouse.png',
-  },
-];
-
-const propCache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 15000; // 15s
-
 export async function GET(req: NextRequest) {
-  const cacheKey = req.url;
-  const cached = propCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return NextResponse.json(cached.data, {
-      headers: {
-        'Cache-Control': 'public, max-age=15, stale-while-revalidate=120',
-      },
-    });
-  }
-
   try {
     const { searchParams } = new URL(req.url);
-    const search = searchParams.get('search') || '';
+    const search = (searchParams.get('search') || '').toLowerCase();
     const listingType = searchParams.get('listingType'); // SALE, RENT
     const propertyType = searchParams.get('propertyType'); // HOUSE, APARTMENT, LAND, etc.
     const city = searchParams.get('city');
@@ -86,76 +15,74 @@ export async function GET(req: NextRequest) {
     const maxPrice = searchParams.get('maxPrice');
     const featured = searchParams.get('featured');
 
-    const where: any = {
-      status: 'PUBLISHED',
-    };
+    let properties = await getAllProperties();
+
+    // Default to PUBLISHED properties for public route
+    properties = properties.filter((p) => p.status === 'PUBLISHED');
 
     if (search) {
-      where.OR = [
-        { title: { contains: search } },
-        { description: { contains: search } },
-        { locationAddress: { contains: search } },
-        { city: { contains: search } },
-      ];
+      properties = properties.filter(
+        (p) =>
+          p.title.toLowerCase().includes(search) ||
+          p.description.toLowerCase().includes(search) ||
+          p.locationAddress.toLowerCase().includes(search) ||
+          p.city.toLowerCase().includes(search)
+      );
     }
-    where.status = 'PUBLISHED';
 
     if (listingType && listingType !== 'ALL') {
-      where.listingType = listingType.toUpperCase();
+      properties = properties.filter((p) => p.listingType.toUpperCase() === listingType.toUpperCase());
     }
 
     if (propertyType && propertyType !== 'ALL') {
       if (propertyType.toUpperCase() === 'COMMERCIAL') {
-        where.propertyType = { in: ['LAND', 'OFFICE_SPACE', 'WAREHOUSE'] };
+        properties = properties.filter((p) => ['LAND', 'OFFICE_SPACE', 'WAREHOUSE'].includes(p.propertyType.toUpperCase()));
       } else {
-        where.propertyType = propertyType.toUpperCase();
+        properties = properties.filter((p) => p.propertyType.toUpperCase() === propertyType.toUpperCase());
       }
     }
 
     if (city && city !== 'ALL') {
-      where.city = city;
+      properties = properties.filter((p) => p.city.toLowerCase() === city.toLowerCase());
     }
 
     if (bedrooms && bedrooms !== 'ALL') {
-      where.bedrooms = { gte: parseInt(bedrooms) };
+      const minBeds = parseInt(bedrooms);
+      if (!isNaN(minBeds)) {
+        properties = properties.filter((p) => p.bedrooms >= minBeds);
+      }
     }
 
-    if (minPrice || maxPrice) {
-      where.price = {};
-      if (minPrice) where.price.gte = parseFloat(minPrice);
-      if (maxPrice) where.price.lte = parseFloat(maxPrice);
+    if (minPrice) {
+      const minP = parseFloat(minPrice);
+      if (!isNaN(minP)) {
+        properties = properties.filter((p) => p.price >= minP);
+      }
+    }
+
+    if (maxPrice) {
+      const maxP = parseFloat(maxPrice);
+      if (!isNaN(maxP)) {
+        properties = properties.filter((p) => p.price <= maxP);
+      }
     }
 
     if (featured === 'true') {
-      where.featured = true;
+      properties = properties.filter((p) => p.featured);
     }
 
-    const properties = await prisma.property.findMany({
-      where,
-      include: {
-        agent: {
-          select: { id: true, name: true, email: true, phone: true },
+    return NextResponse.json(
+      { properties, count: properties.length },
+      {
+        headers: {
+          'Cache-Control': 'public, max-age=5, stale-while-revalidate=30',
         },
-        amenities: {
-          include: { amenity: true },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    const result = { properties, count: properties.length };
-    propCache.set(cacheKey, { data: result, timestamp: Date.now() });
-
-    return NextResponse.json(result, {
-      headers: {
-        'Cache-Control': 'public, max-age=15, stale-while-revalidate=120',
-      },
-    });
+      }
+    );
   } catch (error) {
-    console.error('Error fetching properties, serving fallback:', error);
-    const { searchParams } = new URL(req.url);
-    const featuredOnly = searchParams.get('featured') === 'true';
-    const list = featuredOnly ? FALLBACK_PROPERTIES.filter((p) => p.featured) : FALLBACK_PROPERTIES;
-    return NextResponse.json({ properties: list, count: list.length });
+    console.error('Error fetching public properties:', error);
+    const properties = await getAllProperties();
+    return NextResponse.json({ properties, count: properties.length });
   }
 }
+

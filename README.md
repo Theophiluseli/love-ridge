@@ -1,2 +1,3 @@
-# love-ridge
-A real estate and sourcing web app
+# Love Ridge Platform
+Premium real estate properties, building materials sourcing, and administrative portal.
+

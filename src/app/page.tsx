@@ -143,23 +143,28 @@ export default function HomePage() {
   useEffect(() => {
     async function loadHeroSlides() {
       try {
+        let hasCustom = false;
         const localSaved = localStorage.getItem('loveridge_hero_slides');
         if (localSaved) {
           const parsed = JSON.parse(localSaved);
           const activeList = parsed.filter((s: any) => s.active).map((s: any) => s.imageUrl);
-          if (activeList.length > 0) setHeroSlidesList(activeList);
+          if (activeList.length > 0) {
+            setHeroSlidesList(activeList);
+            hasCustom = true;
+          }
         }
 
-        const res = await fetch('/api/hero-slides');
+        const res = await fetch('/api/hero-slides', { cache: 'no-store' });
         const data = await res.json();
-        if (data.slides && Array.isArray(data.slides)) {
+        if (data.slides && Array.isArray(data.slides) && data.slides.length > 0) {
           const activeList = data.slides.filter((s: any) => s.active).map((s: any) => s.imageUrl);
           if (activeList.length > 0) {
             setHeroSlidesList(activeList);
+            localStorage.setItem('loveridge_hero_slides', JSON.stringify(data.slides));
           }
         }
       } catch (err) {
-        console.warn('Quiet notice: using default hero slides:', err);
+        console.warn('Quiet notice: using default/local hero slides:', err);
       }
     }
 
@@ -173,6 +178,7 @@ export default function HomePage() {
       window.removeEventListener('storage', handleUpdate);
     };
   }, []);
+
 
   useEffect(() => {
     if (heroSlidesList.length === 0) return;

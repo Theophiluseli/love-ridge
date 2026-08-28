@@ -31,7 +31,7 @@ export default function AdminProductsPage() {
     galleryUrls: [] as string[],
   });
 
-  const [galleryInput, setGalleryInput] = useState('');
+  const [galleryInput, setGalleryInput] = useState('')
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
