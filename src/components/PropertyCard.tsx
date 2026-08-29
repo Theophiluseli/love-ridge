@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Bed, Bath, Maximize2, MapPin, Building, Warehouse as WarehouseIcon, Trees, Clock, Home } from 'lucide-react';
 import { useCurrency } from '@/context/CurrencyContext';
+import { formatPropertyType } from '@/lib/property-categories';
 
 interface PropertyProps {
   property: {
@@ -54,14 +55,7 @@ export default function PropertyCard({ property, onRequestViewing, hidePropertyT
     }
   }
 
-  const formattedTypeLabel =
-    propType === 'OFFICE_SPACE'
-      ? 'Office Space'
-      : propType === 'WAREHOUSE'
-      ? 'Warehouse'
-      : propType === 'LAND'
-      ? 'Land Plot'
-      : property.propertyType;
+  const formattedTypeLabel = formatPropertyType(property.propertyType);
 
   const formatPeriod = (period?: string | null) => {
     if (!period) return null;

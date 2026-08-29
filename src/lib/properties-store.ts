@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { prisma } from './db';
+import { getSystemSetting, setSystemSetting } from './system-settings';
 
 export interface PropertyItem {
   id: string;
@@ -319,69 +320,32 @@ export function writePropertiesToFile(properties: PropertyItem[]) {
 }
 
 export async function getAllProperties(): Promise<PropertyItem[]> {
-  const fileProperties = readPropertiesFromFile();
   try {
-    const dbProps = await prisma.property.findMany({
-      include: {
-        agent: { select: { id: true, name: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    if (dbProps && dbProps.length > 0) {
-      const dbMapped: PropertyItem[] = dbProps.map((p) => ({
-        id: p.id,
-        title: p.title,
-        slug: p.slug,
-        description: p.description,
-        listingType: p.listingType,
-        propertyType: p.propertyType,
-        status: p.status,
-        price: p.price,
-        currency: p.currency,
-        pricePeriod: p.pricePeriod || undefined,
-        bedrooms: p.bedrooms,
-        bathrooms: p.bathrooms,
-        guestRooms: p.guestRooms,
-        boysQuarters: p.boysQuarters,
-        garage: p.garage,
-        sizeSqft: p.sizeSqft,
-        livingAreaSqft: p.livingAreaSqft,
-        locationAddress: p.locationAddress,
-        city: p.city,
-        region: p.region,
-        country: p.country,
-        featured: p.featured,
-        imageUrl: p.imageUrl,
-        galleryUrls: p.galleryUrls || [],
-        contactName: p.agent?.name || 'Desmond Senanu',
-        agent: p.agent,
-        amenities: Array.isArray((p as any).amenities)
-          ? (p as any).amenities.map((a: any) => (typeof a === 'string' ? a : a.amenity?.name || a.name))
-          : (fileProperties.find((f) => f.id === p.id)?.amenities || []),
-        createdAt: p.createdAt.toISOString(),
-        updatedAt: p.updatedAt.toISOString(),
-      }));
-
-      // Merge: Add any file properties not present in DB
-      const dbIds = new Set(dbMapped.map((p) => p.id));
-      const missing = fileProperties.filter((p) => !dbIds.has(p.id));
-      return [...dbMapped, ...missing];
+    const { data: dbCatalog, isDefault } = await getSystemSetting<PropertyItem[]>(
+      'properties_catalog',
+      INITIAL_PROPERTIES_STORE
+    );
+    if (!isDefault && Array.isArray(dbCatalog) && dbCatalog.length > 0) {
+      return dbCatalog;
     }
-  } catch (err) {
-    console.warn('Prisma lookup empty or error, using file properties store:', err);
+  } catch (e) {
+    console.warn('Could not read properties from system_settings:', e);
   }
 
-  return fileProperties;
+  const fileProperties = readPropertiesFromFile();
+  return fileProperties.length > 0 ? fileProperties : INITIAL_PROPERTIES_STORE;
 }
 
 export async function saveProperty(propData: Partial<PropertyItem>): Promise<PropertyItem> {
-  const fileProps = readPropertiesFromFile();
+  const currentProps = await getAllProperties();
   const now = new Date().toISOString();
 
   let existingIndex = -1;
   if (propData.id) {
-    existingIndex = fileProps.findIndex((p) => p.id === propData.id);
+    existingIndex = currentProps.findIndex((p) => p.id === propData.id);
+  }
+  if (existingIndex === -1 && propData.slug) {
+    existingIndex = currentProps.findIndex((p) => p.slug === propData.slug);
   }
 
   const newProperty: PropertyItem = {
@@ -414,26 +378,33 @@ export async function saveProperty(propData: Partial<PropertyItem>): Promise<Pro
     contactEmail: propData.contactEmail || 'agent@loveridge.com',
     amenities: Array.isArray(propData.amenities)
       ? propData.amenities
-      : existingIndex >= 0 && Array.isArray(fileProps[existingIndex].amenities)
-      ? fileProps[existingIndex].amenities
+      : existingIndex >= 0 && Array.isArray(currentProps[existingIndex].amenities)
+      ? currentProps[existingIndex].amenities
       : [],
-    createdAt: existingIndex >= 0 ? fileProps[existingIndex].createdAt : now,
+    createdAt: existingIndex >= 0 ? currentProps[existingIndex].createdAt : now,
     updatedAt: now,
   };
 
+  const updatedList = [...currentProps];
   if (existingIndex >= 0) {
-    fileProps[existingIndex] = { ...fileProps[existingIndex], ...newProperty };
+    updatedList[existingIndex] = { ...updatedList[existingIndex], ...newProperty };
   } else {
-    fileProps.unshift(newProperty);
+    updatedList.unshift(newProperty);
   }
 
-  writePropertiesToFile(fileProps);
+  // Save permanently in PostgreSQL system_settings table
+  await setSystemSetting('properties_catalog', updatedList);
+
+  // Best-effort local file write
+  writePropertiesToFile(updatedList);
+
   return newProperty;
 }
 
 export async function deleteProperty(id: string): Promise<boolean> {
-  const fileProps = readPropertiesFromFile();
-  const updated = fileProps.filter((p) => p.id !== id);
+  const currentProps = await getAllProperties();
+  const updated = currentProps.filter((p) => p.id !== id);
+  await setSystemSetting('properties_catalog', updated);
   writePropertiesToFile(updated);
   try {
     await prisma.property.delete({ where: { id } }).catch(() => null);

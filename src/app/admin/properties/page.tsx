@@ -5,6 +5,7 @@ import { Plus, Edit2, Trash2, CheckCircle, Search, ShieldCheck, Eye, Image as Im
 import Link from 'next/link';
 import { compressImage } from '@/lib/utils/imageCompressor';
 import { AMENITY_GROUPS, ALL_AMENITIES_LIST } from '@/lib/amenities-constants';
+import { BUILT_PROPERTY_TYPES, LAND_PROPERTY_TYPE, formatPropertyType, isResidentialProperty } from '@/lib/property-categories';
 
 const DEFAULT_AGENTS = [
   'Desmond Senanu',
@@ -439,47 +440,156 @@ export default function AdminPropertiesPage() {
       {/* VIEW: PROPERTY CREATION / EDITING CARD FORM */}
       {activeTab !== 'LIST' ? (
         <div className="space-y-8 max-w-5xl mx-auto py-2">
-          {/* Top Property Type Selector Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { type: 'LAND', title: 'Land Plots', desc: 'Commercial & Lease Lands', icon: Trees },
-              { type: 'OFFICE_SPACE', title: 'Office Space', desc: 'Executive Towers & Suites', icon: Building },
-              { type: 'WAREHOUSE', title: 'Warehouses', desc: 'Logistics Facilities & Storage', icon: Warehouse },
-              { type: 'HOUSE', title: 'Residential', desc: 'Houses & Apartments', icon: Building2 },
-            ].map((item) => {
-              const Icon = item.icon;
-              const isSelected = form.propertyType === item.type;
-              return (
-                <button
-                  key={item.type}
-                  type="button"
-                  onClick={() => {
-                    if (item.type === 'LAND') {
-                      setForm({ ...form, propertyType: item.type, listingType: 'SALE', pricePeriod: 'outright purchase' });
-                    } else {
-                      setForm({ ...form, propertyType: item.type });
-                    }
-                  }}
-                  className={`p-5 rounded-2xl border text-left transition-all flex flex-col justify-between ${
-                    isSelected
-                      ? 'border-emerald-700 bg-emerald-50/50 shadow-md ring-2 ring-emerald-700/20'
-                      : 'border-slate-200 bg-white hover:border-slate-300 shadow-xs'
-                  }`}
-                >
-                  <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${
-                      isSelected ? 'bg-emerald-800 text-white shadow-sm' : 'bg-slate-100 text-slate-700'
-                    }`}
-                  >
-                    <Icon className="w-5 h-5" />
+          {/* STEP 1: CHOOSE LISTING CATEGORY (LAND STANDS ON ITS OWN SECTION & BUILT PROPERTIES IN IMAGE 2 FORMAT) */}
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/80 pb-3">
+              <div>
+                <span className="text-[11px] font-black uppercase tracking-wider text-emerald-800 block">
+                  Step 1: Choose Listing Category & Type
+                </span>
+                <h3 className="text-xl font-black text-slate-900 tracking-tight">
+                  What type of listing are you adding?
+                </h3>
+              </div>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-900 text-xs font-black rounded-full border border-emerald-200 self-start sm:self-auto shadow-2xs">
+                Active Selection: <span className="underline">{formatPropertyType(form.propertyType)}</span>
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+              {/* 1. DEDICATED LAND SECTION (Standing on its own section to select) */}
+              <div
+                onClick={() => {
+                  setForm({
+                    ...form,
+                    propertyType: 'LAND',
+                    listingType: 'SALE',
+                    pricePeriod: 'outright purchase',
+                    amenities: [],
+                  });
+                }}
+                className={`p-6 rounded-3xl border-2 text-left cursor-pointer transition-all flex flex-col justify-between relative overflow-hidden group ${
+                  form.propertyType === 'LAND'
+                    ? 'border-emerald-800 bg-emerald-50/80 shadow-xl ring-4 ring-emerald-800/10'
+                    : 'border-slate-200 bg-white hover:border-emerald-400 hover:shadow-md'
+                }`}
+              >
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div
+                      className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
+                        form.propertyType === 'LAND'
+                          ? 'bg-emerald-800 text-white shadow-md scale-105'
+                          : 'bg-emerald-100/70 text-emerald-800 group-hover:scale-105'
+                      }`}
+                    >
+                      <Trees className="w-7 h-7" />
+                    </div>
+                    {form.propertyType === 'LAND' ? (
+                      <span className="flex items-center gap-1 text-xs font-black text-emerald-900 bg-emerald-200/90 px-3 py-1 rounded-full border border-emerald-400 shadow-2xs">
+                        <Check className="w-3.5 h-3.5 stroke-[3]" /> Selected
+                      </span>
+                    ) : (
+                      <span className="text-[11px] font-extrabold text-slate-400 group-hover:text-emerald-700">
+                        Click to select
+                      </span>
+                    )}
                   </div>
                   <div>
-                    <h3 className="font-bold text-sm text-slate-900">{item.title}</h3>
-                    <p className="text-[11px] text-slate-500 font-medium">{item.desc}</p>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 block">
+                      Dedicated Land Section
+                    </span>
+                    <h4 className="text-xl font-black text-slate-900 mt-0.5">Land & Plots</h4>
+                    <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed">
+                      Commercial plots, residential lands, acreage, and development sites. Stands in its own section without residential appliances.
+                    </p>
                   </div>
-                </button>
-              );
-            })}
+                </div>
+
+                <div className="mt-5 pt-3 border-t border-slate-200/80 flex items-center justify-between text-xs font-bold">
+                  <span className="text-slate-500">Outright Purchase Only</span>
+                  <span className={`flex items-center gap-1 ${form.propertyType === 'LAND' ? 'text-emerald-900 font-black' : 'text-emerald-700'}`}>
+                    Select Land &rarr;
+                  </span>
+                </div>
+              </div>
+
+              {/* 2. PROPERTY & BUILDING UNITS (Exact format matching user screenshot: "Add a Listing") */}
+              <div className="lg:col-span-2 bg-white rounded-3xl border-2 border-slate-200 p-6 space-y-4 shadow-sm flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-xl bg-purple-100 flex items-center justify-center text-purple-700">
+                        <Building2 className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="text-base font-black text-slate-900 tracking-tight">
+                          Add a Listing: Property & Unit Types
+                        </h4>
+                        <p className="text-[11px] text-slate-500 font-medium">
+                          Select the specific building or unit format to configure listing specs & amenities
+                        </p>
+                      </div>
+                    </div>
+                    {form.propertyType !== 'LAND' && (
+                      <span className="flex items-center gap-1 text-xs font-black text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200 shrink-0">
+                        <Check className="w-3.5 h-3.5 stroke-[3]" /> {formatPropertyType(form.propertyType)}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Options Menu in the exact format from screenshot */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-1">
+                    {BUILT_PROPERTY_TYPES.map((item) => {
+                      const isSelected = form.propertyType === item.value;
+                      return (
+                        <button
+                          key={item.value}
+                          type="button"
+                          onClick={() => {
+                            setForm({
+                              ...form,
+                              propertyType: item.value,
+                            });
+                          }}
+                          className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-left text-xs font-bold transition-all ${
+                            isSelected
+                              ? 'border-blue-600 bg-blue-50 text-blue-950 ring-2 ring-blue-600/20 shadow-2xs'
+                              : 'border-slate-200 bg-slate-50/60 text-slate-700 hover:bg-white hover:border-slate-300'
+                          }`}
+                        >
+                          <span className="flex items-center gap-2">
+                            {isSelected ? (
+                              <span className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0">
+                                <Check className="w-3 h-3 stroke-[3]" />
+                              </span>
+                            ) : (
+                              <span className="w-4 h-4 rounded-full border border-slate-300 bg-white shrink-0" />
+                            )}
+                            <span className={isSelected ? 'font-black text-blue-950' : 'font-semibold'}>
+                              {item.label}
+                            </span>
+                          </span>
+                          <span
+                            className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                              item.isResidential
+                                ? 'text-emerald-700 bg-emerald-50'
+                                : 'text-purple-700 bg-purple-50'
+                            }`}
+                          >
+                            {item.isResidential ? 'Residential' : 'Commercial'}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-medium">
+                  <span>General Amenities available for: Apartment, House, Studio, Townhouse, Beachhouse, Hotel, Guest house.</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Listing Details Card */}
@@ -545,6 +655,7 @@ export default function AdminPropertiesPage() {
                           propertyType: type,
                           listingType: 'SALE',
                           pricePeriod: 'outright purchase',
+                          amenities: [],
                         });
                       } else {
                         setForm({ ...form, propertyType: type });
@@ -552,11 +663,16 @@ export default function AdminPropertiesPage() {
                     }}
                     className="admin-select"
                   >
-                    <option value="LAND">Land Plot</option>
-                    <option value="OFFICE_SPACE">Office Space</option>
-                    <option value="WAREHOUSE">Warehouse / Logistics</option>
-                    <option value="HOUSE">House / Villa</option>
-                    <option value="APARTMENT">Apartment</option>
+                    <optgroup label="Dedicated Land Section">
+                      <option value="LAND">Land & Plots</option>
+                    </optgroup>
+                    <optgroup label="Property & Building Units">
+                      {BUILT_PROPERTY_TYPES.map((item) => (
+                        <option key={item.value} value={item.value}>
+                          {item.label}
+                        </option>
+                      ))}
+                    </optgroup>
                   </select>
                 </div>
 
@@ -668,8 +784,8 @@ export default function AdminPropertiesPage() {
                 </div>
               )}
 
-              {/* GENERAL AMENITIES SELECTION (HOUSE & APARTMENT ONLY) */}
-              {(form.propertyType === 'HOUSE' || form.propertyType === 'APARTMENT') && (
+              {/* GENERAL AMENITIES SELECTION (ALL RESIDENTIAL LIVING SPACES) */}
+              {isResidentialProperty(form.propertyType) && (
                 <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6">
                   {/* Top Red/Pink Accent Bar & Title Matching Screenshot */}
                   <div className="space-y-3">
@@ -1162,7 +1278,7 @@ export default function AdminPropertiesPage() {
                     <div className="flex-1 min-w-0">
                       <h4 className="font-bold text-xs text-slate-900 line-clamp-2">{prop.title}</h4>
                       <span className="text-[10px] text-emerald-800 font-extrabold uppercase mt-0.5 block">
-                        FOR {prop.listingType} • {prop.propertyType}
+                        FOR {prop.listingType} • {formatPropertyType(prop.propertyType)}
                       </span>
                       <div className="text-xs font-extrabold text-slate-900 mt-1">
                         {prop.currency} {prop.price ? prop.price.toLocaleString() : '0'}
@@ -1260,7 +1376,7 @@ export default function AdminPropertiesPage() {
                       <td className="px-6 py-4 font-bold text-slate-900">
                         <div className="line-clamp-1 text-sm text-slate-900">{prop.title}</div>
                         <div className="text-[10px] text-emerald-800 font-semibold mt-0.5">
-                          FOR {prop.listingType} • {prop.propertyType}
+                          FOR {prop.listingType} • {formatPropertyType(prop.propertyType)}
                         </div>
                       </td>
                       <td className="px-6 py-4 font-extrabold text-slate-900">

@@ -7,6 +7,7 @@ import PropertyCard from '@/components/PropertyCard';
 import InquiryModal from '@/components/InquiryModal';
 import { Search, SlidersHorizontal, Building2, RotateCcw, ChevronDown, Trees, Warehouse, Building } from 'lucide-react';
 import Link from 'next/link';
+import { BUILT_PROPERTY_TYPES } from '@/lib/property-categories';
 
 const INITIAL_PROPERTIES = [
   {
@@ -197,12 +198,17 @@ export default function PropertiesPage() {
                     }}
                     className="w-full bg-slate-50/90 border border-slate-200 rounded-2xl px-4 py-3 text-xs text-slate-900 font-semibold appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-800/20 focus:border-emerald-700 focus:bg-white shadow-2xs pr-10 transition-all cursor-pointer"
                   >
-                    <option value="ALL">All Commercial & Lands</option>
-                    <option value="LAND">Land Plot</option>
-                    <option value="OFFICE_SPACE">Office Space</option>
-                    <option value="WAREHOUSE">Warehouse / Logistics</option>
-                    <option value="HOUSE">House / Villa</option>
-                    <option value="APARTMENT">Apartment</option>
+                    <option value="ALL">All Categories</option>
+                    <optgroup label="Dedicated Land Section">
+                      <option value="LAND">Land & Plots</option>
+                    </optgroup>
+                    <optgroup label="Property & Building Units">
+                      {BUILT_PROPERTY_TYPES.map((t) => (
+                        <option key={t.value} value={t.value}>
+                          {t.label}
+                        </option>
+                      ))}
+                    </optgroup>
                   </select>
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
                     <ChevronDown className="w-4 h-4" />

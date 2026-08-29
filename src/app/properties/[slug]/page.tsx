@@ -10,6 +10,7 @@ import SocialShare from '@/components/SocialShare';
 import { useCurrency } from '@/context/CurrencyContext';
 import { MapPin, Bed, Bath, Maximize2, Shield, Calendar, ChevronLeft, CheckCircle2, Images, X, PhoneCall, Mail, UserCheck, Home, Clock, Sparkles, Tv, Network, Asterisk, Check, Wind, Flame, Shirt, Fan, Wifi, Trees, Car, Sun } from 'lucide-react';
 import Link from 'next/link';
+import { formatPropertyType } from '@/lib/property-categories';
 
 const SEED_PROPERTIES: Record<string, any> = {
   'luxury-4-bedroom-smart-villa-east-legon': {
@@ -142,6 +143,26 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
         setLoading(false);
         return;
       }
+
+      // 1. Instant optimistic lookup from local browser cache
+      try {
+        const stored = localStorage.getItem('loveridge_properties_override');
+        if (stored) {
+          const list = JSON.parse(stored);
+          const localMatch = list.find(
+            (p: any) =>
+              (p.slug && p.slug.toLowerCase() === params.slug.toLowerCase()) ||
+              (p.id && p.id.toLowerCase() === params.slug.toLowerCase())
+          );
+          if (localMatch) {
+            setProperty(localMatch);
+            if (localMatch.imageUrl) setActivePhoto(localMatch.imageUrl);
+            setLoading(false);
+          }
+        }
+      } catch (e) {}
+
+      // 2. Fetch fresh data from API
       try {
         const res = await fetch(`/api/properties/${params.slug}`);
         const data = await res.json();
@@ -275,34 +296,39 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
         .filter(Boolean)
     : [];
 
+  const norm = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
   const applianceAmenities = normalizedAmenities.filter((a) =>
-    ['air conditioning', 'cooker', 'washing machine', 'fans', 'refrigerator', 'microwave'].includes(a.toLowerCase())
+    ['air conditioning', 'cooker', 'washing machine', 'fans', 'refrigerator', 'microwave'].some(
+      (target) => norm(a) === norm(target)
+    )
   );
 
   const connectivityAmenities = normalizedAmenities.filter((a) =>
-    ['internet access', 'satellite tv'].includes(a.toLowerCase())
+    ['internet access', 'satellite tv'].some((target) => norm(a) === norm(target))
   );
 
   const otherAmenities = normalizedAmenities.filter((a) =>
-    ['garden', 'garage', "annexe (boys' quarters)", 'roof terrace'].includes(a.toLowerCase())
+    ['garden', 'garage', "annexe (boys' quarters)", 'roof terrace'].some((target) => norm(a) === norm(target))
   );
 
-  const generalAmenitySet = new Set([
-    'air conditioning',
+  const generalAmenityNorms = new Set([
+    'airconditioning',
     'cooker',
-    'washing machine',
+    'washingmachine',
     'fans',
+    'fan',
     'refrigerator',
     'microwave',
-    'internet access',
-    'satellite tv',
+    'internetaccess',
+    'satellitetv',
     'garden',
     'garage',
-    "annexe (boys' quarters)",
-    'roof terrace',
+    'annexeboysquarters',
+    'roofterrace',
   ]);
 
-  const customHighlights = normalizedAmenities.filter((a) => !generalAmenitySet.has(a.toLowerCase()));
+  const customHighlights = normalizedAmenities.filter((a) => !generalAmenityNorms.has(norm(a)));
   const hasAnyAmenities = normalizedAmenities.length > 0;
 
   function getAmenityIcon(name: string) {
@@ -447,7 +473,7 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs font-semibold">
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
                   <span className="text-slate-500 text-[11px] block">Property Type</span>
-                  <span className="text-slate-900 font-bold block">{property.propertyType || 'Residential House'}</span>
+                  <span className="text-slate-900 font-bold block">{formatPropertyType(property.propertyType)}</span>
                 </div>
 
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
