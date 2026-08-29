@@ -2,14 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     const contentType = req.headers.get('content-type') || '';
     const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
 
     // Handle Multipart Form Data
     if (contentType.includes('multipart/form-data')) {
@@ -21,15 +19,24 @@ export async function POST(req: NextRequest) {
 
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
-
-      const ext = path.extname(file.name) || '.jpg';
+      const mime = file.type || 'image/jpeg';
+      const ext = path.extname(file.name) || (mime.includes('png') ? '.png' : mime.includes('webp') ? '.webp' : '.jpg');
       const filename = `hero-${Date.now()}-${Math.random().toString(36).substring(2, 7)}${ext}`;
-      const filePath = path.join(uploadsDir, filename);
 
-      fs.writeFileSync(filePath, buffer);
-      const url = `/uploads/${filename}`;
-
-      return NextResponse.json({ url, filename });
+      // Try local file system write (works in local dev)
+      try {
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        const filePath = path.join(uploadsDir, filename);
+        fs.writeFileSync(filePath, buffer);
+        return NextResponse.json({ url: `/uploads/${filename}`, filename });
+      } catch (fsErr) {
+        // Read-only filesystem on Vercel: safely return base64 data URL
+        const base64 = buffer.toString('base64');
+        const dataUrl = `data:${mime};base64,${base64}`;
+        return NextResponse.json({ url: dataUrl, filename });
+      }
     }
 
     // Handle JSON Base64
@@ -38,9 +45,10 @@ export async function POST(req: NextRequest) {
       const matches = body.base64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
       let buffer: Buffer;
       let ext = '.jpg';
+      let mime = 'image/jpeg';
 
       if (matches && matches.length === 3) {
-        const mime = matches[1];
+        mime = matches[1];
         buffer = Buffer.from(matches[2], 'base64');
         if (mime.includes('png')) ext = '.png';
         else if (mime.includes('webp')) ext = '.webp';
@@ -51,12 +59,20 @@ export async function POST(req: NextRequest) {
       }
 
       const filename = `hero-${Date.now()}-${Math.random().toString(36).substring(2, 7)}${ext}`;
-      const filePath = path.join(uploadsDir, filename);
 
-      fs.writeFileSync(filePath, buffer);
-      const url = `/uploads/${filename}`;
-
-      return NextResponse.json({ url, filename });
+      try {
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        const filePath = path.join(uploadsDir, filename);
+        fs.writeFileSync(filePath, buffer);
+        return NextResponse.json({ url: `/uploads/${filename}`, filename });
+      } catch (fsErr) {
+        // Read-only filesystem on Vercel: return base64 data URL directly
+        const cleanBase64 = buffer.toString('base64');
+        const dataUrl = `data:${mime};base64,${cleanBase64}`;
+        return NextResponse.json({ url: dataUrl, filename });
+      }
     }
 
     return NextResponse.json({ error: 'Invalid upload payload' }, { status: 400 });

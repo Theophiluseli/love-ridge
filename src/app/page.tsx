@@ -157,10 +157,14 @@ export default function HomePage() {
         const res = await fetch('/api/hero-slides', { cache: 'no-store' });
         const data = await res.json();
         if (data.slides && Array.isArray(data.slides) && data.slides.length > 0) {
-          const activeList = data.slides.filter((s: any) => s.active).map((s: any) => s.imageUrl);
-          if (activeList.length > 0) {
-            setHeroSlidesList(activeList);
-            localStorage.setItem('loveridge_hero_slides', JSON.stringify(data.slides));
+          if (!data.isDefault || !hasCustom) {
+            const activeList = data.slides.filter((s: any) => s.active).map((s: any) => s.imageUrl);
+            if (activeList.length > 0) {
+              setHeroSlidesList(activeList);
+              if (!data.isDefault) {
+                localStorage.setItem('loveridge_hero_slides', JSON.stringify(data.slides));
+              }
+            }
           }
         }
       } catch (err) {

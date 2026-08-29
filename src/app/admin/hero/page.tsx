@@ -60,22 +60,43 @@ export default function AdminHeroPage() {
     fetchSlides();
   }, []);
 
-  async function fetchSlides() {
-    setLoading(true);
-    try {
-      const localSaved = localStorage.getItem('loveridge_hero_slides');
-      let localSlides: HeroSlideItem[] | null = null;
-      if (localSaved) {
-        try {
-          localSlides = JSON.parse(localSaved);
-        } catch (e) {}
-      }
+  function isDefaultSlides(items: HeroSlideItem[]) {
+    if (!items || items.length !== DEFAULT_SLIDES.length) return false;
+    return items.every((item, idx) => item.imageUrl === DEFAULT_SLIDES[idx]?.imageUrl);
+  }
 
+  async function fetchSlides() {
+    // 1. Immediately read from localStorage so it never flashes to default
+    let localSlides: HeroSlideItem[] | null = null;
+    const localSaved = localStorage.getItem('loveridge_hero_slides');
+    if (localSaved) {
+      try {
+        const parsed = JSON.parse(localSaved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          localSlides = parsed;
+          setSlides(parsed);
+          setLoading(false);
+        }
+      } catch (e) {}
+    }
+
+    try {
       const res = await fetch('/api/hero-slides', { cache: 'no-store' });
       const data = await res.json();
+
       if (data.slides && Array.isArray(data.slides) && data.slides.length > 0) {
-        setSlides(data.slides);
-        localStorage.setItem('loveridge_hero_slides', JSON.stringify(data.slides));
+        if (!data.isDefault) {
+          // Server returned custom slides saved in DB
+          setSlides(data.slides);
+          localStorage.setItem('loveridge_hero_slides', JSON.stringify(data.slides));
+        } else if (localSlides && localSlides.length > 0 && !isDefaultSlides(localSlides)) {
+          // Client has custom slides! Preserve them and sync to server DB:
+          setSlides(localSlides);
+          persistSlides(localSlides);
+        } else {
+          setSlides(data.slides);
+          localStorage.setItem('loveridge_hero_slides', JSON.stringify(data.slides));
+        }
       } else if (localSlides && localSlides.length > 0) {
         setSlides(localSlides);
       } else {
@@ -83,9 +104,8 @@ export default function AdminHeroPage() {
       }
     } catch (err) {
       console.error('Error fetching hero slides:', err);
-      const localSaved = localStorage.getItem('loveridge_hero_slides');
-      if (localSaved) {
-        setSlides(JSON.parse(localSaved));
+      if (localSlides && localSlides.length > 0) {
+        setSlides(localSlides);
       } else {
         setSlides(DEFAULT_SLIDES);
       }
@@ -113,6 +133,12 @@ export default function AdminHeroPage() {
   };
 
   async function persistSlides(updatedSlides: HeroSlideItem[]) {
+    // 1. Save immediately to local storage and state for instant response
+    localStorage.setItem('loveridge_hero_slides', JSON.stringify(updatedSlides));
+    setSlides(updatedSlides);
+    window.dispatchEvent(new Event('hero-slides-updated'));
+    window.dispatchEvent(new Event('storage'));
+
     try {
       const res = await fetch('/api/hero-slides', {
         method: 'POST',
@@ -129,9 +155,6 @@ export default function AdminHeroPage() {
       return finalSlides;
     } catch (err) {
       console.warn('Background sync hero slides error:', err);
-      localStorage.setItem('loveridge_hero_slides', JSON.stringify(updatedSlides));
-      window.dispatchEvent(new Event('hero-slides-updated'));
-      window.dispatchEvent(new Event('storage'));
       return updatedSlides;
     }
   }

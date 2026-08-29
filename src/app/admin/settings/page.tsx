@@ -42,8 +42,18 @@ export default function AdminSettingsPage() {
         if (u.email) setAdminEmail(u.email);
       }
     } catch (e) {
-      console.error('Failed to load settings:', e);
+      console.error('Failed to load local settings:', e);
     }
+
+    fetch('/api/admin/settings')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.settings && !data.isDefault) {
+          setSettings(data.settings);
+          localStorage.setItem('loveridge_system_settings', JSON.stringify(data.settings));
+        }
+      })
+      .catch((e) => console.warn('Could not sync settings from server:', e));
   }, []);
 
   async function handleEmailChange(e: React.FormEvent) {
@@ -80,12 +90,18 @@ export default function AdminSettingsPage() {
     }
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     try {
       localStorage.setItem('loveridge_system_settings', JSON.stringify(settings));
       setSaved(true);
       setTimeout(() => setSaved(false), 4000);
+
+      await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      });
     } catch (e) {
       console.error('Failed to save settings:', e);
     }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { getSystemSetting, setSystemSetting } from '@/lib/system-settings';
+
+export const dynamic = 'force-dynamic';
 
 export interface HeroSlide {
   id: string;
@@ -18,91 +19,11 @@ const DEFAULT_SLIDES: HeroSlide[] = [
   { id: 'slide-4', imageUrl: '/hero_carousel_4.jpg', title: 'Executive Living Spaces', active: true, order: 4 },
 ];
 
-const DATA_FILE = path.join(process.cwd(), 'scratch', 'hero-slides.json');
-
-function ensureDataFile() {
-  try {
-    const dir = path.dirname(DATA_FILE);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    if (!fs.existsSync(DATA_FILE)) {
-      fs.writeFileSync(DATA_FILE, JSON.stringify(DEFAULT_SLIDES, null, 2), 'utf-8');
-    }
-  } catch (err) {
-    console.error('Error maintaining hero-slides.json file:', err);
-  }
-}
-
-function readSlidesFromFile(): HeroSlide[] {
-  ensureDataFile();
-  try {
-    if (fs.existsSync(DATA_FILE)) {
-      const data = fs.readFileSync(DATA_FILE, 'utf-8');
-      const parsed = JSON.parse(data);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
-    }
-  } catch (err) {
-    console.error('Failed reading hero slides from file:', err);
-  }
-  return DEFAULT_SLIDES;
-}
-
-function writeSlidesToFile(slides: HeroSlide[]): HeroSlide[] {
-  ensureDataFile();
-  const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-
-  const cleanSlides = slides.map((slide, idx) => {
-    if (slide.imageUrl && slide.imageUrl.startsWith('data:image')) {
-      try {
-        if (!fs.existsSync(uploadsDir)) {
-          fs.mkdirSync(uploadsDir, { recursive: true });
-        }
-        const matches = slide.imageUrl.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-        let buffer: Buffer;
-        let ext = '.jpg';
-
-        if (matches && matches.length === 3) {
-          const mime = matches[1];
-          buffer = Buffer.from(matches[2], 'base64');
-          if (mime.includes('png')) ext = '.png';
-          else if (mime.includes('webp')) ext = '.webp';
-        } else {
-          const cleanBase64 = slide.imageUrl.replace(/^data:image\/\w+;base64,/, '');
-          buffer = Buffer.from(cleanBase64, 'base64');
-        }
-
-        const filename = `hero-${Date.now()}-${idx}${ext}`;
-        const filePath = path.join(uploadsDir, filename);
-        fs.writeFileSync(filePath, buffer);
-
-        return {
-          ...slide,
-          imageUrl: `/uploads/${filename}`,
-        };
-      } catch (err) {
-        console.error('Error saving base64 image to public/uploads:', err);
-      }
-    }
-    return slide;
-  });
-
-  try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(cleanSlides, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Failed writing hero slides to file:', err);
-  }
-
-  return cleanSlides;
-}
-
 export async function GET() {
   try {
-    const slides = readSlidesFromFile();
+    const { data: slides, isDefault } = await getSystemSetting<HeroSlide[]>('hero_slides', DEFAULT_SLIDES);
     return NextResponse.json(
-      { slides },
+      { slides, isDefault },
       {
         headers: {
           'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
@@ -110,7 +31,7 @@ export async function GET() {
       }
     );
   } catch (err) {
-    return NextResponse.json({ slides: DEFAULT_SLIDES });
+    return NextResponse.json({ slides: DEFAULT_SLIDES, isDefault: true });
   }
 }
 
@@ -122,12 +43,13 @@ export async function POST(req: NextRequest) {
     }
 
     const inputSlides: HeroSlide[] = body.slides;
-    const slides = writeSlidesToFile(inputSlides);
+    await setSystemSetting('hero_slides', inputSlides);
 
     return NextResponse.json(
       {
-        message: 'Hero slides updated successfully!',
-        slides,
+        message: 'Hero slides updated and saved permanently to database!',
+        slides: inputSlides,
+        isDefault: false,
       },
       {
         headers: {
@@ -139,5 +61,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: err.message || 'Failed to save hero slides' }, { status: 500 });
   }
 }
-
-
