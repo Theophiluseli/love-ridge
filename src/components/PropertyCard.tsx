@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Bed, Bath, Maximize2, MapPin, Building, Warehouse as WarehouseIcon, Trees, Clock, Home } from 'lucide-react';
+import { Bed, Bath, Maximize2, MapPin, Building, Warehouse as WarehouseIcon, Trees, Clock, Home, Check } from 'lucide-react';
 import { useCurrency } from '@/context/CurrencyContext';
 import { formatPropertyType } from '@/lib/property-categories';
 
@@ -16,6 +16,8 @@ interface PropertyProps {
     price: number;
     currency: string;
     pricePeriod?: string | null;
+    negotiable?: boolean | null;
+    commission?: string | null;
     bedrooms: number;
     bathrooms: number;
     guestRooms?: number | null;
@@ -110,6 +112,11 @@ export default function PropertyCard({ property, onRequestViewing, hidePropertyT
               {property.pricePeriod && (
                 <span className="inline-flex items-center text-[10px] sm:text-xs font-bold text-emerald-300 bg-slate-950/85 backdrop-blur-md px-2.5 py-0.5 rounded-md border border-emerald-500/40 whitespace-nowrap shadow-sm">
                   {formatPeriod(property.pricePeriod)}
+                </span>
+              )}
+              {property.negotiable && (
+                <span className="inline-flex items-center text-[10px] sm:text-xs font-bold text-blue-200 bg-blue-950/85 backdrop-blur-md px-2 py-0.5 rounded-md border border-blue-500/40 whitespace-nowrap shadow-sm gap-1">
+                  <Check className="w-3 h-3 stroke-[3] text-blue-400" /> Negotiable
                 </span>
               )}
             </div>

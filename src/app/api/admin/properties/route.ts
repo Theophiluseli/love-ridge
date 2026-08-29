@@ -113,6 +113,8 @@ export async function POST(req: NextRequest) {
       imageUrl: imageUrl || null,
       galleryUrls: Array.isArray(galleryUrls) ? galleryUrls : [],
       contactName: body.contactName || 'Desmond Senanu',
+      negotiable: Boolean(body.negotiable),
+      commission: body.commission || '',
       amenities: Array.isArray(body.amenities) ? body.amenities : [],
     };
 

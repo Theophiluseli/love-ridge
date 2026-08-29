@@ -14,6 +14,8 @@ export interface PropertyItem {
   price: number;
   currency: string;
   pricePeriod?: string;
+  negotiable?: boolean;
+  commission?: string;
   bedrooms: number;
   bathrooms: number;
   guestRooms?: number;
@@ -63,6 +65,8 @@ export const INITIAL_PROPERTIES_STORE: PropertyItem[] = [
     price: 450000,
     currency: 'USD',
     pricePeriod: 'outright purchase',
+    negotiable: true,
+    commission: '5% Standard Agency Fee',
     bedrooms: 4,
     bathrooms: 5,
     guestRooms: 1,
@@ -359,6 +363,8 @@ export async function saveProperty(propData: Partial<PropertyItem>): Promise<Pro
     price: typeof propData.price === 'number' ? propData.price : parseFloat(propData.price as any) || 0,
     currency: propData.currency || 'USD',
     pricePeriod: propData.pricePeriod || 'outright purchase',
+    negotiable: Boolean(propData.negotiable),
+    commission: propData.commission || '',
     bedrooms: typeof propData.bedrooms === 'number' ? propData.bedrooms : parseInt(propData.bedrooms as any) || 0,
     bathrooms: typeof propData.bathrooms === 'number' ? propData.bathrooms : parseInt(propData.bathrooms as any) || 0,
     guestRooms: typeof propData.guestRooms === 'number' ? propData.guestRooms : parseInt(propData.guestRooms as any) || 0,

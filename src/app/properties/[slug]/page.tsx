@@ -21,6 +21,8 @@ const SEED_PROPERTIES: Record<string, any> = {
     price: 450000,
     currency: 'USD',
     pricePeriod: 'outright purchase',
+    negotiable: true,
+    commission: '5% Standard Agency Fee',
     listingType: 'SALE',
     propertyType: 'HOUSE',
     bedrooms: 4,
@@ -62,6 +64,8 @@ const SEED_PROPERTIES: Record<string, any> = {
     price: 3200,
     currency: 'USD',
     pricePeriod: 'per month',
+    negotiable: true,
+    commission: '1 Month Rent Brokerage',
     listingType: 'RENT',
     propertyType: 'APARTMENT',
     bedrooms: 2,
@@ -506,6 +510,28 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
                     <Shield className="w-3.5 h-3.5 text-emerald-600" /> Titled & Indenture Checked
                   </span>
                 </div>
+
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
+                  <span className="text-slate-500 text-[11px] block">Price Terms</span>
+                  <span className="text-slate-900 font-bold block flex items-center gap-1.5">
+                    {property.negotiable ? (
+                      <span className="text-blue-700 flex items-center gap-1">
+                        <Check className="w-3.5 h-3.5 stroke-[3] text-blue-600" /> Negotiable
+                      </span>
+                    ) : (
+                      'Fixed Price'
+                    )}
+                  </span>
+                </div>
+
+                {property.commission && (
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
+                    <span className="text-slate-500 text-[11px] block">Commission</span>
+                    <span className="text-slate-900 font-bold block truncate" title={property.commission}>
+                      {property.commission}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Description Body */}
@@ -707,7 +733,22 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
                       {property.pricePeriod.toLowerCase() === 'outright purchase' ? 'Outright Purchase' : property.pricePeriod.toLowerCase() === 'per month' ? 'Per Month' : property.pricePeriod}
                     </span>
                   )}
+                  {property.negotiable && (
+                    <span className="inline-flex items-center gap-1 text-xs font-black text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg shadow-2xs">
+                      <Check className="w-3.5 h-3.5 stroke-[3] text-blue-600" /> Negotiable
+                    </span>
+                  )}
                 </div>
+
+                {/* Commission / Brokerage Terms */}
+                {property.commission && (
+                  <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs font-semibold">
+                    <span className="text-slate-500">Commission / Agency Fee:</span>
+                    <span className="text-slate-900 font-bold bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
+                      {property.commission}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <button
