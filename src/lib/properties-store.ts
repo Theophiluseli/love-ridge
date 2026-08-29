@@ -31,6 +31,7 @@ export interface PropertyItem {
   contactPhone?: string;
   contactEmail?: string;
   agent?: { id: string; name: string } | null;
+  amenities?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -44,6 +45,20 @@ export const INITIAL_PROPERTIES_STORE: PropertyItem[] = [
     listingType: 'SALE',
     propertyType: 'HOUSE',
     status: 'PUBLISHED',
+    amenities: [
+      'Air conditioning',
+      'Cooker',
+      'Washing machine',
+      'Fans',
+      'Refrigerator',
+      'Microwave',
+      'Internet access',
+      'Satellite tv',
+      'Garden',
+      'Garage',
+      "Annexe (Boys' quarters)",
+      'Roof terrace',
+    ],
     price: 450000,
     currency: 'USD',
     pricePeriod: 'outright purchase',
@@ -341,6 +356,9 @@ export async function getAllProperties(): Promise<PropertyItem[]> {
         galleryUrls: p.galleryUrls || [],
         contactName: p.agent?.name || 'Desmond Senanu',
         agent: p.agent,
+        amenities: Array.isArray((p as any).amenities)
+          ? (p as any).amenities.map((a: any) => (typeof a === 'string' ? a : a.amenity?.name || a.name))
+          : (fileProperties.find((f) => f.id === p.id)?.amenities || []),
         createdAt: p.createdAt.toISOString(),
         updatedAt: p.updatedAt.toISOString(),
       }));
@@ -394,6 +412,11 @@ export async function saveProperty(propData: Partial<PropertyItem>): Promise<Pro
     contactName: propData.contactName || 'Desmond Senanu',
     contactPhone: propData.contactPhone || '+233 24 000 1111',
     contactEmail: propData.contactEmail || 'agent@loveridge.com',
+    amenities: Array.isArray(propData.amenities)
+      ? propData.amenities
+      : existingIndex >= 0 && Array.isArray(fileProps[existingIndex].amenities)
+      ? fileProps[existingIndex].amenities
+      : [],
     createdAt: existingIndex >= 0 ? fileProps[existingIndex].createdAt : now,
     updatedAt: now,
   };

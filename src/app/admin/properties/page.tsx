@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, CheckCircle, Search, ShieldCheck, Eye, Image as ImageIcon, Trees, Warehouse, Building, Building2, Upload, ArrowRight, X, Sparkles, Phone, Mail, User, Loader2, Clock } from 'lucide-react';
+import { Plus, Edit2, Trash2, CheckCircle, Search, ShieldCheck, Eye, Image as ImageIcon, Trees, Warehouse, Building, Building2, Upload, ArrowRight, X, Sparkles, Phone, Mail, User, Loader2, Clock, Tv, Network, Asterisk, Check } from 'lucide-react';
 import Link from 'next/link';
 import { compressImage } from '@/lib/utils/imageCompressor';
+import { AMENITY_GROUPS, ALL_AMENITIES_LIST } from '@/lib/amenities-constants';
 
 const DEFAULT_AGENTS = [
   'Desmond Senanu',
@@ -47,6 +48,7 @@ export default function AdminPropertiesPage() {
     status: 'DRAFT',
     imageUrl: '',
     galleryUrls: [] as string[],
+    amenities: [] as string[],
     contactName: 'Kwame Appiah',
     contactPhone: '+233 24 000 1111',
     contactEmail: 'agent@loveridge.com',
@@ -285,6 +287,9 @@ export default function AdminPropertiesPage() {
       status: prop.status || 'DRAFT',
       imageUrl: prop.imageUrl || '',
       galleryUrls: Array.isArray(prop.galleryUrls) ? prop.galleryUrls : [],
+      amenities: Array.isArray(prop.amenities)
+        ? prop.amenities.map((a: any) => (typeof a === 'string' ? a : a.amenity?.name || a.name || ''))
+        : [],
       contactName: existingAgent,
       contactPhone: '+233 24 000 1111',
       contactEmail: 'agent@loveridge.com',
@@ -327,6 +332,7 @@ export default function AdminPropertiesPage() {
       status: 'DRAFT',
       imageUrl: '',
       galleryUrls: [],
+      amenities: [],
       contactName: 'Loveridge Staff Agent',
       contactPhone: '+233 24 000 1111',
       contactEmail: 'agent@loveridge.com',
@@ -658,6 +664,102 @@ export default function AdminPropertiesPage() {
                         placeholder="e.g. 3500"
                       />
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* GENERAL AMENITIES SELECTION (HOUSE & APARTMENT ONLY) */}
+              {(form.propertyType === 'HOUSE' || form.propertyType === 'APARTMENT') && (
+                <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6">
+                  {/* Top Red/Pink Accent Bar & Title Matching Screenshot */}
+                  <div className="space-y-3">
+                    <div className="h-1 bg-gradient-to-r from-rose-500 via-pink-500 to-rose-400 rounded-full w-full" />
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <h3 className="font-black text-xl text-slate-900 tracking-tight">
+                          General Amenities
+                        </h3>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">
+                          Select the included appliances, connectivity, and property amenities for this listing.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setForm({ ...form, amenities: ALL_AMENITIES_LIST })}
+                          className="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-[11px] font-bold text-slate-700 transition"
+                        >
+                          Select All
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setForm({ ...form, amenities: [] })}
+                          className="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-[11px] font-bold text-slate-500 transition"
+                        >
+                          Clear All
+                        </button>
+                        <span className="px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 font-extrabold text-[11px] border border-blue-200">
+                          {form.amenities?.length || 0} / {ALL_AMENITIES_LIST.length} Selected
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3 Group Columns matching user screenshot: Appliances, Connectivity, Other */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    {AMENITY_GROUPS.map((group) => (
+                      <div
+                        key={group.category}
+                        className="bg-slate-100/70 border border-slate-200/90 rounded-2xl p-5 space-y-4 shadow-2xs"
+                      >
+                        {/* Group Header with Icons matching screenshot */}
+                        <div className="flex items-center gap-2.5 border-b border-slate-200/80 pb-3">
+                          {group.iconKey === 'tv' && <Tv className="w-5 h-5 text-fuchsia-700" />}
+                          {group.iconKey === 'network' && <Network className="w-5 h-5 text-purple-700" />}
+                          {group.iconKey === 'asterisk' && <Asterisk className="w-5 h-5 text-pink-700" />}
+                          <h4 className="font-black text-base text-slate-900 tracking-tight">
+                            {group.category}
+                          </h4>
+                        </div>
+
+                        {/* Amenity Checkbox Items */}
+                        <div className="space-y-3">
+                          {group.items.map((item) => {
+                            const isChecked = form.amenities?.includes(item) || false;
+                            return (
+                              <label
+                                key={item}
+                                onClick={() => {
+                                  const current = form.amenities || [];
+                                  const next = isChecked
+                                    ? current.filter((x) => x !== item)
+                                    : [...current, item];
+                                  setForm({ ...form, amenities: next });
+                                }}
+                                className="flex items-center gap-3 cursor-pointer group py-1 select-none"
+                              >
+                                <div
+                                  className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
+                                    isChecked
+                                      ? 'bg-blue-600 border border-blue-600 text-white shadow-xs'
+                                      : 'border-2 border-slate-300 bg-white group-hover:border-slate-400'
+                                  }`}
+                                >
+                                  {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                                </div>
+                                <span
+                                  className={`text-xs font-semibold transition ${
+                                    isChecked ? 'text-slate-900 font-bold' : 'text-slate-600 group-hover:text-slate-900'
+                                  }`}
+                                >
+                                  {item}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}

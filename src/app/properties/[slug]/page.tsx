@@ -8,7 +8,7 @@ import InquiryModal from '@/components/InquiryModal';
 import ImageGalleryModal from '@/components/ImageGalleryModal';
 import SocialShare from '@/components/SocialShare';
 import { useCurrency } from '@/context/CurrencyContext';
-import { MapPin, Bed, Bath, Maximize2, Shield, Calendar, ChevronLeft, CheckCircle2, Images, X, PhoneCall, Mail, UserCheck, Home, Clock } from 'lucide-react';
+import { MapPin, Bed, Bath, Maximize2, Shield, Calendar, ChevronLeft, CheckCircle2, Images, X, PhoneCall, Mail, UserCheck, Home, Clock, Sparkles, Tv, Network, Asterisk, Check, Wind, Flame, Shirt, Fan, Wifi, Trees, Car, Sun } from 'lucide-react';
 import Link from 'next/link';
 
 const SEED_PROPERTIES: Record<string, any> = {
@@ -35,12 +35,22 @@ const SEED_PROPERTIES: Record<string, any> = {
     agent: { name: 'Kwame Appiah', email: 'k.appiah@loveridgeproperty.com', phone: '+233 55 666 7777', title: 'Senior Real Estate Consultant' },
     updatedAt: new Date().toISOString(),
     amenities: [
-      { amenity: { name: 'Private Swimming Pool' } },
-      { amenity: { name: 'Smart Home Automation' } },
-      { amenity: { name: 'Solar Hybrid Power System' } },
-      { amenity: { name: '24/7 Standby Generator' } },
-      { amenity: { name: 'Underground Parking' } },
-      { amenity: { name: 'Electric Security Fence' } },
+      'Air conditioning',
+      'Cooker',
+      'Washing machine',
+      'Fans',
+      'Refrigerator',
+      'Microwave',
+      'Internet access',
+      'Satellite tv',
+      'Garden',
+      'Garage',
+      "Annexe (Boys' quarters)",
+      'Roof terrace',
+      'Private Swimming Pool',
+      'Smart Home Automation',
+      'Solar Hybrid Power System',
+      '24/7 Standby Generator',
     ],
   },
   'executive-2-bedroom-serviced-apartment-airport-residential': {
@@ -66,12 +76,18 @@ const SEED_PROPERTIES: Record<string, any> = {
     agent: { name: 'Sandra Mensah', email: 's.mensah@loveridgeproperty.com', phone: '+233 24 111 2222', title: 'Commercial Property Specialist' },
     updatedAt: new Date().toISOString(),
     amenities: [
-      { amenity: { name: 'Fully Furnished Designer Interior' } },
-      { amenity: { name: 'Fully Equipped Fitness Gym' } },
-      { amenity: { name: '24/7 Concierge & Security' } },
-      { amenity: { name: 'Underground Reserved Parking' } },
-      { amenity: { name: 'High-Speed Fiber Internet' } },
-      { amenity: { name: 'Rooftop Lounge & Pool' } },
+      'Air conditioning',
+      'Cooker',
+      'Washing machine',
+      'Fans',
+      'Refrigerator',
+      'Microwave',
+      'Internet access',
+      'Satellite tv',
+      'Fully Furnished Designer Interior',
+      'Fully Equipped Fitness Gym',
+      '24/7 Concierge & Security',
+      'Rooftop Lounge & Pool',
     ],
   },
   'prime-commercial-land-cantonments-embassy-quarter': {
@@ -251,6 +267,61 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
     ? new Date(updatedDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
     : 'Recently Updated';
 
+  // Normalize and group amenities (House & Apartment general amenities)
+  const rawAmenities = property.amenities || [];
+  const normalizedAmenities: string[] = Array.isArray(rawAmenities)
+    ? rawAmenities
+        .map((a: any) => (typeof a === 'string' ? a : a.amenity?.name || a.name || ''))
+        .filter(Boolean)
+    : [];
+
+  const applianceAmenities = normalizedAmenities.filter((a) =>
+    ['air conditioning', 'cooker', 'washing machine', 'fans', 'refrigerator', 'microwave'].includes(a.toLowerCase())
+  );
+
+  const connectivityAmenities = normalizedAmenities.filter((a) =>
+    ['internet access', 'satellite tv'].includes(a.toLowerCase())
+  );
+
+  const otherAmenities = normalizedAmenities.filter((a) =>
+    ['garden', 'garage', "annexe (boys' quarters)", 'roof terrace'].includes(a.toLowerCase())
+  );
+
+  const generalAmenitySet = new Set([
+    'air conditioning',
+    'cooker',
+    'washing machine',
+    'fans',
+    'refrigerator',
+    'microwave',
+    'internet access',
+    'satellite tv',
+    'garden',
+    'garage',
+    "annexe (boys' quarters)",
+    'roof terrace',
+  ]);
+
+  const customHighlights = normalizedAmenities.filter((a) => !generalAmenitySet.has(a.toLowerCase()));
+  const hasAnyAmenities = normalizedAmenities.length > 0;
+
+  function getAmenityIcon(name: string) {
+    const lower = name.toLowerCase();
+    if (lower.includes('air conditioning')) return <Wind className="w-4 h-4 text-sky-600" />;
+    if (lower.includes('cooker')) return <Flame className="w-4 h-4 text-orange-600" />;
+    if (lower.includes('washing machine')) return <Shirt className="w-4 h-4 text-indigo-600" />;
+    if (lower.includes('fan')) return <Fan className="w-4 h-4 text-teal-600" />;
+    if (lower.includes('refrigerator')) return <CheckCircle2 className="w-4 h-4 text-blue-600" />;
+    if (lower.includes('microwave')) return <Sparkles className="w-4 h-4 text-amber-600" />;
+    if (lower.includes('internet')) return <Wifi className="w-4 h-4 text-purple-600" />;
+    if (lower.includes('satellite') || lower.includes('tv')) return <Tv className="w-4 h-4 text-fuchsia-600" />;
+    if (lower.includes('garden')) return <Trees className="w-4 h-4 text-emerald-600" />;
+    if (lower.includes('garage')) return <Car className="w-4 h-4 text-blue-600" />;
+    if (lower.includes('annexe') || lower.includes('boys')) return <Home className="w-4 h-4 text-rose-600" />;
+    if (lower.includes('terrace') || lower.includes('roof')) return <Sun className="w-4 h-4 text-amber-600" />;
+    return <CheckCircle2 className="w-4 h-4 text-emerald-600" />;
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between bg-grid-pattern">
       <Navbar />
@@ -419,6 +490,137 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
                 </p>
               </div>
             </div>
+
+            {/* GENERAL AMENITIES SECTION */}
+            {hasAnyAmenities && (
+              <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+                {/* Header matching user design */}
+                <div className="space-y-3">
+                  <div className="h-1 bg-gradient-to-r from-rose-500 via-pink-500 to-rose-400 rounded-full w-full" />
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                    <div>
+                      <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                        <Sparkles className="w-6 h-6 text-emerald-800" />
+                        General Amenities
+                      </h2>
+                      <p className="text-xs text-slate-500 font-medium mt-1">
+                        Verified appliances, connectivity, and property amenities included with this listing.
+                      </p>
+                    </div>
+                    <span className="px-3.5 py-1.5 bg-emerald-50 text-emerald-900 text-xs font-black rounded-full border border-emerald-200/80 self-start sm:self-auto shadow-2xs">
+                      {normalizedAmenities.length} Inclusions Verified
+                    </span>
+                  </div>
+                </div>
+
+                {/* Categories Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  {/* Appliances */}
+                  {applianceAmenities.length > 0 && (
+                    <div className="bg-slate-50/90 rounded-2xl border border-slate-200/90 p-5 space-y-4 shadow-2xs">
+                      <div className="flex items-center gap-2.5 border-b border-slate-200/80 pb-3">
+                        <div className="w-8 h-8 rounded-xl bg-fuchsia-100 flex items-center justify-center text-fuchsia-700">
+                          <Tv className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="font-black text-sm text-slate-900">Appliances</h4>
+                          <span className="text-[11px] text-slate-500 font-medium">{applianceAmenities.length} installed</span>
+                        </div>
+                      </div>
+                      <div className="space-y-2.5">
+                        {applianceAmenities.map((name) => (
+                          <div key={name} className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-100 shadow-2xs">
+                            <div className="flex items-center gap-2.5">
+                              {getAmenityIcon(name)}
+                              <span className="text-xs font-bold text-slate-800">{name}</span>
+                            </div>
+                            <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-2xs">
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Connectivity */}
+                  {connectivityAmenities.length > 0 && (
+                    <div className="bg-slate-50/90 rounded-2xl border border-slate-200/90 p-5 space-y-4 shadow-2xs">
+                      <div className="flex items-center gap-2.5 border-b border-slate-200/80 pb-3">
+                        <div className="w-8 h-8 rounded-xl bg-purple-100 flex items-center justify-center text-purple-700">
+                          <Network className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="font-black text-sm text-slate-900">Connectivity</h4>
+                          <span className="text-[11px] text-slate-500 font-medium">{connectivityAmenities.length} active</span>
+                        </div>
+                      </div>
+                      <div className="space-y-2.5">
+                        {connectivityAmenities.map((name) => (
+                          <div key={name} className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-100 shadow-2xs">
+                            <div className="flex items-center gap-2.5">
+                              {getAmenityIcon(name)}
+                              <span className="text-xs font-bold text-slate-800">{name}</span>
+                            </div>
+                            <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-2xs">
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Other Inclusions */}
+                  {otherAmenities.length > 0 && (
+                    <div className="bg-slate-50/90 rounded-2xl border border-slate-200/90 p-5 space-y-4 shadow-2xs">
+                      <div className="flex items-center gap-2.5 border-b border-slate-200/80 pb-3">
+                        <div className="w-8 h-8 rounded-xl bg-pink-100 flex items-center justify-center text-pink-700">
+                          <Asterisk className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="font-black text-sm text-slate-900">Other Features</h4>
+                          <span className="text-[11px] text-slate-500 font-medium">{otherAmenities.length} on-site</span>
+                        </div>
+                      </div>
+                      <div className="space-y-2.5">
+                        {otherAmenities.map((name) => (
+                          <div key={name} className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-100 shadow-2xs">
+                            <div className="flex items-center gap-2.5">
+                              {getAmenityIcon(name)}
+                              <span className="text-xs font-bold text-slate-800">{name}</span>
+                            </div>
+                            <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-2xs">
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Custom Highlights (if any other amenities exist) */}
+                {customHighlights.length > 0 && (
+                  <div className="pt-4 border-t border-slate-100">
+                    <span className="text-xs font-black text-slate-700 uppercase tracking-wider block mb-3">
+                      Additional Property Highlights
+                    </span>
+                    <div className="flex flex-wrap gap-2.5">
+                      {customHighlights.map((item) => (
+                        <div
+                          key={item}
+                          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-50/80 border border-emerald-200/80 text-emerald-950 text-xs font-bold shadow-2xs"
+                        >
+                          <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+                          <span>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Property Photo Gallery Section */}
             <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">

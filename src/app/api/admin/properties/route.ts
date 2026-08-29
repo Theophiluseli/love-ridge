@@ -113,6 +113,7 @@ export async function POST(req: NextRequest) {
       imageUrl: imageUrl || null,
       galleryUrls: Array.isArray(galleryUrls) ? galleryUrls : [],
       contactName: body.contactName || 'Desmond Senanu',
+      amenities: Array.isArray(body.amenities) ? body.amenities : [],
     };
 
     // Save to persistent file store
