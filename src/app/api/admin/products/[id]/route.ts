@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuthPermission } from '@/lib/auth/rbac';
-import { prisma } from '@/lib/db';
+import { saveProduct, deleteProduct, getAllProducts } from '@/lib/products-store';
 import { logAuditAction } from '@/lib/auth/audit';
 
 export async function PATCH(
@@ -15,28 +15,16 @@ export async function PATCH(
     const { id } = params;
     const body = await req.json();
 
-    const existing = await prisma.product.findUnique({ where: { id } });
+    const products = await getAllProducts();
+    const existing = products.find((p) => p.id === id);
     if (!existing) {
       return NextResponse.json({ error: 'Product not found.' }, { status: 404 });
     }
 
-    const updated = await prisma.product.update({
-      where: { id },
-      data: {
-        name: body.name ?? existing.name,
-        description: body.description ?? existing.description,
-        categoryId: body.categoryId ?? existing.categoryId,
-        price: body.price !== undefined ? parseFloat(body.price) : existing.price,
-        unit: body.unit ?? existing.unit,
-        stockQuantity: body.stockQuantity !== undefined ? parseInt(body.stockQuantity) : existing.stockQuantity,
-        stockStatus: body.stockStatus ?? existing.stockStatus,
-        originCountry: body.originCountry ?? existing.originCountry,
-        moq: body.moq !== undefined ? parseInt(body.moq) : existing.moq,
-        status: body.status ?? existing.status,
-        featured: body.featured !== undefined ? Boolean(body.featured) : existing.featured,
-        imageUrl: body.imageUrl !== undefined ? body.imageUrl : existing.imageUrl,
-        galleryUrls: Array.isArray(body.galleryUrls) ? body.galleryUrls : existing.galleryUrls,
-      },
+    const updated = await saveProduct({
+      ...existing,
+      ...body,
+      id,
     });
 
     await logAuditAction({
@@ -64,12 +52,13 @@ export async function DELETE(
 
   try {
     const { id } = params;
-    const existing = await prisma.product.findUnique({ where: { id } });
+    const products = await getAllProducts();
+    const existing = products.find((p) => p.id === id);
     if (!existing) {
       return NextResponse.json({ error: 'Product not found.' }, { status: 404 });
     }
 
-    await prisma.product.delete({ where: { id } });
+    await deleteProduct(id);
 
     await logAuditAction({
       userId: user.userId,

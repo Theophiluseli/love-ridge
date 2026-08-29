@@ -620,7 +620,7 @@ export default function HomePage() {
               </Link>
             </div>
 
-            {loading ? (
+            {loading && products.length === 0 ? (
               <div className="py-12 text-center text-slate-500 text-sm">Loading store inventory...</div>
             ) : (
               <div className="space-y-8">

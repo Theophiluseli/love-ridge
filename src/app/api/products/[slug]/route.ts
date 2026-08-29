@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { getAllProducts } from '@/lib/products-store';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(
   req: NextRequest,
@@ -7,35 +9,28 @@ export async function GET(
 ) {
   try {
     const { slug } = params;
+    const products = await getAllProducts();
 
-    const product = await prisma.product.findFirst({
-      where: {
-        OR: [
-          { slug: slug },
-          { id: slug },
-        ],
-      },
-      include: {
-        category: { include: { parent: true } },
-        media: { include: { media: true } },
-      },
-    });
+    const product = products.find(
+      (p) => p.slug.toLowerCase() === slug.toLowerCase() || p.id.toLowerCase() === slug.toLowerCase()
+    );
 
     if (!product) {
       return NextResponse.json({ error: 'Product not found.' }, { status: 404 });
     }
 
-    const related = await prisma.product.findMany({
-      where: {
-        status: 'PUBLISHED',
-        id: { not: product.id },
-        categoryId: product.categoryId,
-      },
-      take: 4,
-      include: { category: true },
-    });
+    const related = products
+      .filter((p) => p.id !== product.id && p.status === 'PUBLISHED')
+      .slice(0, 4);
 
-    return NextResponse.json({ product, related });
+    return NextResponse.json(
+      { product, related },
+      {
+        headers: {
+          'Cache-Control': 'public, max-age=15, stale-while-revalidate=60',
+        },
+      }
+    );
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch product detail.' }, { status: 500 });
   }

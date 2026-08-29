@@ -1,13 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Package, Globe, Tag, Image as ImageIcon, Sparkles, CheckCircle, Upload, Layers, X, Loader2, Clock } from 'lucide-react';
+import { Plus, Edit2, Trash2, Package, Globe, Tag, Image as ImageIcon, Sparkles, CheckCircle, Upload, Layers, X, Loader2, Clock, Search, RefreshCw } from 'lucide-react';
 import { compressImage } from '@/lib/utils/imageCompressor';
+import { INITIAL_PRODUCTS_STORE, INITIAL_CATEGORIES_STORE } from '@/lib/products-constants';
 
 export default function AdminProductsPage() {
-  const [products, setProducts] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<any[]>(INITIAL_PRODUCTS_STORE);
+  const [categories, setCategories] = useState<any[]>(INITIAL_CATEGORIES_STORE);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PUBLISHED' | 'DRAFT'>('ALL');
 
   // Form View State
   const [activeTab, setActiveTab] = useState<'LIST' | 'CREATE' | 'EDIT'>('LIST');
@@ -16,7 +20,7 @@ export default function AdminProductsPage() {
   const [form, setForm] = useState({
     name: '',
     description: '',
-    categoryId: '',
+    categoryId: 'cat-1',
     sku: '',
     price: '',
     currency: 'GHS',
@@ -37,37 +41,55 @@ export default function AdminProductsPage() {
   const [uploading, setUploading] = useState(false);
 
   async function fetchProducts() {
-    setLoading(true);
+    setRefreshing(true);
     try {
       const token = localStorage.getItem('loveridge_token');
       const [prodRes, catRes] = await Promise.all([
         fetch('/api/admin/products', { headers: { Authorization: `Bearer ${token}` } }),
         fetch('/api/categories'),
       ]);
+      if (prodRes.status === 401) {
+        window.location.href = '/admin/login';
+        return;
+      }
       const prodData = await prodRes.json();
       const catData = await catRes.json();
-      setProducts(prodData.products || []);
+      if (prodData.products && Array.isArray(prodData.products) && prodData.products.length > 0) {
+        setProducts(prodData.products);
+      }
 
       const cats: any[] = [];
       (catData.categories || []).forEach((c: any) => {
         cats.push(c);
         if (c.children) cats.push(...c.children);
       });
-      setCategories(cats);
-
-      if (cats.length > 0 && !form.categoryId) {
-        setForm((prev) => ({ ...prev, categoryId: cats[0].id }));
+      if (cats.length > 0) {
+        setCategories(cats);
+        if (!form.categoryId) {
+          setForm((prev) => ({ ...prev, categoryId: cats[0].id }));
+        }
       }
     } catch (err) {
       console.error('Failed to load products:', err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }
 
   useEffect(() => {
     fetchProducts();
   }, []);
+
+  const filteredProducts = products.filter((prod) => {
+    const matchesStatus = statusFilter === 'ALL' || prod.status === statusFilter;
+    const matchesSearch =
+      !searchQuery.trim() ||
+      prod.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      prod.sku?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      prod.category?.name?.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesStatus && matchesSearch;
+  });
 
   async function handleSave(e: React.FormEvent, targetStatus?: 'DRAFT' | 'PUBLISHED') {
     if (e) e.preventDefault();
@@ -667,9 +689,49 @@ export default function AdminProductsPage() {
       ) : (
         /* VIEW: STORE INVENTORY TABLE */
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-            <h3 className="font-bold text-sm text-slate-900">Store Inventory Items Catalog</h3>
-            <span className="text-xs text-slate-500 font-semibold">{products.length} Total Items</span>
+          <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/70">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search products or SKU..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:border-emerald-600 w-48 sm:w-64"
+                />
+              </div>
+
+              <div className="flex items-center bg-slate-200/80 p-0.5 rounded-xl text-[11px] font-bold">
+                <button
+                  onClick={() => setStatusFilter('ALL')}
+                  className={`px-3 py-1 rounded-lg transition ${statusFilter === 'ALL' ? 'bg-white text-slate-950 shadow-2xs' : 'text-slate-600 hover:text-slate-950'}`}
+                >
+                  All ({products.length})
+                </button>
+                <button
+                  onClick={() => setStatusFilter('PUBLISHED')}
+                  className={`px-3 py-1 rounded-lg transition ${statusFilter === 'PUBLISHED' ? 'bg-white text-emerald-800 shadow-2xs' : 'text-slate-600 hover:text-slate-950'}`}
+                >
+                  Published
+                </button>
+                <button
+                  onClick={() => setStatusFilter('DRAFT')}
+                  className={`px-3 py-1 rounded-lg transition ${statusFilter === 'DRAFT' ? 'bg-white text-amber-800 shadow-2xs' : 'text-slate-600 hover:text-slate-950'}`}
+                >
+                  Drafts
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {refreshing && (
+                <span className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1.5 animate-pulse">
+                  <RefreshCw className="w-3 h-3 animate-spin" /> Syncing...
+                </span>
+              )}
+              <span className="text-xs text-slate-500 font-bold">{filteredProducts.length} Items Listed</span>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -687,20 +749,14 @@ export default function AdminProductsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
-                {loading ? (
-                  <tr>
-                    <td colSpan={8} className="p-8 text-center text-slate-500 font-semibold">
-                      Loading store inventory...
-                    </td>
-                  </tr>
-                ) : products.length === 0 ? (
+                {filteredProducts.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="p-8 text-center text-slate-500 font-semibold">
                       No products found.
                     </td>
                   </tr>
                 ) : (
-                  products.map((prod) => (
+                  filteredProducts.map((prod) => (
                     <tr key={prod.id} className="hover:bg-slate-50 transition">
                       <td className="px-6 py-3">
                         <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-200 overflow-hidden flex items-center justify-center shadow-2xs">
