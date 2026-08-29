@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllProperties } from '@/lib/properties-store';
+import { getAllProperties, sanitizePropertyForPublic } from '@/lib/properties-store';
 
 export const dynamic = 'force-dynamic';
 
@@ -71,8 +71,10 @@ export async function GET(req: NextRequest) {
       properties = properties.filter((p) => p.featured);
     }
 
+    const publicProperties = properties.map(sanitizePropertyForPublic);
+
     return NextResponse.json(
-      { properties, count: properties.length },
+      { properties: publicProperties, count: publicProperties.length },
       {
         headers: {
           'Cache-Control': 'public, max-age=5, stale-while-revalidate=30',
@@ -82,7 +84,8 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error('Error fetching public properties:', error);
     const properties = await getAllProperties();
-    return NextResponse.json({ properties, count: properties.length });
+    const publicProperties = properties.map(sanitizePropertyForPublic);
+    return NextResponse.json({ properties: publicProperties, count: publicProperties.length });
   }
 }
 

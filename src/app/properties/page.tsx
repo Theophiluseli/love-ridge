@@ -300,7 +300,8 @@ export default function PropertiesPage() {
       <InquiryModal
         isOpen={modalState.isOpen}
         onClose={() => setModalState({ isOpen: false })}
-        title="Schedule Property Viewing"
+        title="Property Enquiry"
+        defaultInquiryType="General Consultancy"
         type="PROPERTY_VIEWING"
         propertyId={modalState.propertyId}
         itemName={modalState.itemName}

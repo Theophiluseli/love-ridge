@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Bed, Bath, Maximize2, MapPin, Building, Warehouse as WarehouseIcon, Trees, Clock, Home, Check } from 'lucide-react';
+import { Bed, Bath, Maximize2, MapPin, Building, Warehouse as WarehouseIcon, Trees, Clock, Home, Check, Send } from 'lucide-react';
 import { useCurrency } from '@/context/CurrencyContext';
 import { formatPropertyType } from '@/lib/property-categories';
 
@@ -202,9 +202,9 @@ export default function PropertyCard({ property, onRequestViewing, hidePropertyT
           </Link>
           <button
             onClick={() => onRequestViewing?.(property.id, property.title)}
-            className="gradient-btn py-2 sm:py-2.5 px-3.5 sm:px-4 rounded-xl text-xs font-bold whitespace-nowrap"
+            className="bg-[#034d35] hover:bg-[#023b28] text-white py-2 sm:py-2.5 px-3.5 sm:px-4 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition shadow-xs cursor-pointer"
           >
-            Book Viewing
+            <Send className="w-3 h-3" /> Enquire
           </button>
         </div>
       </div>

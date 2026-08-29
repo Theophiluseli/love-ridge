@@ -33,10 +33,25 @@ export interface PropertyItem {
   contactName?: string;
   contactPhone?: string;
   contactEmail?: string;
+  // Confidential Internal Owner Record (Admin reference only - NEVER exposed to clients)
+  ownerName?: string;
+  ownerPhone?: string;
+  ownerCompany?: string;
   agent?: { id: string; name: string } | null;
   amenities?: string[];
   createdAt: string;
   updatedAt: string;
+}
+
+export function sanitizePropertyForPublic(property: PropertyItem): PropertyItem {
+  const { ownerName, ownerPhone, ownerCompany, ...publicData } = property;
+  return {
+    ...publicData,
+    // Public clients always see official Loveridge Properties brokerage contacts
+    contactName: 'Desmond Senanu',
+    contactPhone: '+233 24 000 1111',
+    contactEmail: 'sales@loveridgeproperties.com',
+  };
 }
 
 export const INITIAL_PROPERTIES_STORE: PropertyItem[] = [
@@ -382,6 +397,9 @@ export async function saveProperty(propData: Partial<PropertyItem>): Promise<Pro
     contactName: propData.contactName || 'Desmond Senanu',
     contactPhone: propData.contactPhone || '+233 24 000 1111',
     contactEmail: propData.contactEmail || 'agent@loveridge.com',
+    ownerName: propData.ownerName || '',
+    ownerPhone: propData.ownerPhone || '',
+    ownerCompany: propData.ownerCompany || '',
     amenities: Array.isArray(propData.amenities)
       ? propData.amenities
       : existingIndex >= 0 && Array.isArray(currentProps[existingIndex].amenities)

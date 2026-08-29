@@ -8,7 +8,7 @@ import InquiryModal from '@/components/InquiryModal';
 import ImageGalleryModal from '@/components/ImageGalleryModal';
 import SocialShare from '@/components/SocialShare';
 import { useCurrency } from '@/context/CurrencyContext';
-import { MapPin, Bed, Bath, Maximize2, Shield, Calendar, ChevronLeft, CheckCircle2, Images, X, PhoneCall, Mail, UserCheck, Home, Clock, Sparkles, Tv, Network, Asterisk, Check, Wind, Flame, Shirt, Fan, Wifi, Trees, Car, Sun } from 'lucide-react';
+import { MapPin, Bed, Bath, Maximize2, Shield, Calendar, ChevronLeft, CheckCircle2, Images, X, PhoneCall, Mail, UserCheck, Home, Clock, Sparkles, Tv, Network, Asterisk, Check, Wind, Flame, Shirt, Fan, Wifi, Trees, Car, Sun, Send } from 'lucide-react';
 import Link from 'next/link';
 import { formatPropertyType } from '@/lib/property-categories';
 
@@ -137,6 +137,7 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
   const [loading, setLoading] = useState<boolean>(!seedMatch);
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [inquiryType, setInquiryType] = useState('General Consultancy');
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [activePhoto, setActivePhoto] = useState<string>(seedMatch?.imageUrl || '');
   const [lightboxIndex, setLightboxIndex] = useState(0);
@@ -751,12 +752,28 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
                 )}
               </div>
 
-              <button
-                onClick={() => setModalOpen(true)}
-                className="gradient-btn w-full py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg"
-              >
-                <Calendar className="w-4 h-4" /> Book Physical Viewing
-              </button>
+              {/* ENQUIRY & VIEWING BUTTONS */}
+              <div className="space-y-2.5">
+                <button
+                  onClick={() => {
+                    setInquiryType('General Consultancy');
+                    setModalOpen(true);
+                  }}
+                  className="w-full bg-[#034d35] hover:bg-[#023b28] text-white py-3.5 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition cursor-pointer"
+                >
+                  <Send className="w-4 h-4" /> Make an Enquiry
+                </button>
+
+                <button
+                  onClick={() => {
+                    setInquiryType('Property Viewing Request');
+                    setModalOpen(true);
+                  }}
+                  className="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 py-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer"
+                >
+                  <Calendar className="w-4 h-4 text-emerald-800" /> Book Physical Viewing
+                </button>
+              </div>
 
               {/* Full Official Loveridge Contact Details Card */}
               <div className="pt-4 border-t border-slate-100 space-y-4">
@@ -829,7 +846,8 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
       <InquiryModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title="Schedule Property Viewing"
+        title="Property Enquiry"
+        defaultInquiryType={inquiryType}
         type="PROPERTY_VIEWING"
         propertyId={property.id}
         itemName={property.title}

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllProperties } from '@/lib/properties-store';
+import { getAllProperties, sanitizePropertyForPublic } from '@/lib/properties-store';
 import { prisma } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -22,10 +22,13 @@ export async function GET(
         .slice(0, 3);
 
       return NextResponse.json(
-        { property: matched, similar },
+        {
+          property: sanitizePropertyForPublic(matched),
+          similar: similar.map(sanitizePropertyForPublic),
+        },
         {
           headers: {
-            'Cache-Control': 'public, max-age=15, stale-while-revalidate=60',
+            'Cache-Control': 'public, max-age=5, stale-while-revalidate=30',
           },
         }
       );

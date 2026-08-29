@@ -55,6 +55,9 @@ export default function AdminPropertiesPage() {
     contactName: 'Kwame Appiah',
     contactPhone: '+233 24 000 1111',
     contactEmail: 'agent@loveridge.com',
+    ownerName: '',
+    ownerPhone: '',
+    ownerCompany: '',
   });
 
   const [galleryInput, setGalleryInput] = useState('');
@@ -298,6 +301,9 @@ export default function AdminPropertiesPage() {
       contactName: existingAgent,
       contactPhone: '+233 24 000 1111',
       contactEmail: 'agent@loveridge.com',
+      ownerName: prop.ownerName || '',
+      ownerPhone: prop.ownerPhone || '',
+      ownerCompany: prop.ownerCompany || '',
     });
 
     if (DEFAULT_AGENTS.includes(existingAgent)) {
@@ -343,6 +349,9 @@ export default function AdminPropertiesPage() {
       contactName: 'Loveridge Staff Agent',
       contactPhone: '+233 24 000 1111',
       contactEmail: 'agent@loveridge.com',
+      ownerName: '',
+      ownerPhone: '',
+      ownerCompany: '',
     });
     setGalleryInput('');
   }
@@ -1021,64 +1030,98 @@ export default function AdminPropertiesPage() {
                 </div>
               </div>
 
-              {/* Assigned Internal Owner / Agent Selection Dropdown */}
-              <div className="space-y-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-800">
-                    Property Owner / Internal Assigned Agent (Internal Record Only) *
-                  </label>
-                  <span className="text-[11px] font-semibold text-emerald-800">
-                    Selected: <strong className="text-slate-900">{form.contactName || 'Kwame Appiah'}</strong>
+              {/* PROPERTY OWNER & SOURCING RECORD (STRICTLY CONFIDENTIAL - ADMIN ONLY) */}
+              <div className="p-6 bg-slate-50/90 rounded-3xl border-2 border-slate-200 space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/80 pb-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-lg bg-emerald-800 text-white flex items-center justify-center text-xs font-black">
+                        🔒
+                      </span>
+                      <h3 className="text-sm font-black text-slate-900">
+                        Property Owner & Sourcing Details (Internal Record Only)
+                      </h3>
+                    </div>
+                    <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                      Confidential broker record to check owner information. Never displayed to clients or on the public website.
+                    </p>
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-900 border border-amber-200 rounded-full text-[11px] font-black self-start sm:self-auto shadow-2xs">
+                    🔒 Strictly Confidential
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* 3 Core Fields: Name, Phone Number, Company/Agency Name */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {/* 1. Name */}
                   <div>
+                    <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                      Owner / Contact Full Name
+                    </label>
+                    <input
+                      type="text"
+                      value={form.ownerName || ''}
+                      onChange={(e) => setForm({ ...form, ownerName: e.target.value })}
+                      placeholder="e.g. Nana Kwame Mensah / Alhaji Issah"
+                      className="admin-input"
+                    />
+                  </div>
+
+                  {/* 2. Phone Number */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                      Owner Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      value={form.ownerPhone || ''}
+                      onChange={(e) => setForm({ ...form, ownerPhone: e.target.value })}
+                      placeholder="e.g. +233 24 123 4567"
+                      className="admin-input"
+                    />
+                  </div>
+
+                  {/* 3. Company / Agency Name */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                      Company / Agency Name
+                    </label>
+                    <input
+                      type="text"
+                      value={form.ownerCompany || ''}
+                      onChange={(e) => setForm({ ...form, ownerCompany: e.target.value })}
+                      placeholder="e.g. GoldKey Properties / Private Landlord"
+                      className="admin-input"
+                    />
+                  </div>
+                </div>
+
+                {/* Internal Assigned Loveridge Staff Broker */}
+                <div className="pt-3 border-t border-slate-200/80 grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                      Assigned Internal Staff Agent
+                    </label>
                     <select
-                      value={agentSelectMode}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setAgentSelectMode(val);
-                        if (val !== 'CUSTOM') {
-                          setForm({ ...form, contactName: val });
-                          setCustomAgentInput('');
-                        } else {
-                          const initialCustom = customAgentInput || '';
-                          setForm({ ...form, contactName: initialCustom });
-                        }
-                      }}
+                      value={form.contactName}
+                      onChange={(e) => setForm({ ...form, contactName: e.target.value })}
                       className="admin-select"
                     >
+                      <option value="Desmond Senanu">Desmond Senanu</option>
                       <option value="Kwame Appiah">Kwame Appiah</option>
-                      <option value="Kwaku Loveridge">Kwaku Loveridge</option>
                       <option value="Sarah Osei">Sarah Osei</option>
+                      <option value="Kwaku Loveridge">Kwaku Loveridge</option>
                       <option value="Loveridge Staff Agent">Loveridge Staff Agent</option>
-                      <option value="CUSTOM">+ Add Property Owner Name...</option>
                     </select>
                   </div>
 
-                  {agentSelectMode === 'CUSTOM' ? (
-                    <div>
-                      <input
-                        type="text"
-                        required
-                        value={customAgentInput}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setCustomAgentInput(val);
-                          setForm({ ...form, contactName: val });
-                        }}
-                        placeholder="Type property owner / agent full name"
-                        className="w-full bg-white border border-emerald-400 rounded-xl px-4 py-3 text-xs text-slate-900 font-bold focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex items-center">
-                      <p className="text-[11px] text-slate-500 font-medium">
-                        🔒 Internal Record Only: Displays property owner / staff agent details on your admin dashboard. Public users only see official Loveridge Properties contact details.
-                      </p>
-                    </div>
-                  )}
+                  <div className="p-3 bg-emerald-50/70 border border-emerald-200/70 rounded-2xl text-[11px] text-emerald-950 font-medium">
+                    <p className="flex items-center gap-1.5 font-bold text-emerald-900 mb-0.5">
+                      <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
+                      Client Privacy Guarantee
+                    </p>
+                    Clients on the public website ONLY see official Loveridge Properties brokerage contacts. The owner name, phone, and company are 100% private to this admin panel.
+                  </div>
                 </div>
               </div>
 
@@ -1370,38 +1413,60 @@ export default function AdminPropertiesPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-200/80 text-xs">
-                    <div className="flex items-center gap-1.5 text-slate-600 font-medium">
-                      <User className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
-                      <span className="truncate max-w-[120px]">{prop.contactName || prop.agent?.name || 'Kwame Appiah'}</span>
+                  <div className="pt-2 border-t border-slate-200/80 space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-slate-900 font-bold">
+                        <User className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
+                        <span className="truncate max-w-[150px]">
+                          {prop.ownerName || prop.contactName || 'Desmond Senanu'}
+                        </span>
+                        <span className="text-[9px] px-1.5 py-0.5 bg-amber-50 text-amber-900 border border-amber-200 rounded font-black">
+                          🔒 Owner Ref
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`px-2 py-0.5 text-[9px] font-black rounded-full uppercase border ${
+                            prop.status === 'PUBLISHED'
+                              ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                              : 'bg-amber-100 text-amber-900 border-amber-300'
+                          }`}
+                        >
+                          {prop.status}
+                        </span>
+
+                        <button
+                          onClick={() => openEdit(prop)}
+                          className="p-1.5 rounded-lg text-slate-700 bg-white border border-slate-200"
+                          title="Edit Property"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(prop.id)}
+                          className="p-1.5 rounded-lg text-rose-600 bg-white border border-rose-200"
+                          title="Delete Property"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`px-2 py-0.5 text-[9px] font-black rounded-full uppercase border ${
-                          prop.status === 'PUBLISHED'
-                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                            : 'bg-amber-100 text-amber-900 border-amber-300'
-                        }`}
-                      >
-                        {prop.status}
-                      </span>
-
-                      <button
-                        onClick={() => openEdit(prop)}
-                        className="p-1.5 rounded-lg text-slate-700 bg-white border border-slate-200"
-                        title="Edit Property"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(prop.id)}
-                        className="p-1.5 rounded-lg text-rose-600 bg-white border border-rose-200"
-                        title="Delete Property"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                    {(prop.ownerPhone || prop.ownerCompany) && (
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 font-medium pl-5">
+                        {prop.ownerPhone && (
+                          <span className="text-emerald-800 font-bold flex items-center gap-1">
+                            <Phone className="w-3 h-3 text-emerald-700" /> {prop.ownerPhone}
+                          </span>
+                        )}
+                        {prop.ownerCompany && (
+                          <span className="truncate max-w-[150px] text-slate-600 font-semibold">
+                            • {prop.ownerCompany}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))
@@ -1417,7 +1482,7 @@ export default function AdminPropertiesPage() {
                   <th className="px-6 py-4">Property Title & Type</th>
                   <th className="px-6 py-4">Price</th>
                   <th className="px-6 py-4">Location</th>
-                  <th className="px-6 py-4">Internal Owner / Agent</th>
+                  <th className="px-6 py-4">Internal Owner / Sourcing Record</th>
                   <th className="px-6 py-4">Featured</th>
                   <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4 text-right">Staff Actions</th>
@@ -1480,12 +1545,27 @@ export default function AdminPropertiesPage() {
                       </td>
                       <td className="px-6 py-4 text-slate-600">{prop.city}</td>
 
-                      {/* INTERNAL OWNER / AGENT COLUMN */}
+                      {/* INTERNAL OWNER / SOURCING RECORD COLUMN */}
                       <td className="px-6 py-4 font-bold text-slate-800">
-                        <div className="flex items-center gap-1.5">
-                          <User className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
-                          <span className="truncate max-w-[140px] block" title={prop.contactName || prop.agent?.name || 'Kwame Appiah'}>
-                            {prop.contactName || prop.agent?.name || 'Kwame Appiah'}
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5 text-slate-900 font-extrabold text-xs">
+                            <User className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
+                            <span className="truncate max-w-[150px]" title={prop.ownerName || prop.contactName || 'Desmond Senanu'}>
+                              {prop.ownerName || prop.contactName || 'Desmond Senanu'}
+                            </span>
+                          </div>
+                          {prop.ownerPhone && (
+                            <div className="text-[11px] text-emerald-800 font-bold flex items-center gap-1">
+                              <Phone className="w-3 h-3 text-emerald-700 shrink-0" /> {prop.ownerPhone}
+                            </div>
+                          )}
+                          {prop.ownerCompany && (
+                            <div className="text-[10px] text-slate-500 font-medium truncate max-w-[160px]" title={prop.ownerCompany}>
+                              {prop.ownerCompany}
+                            </div>
+                          )}
+                          <span className="inline-flex items-center gap-0.5 text-[9px] text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 font-black uppercase">
+                            🔒 Confidential
                           </span>
                         </div>
                       </td>
