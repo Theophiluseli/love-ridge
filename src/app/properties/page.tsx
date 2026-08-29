@@ -20,6 +20,8 @@ const INITIAL_PROPERTIES = [
     price: 450000,
     currency: 'USD',
     pricePeriod: 'outright purchase',
+    negotiable: true,
+    commission: '5% Standard Agency Fee',
     bedrooms: 4,
     bathrooms: 5,
     sizeSqft: 4500,
