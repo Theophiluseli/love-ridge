@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Package, Globe, Tag, Image as ImageIcon, Sparkles, CheckCircle, Upload, Layers, X, Loader2, Clock, Search, RefreshCw } from 'lucide-react';
-import { compressImage } from '@/lib/utils/imageCompressor';
+import { compressImage, watermarkImage } from '@/lib/utils/imageCompressor';
 import { INITIAL_PRODUCTS_STORE, INITIAL_CATEGORIES_STORE } from '@/lib/products-constants';
 
 export default function AdminProductsPage() {
@@ -320,13 +320,22 @@ export default function AdminProductsPage() {
     }
   }
 
-  function addGalleryUrl() {
+  async function addGalleryUrl() {
     if (!galleryInput.trim()) return;
-    setForm((prev) => ({
-      ...prev,
-      galleryUrls: [...prev.galleryUrls, galleryInput.trim()],
-    }));
+    const url = galleryInput.trim();
     setGalleryInput('');
+    try {
+      const watermarked = await watermarkImage(url, 1200, 1200, 0.8);
+      setForm((prev) => ({
+        ...prev,
+        galleryUrls: [...prev.galleryUrls, watermarked],
+      }));
+    } catch {
+      setForm((prev) => ({
+        ...prev,
+        galleryUrls: [...prev.galleryUrls, url],
+      }));
+    }
   }
 
   function removeGalleryUrl(index: number) {
@@ -514,11 +523,16 @@ export default function AdminProductsPage() {
               <div className="p-6 bg-slate-50/80 rounded-3xl border border-slate-200 space-y-6">
                 <div className="border-b border-slate-200 pb-3 flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                      <ImageIcon className="w-4 h-4 text-emerald-700" /> Product Cover Photo & Multi-Image Gallery
-                    </h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                        <ImageIcon className="w-4 h-4 text-emerald-700" /> Product Cover Photo & Multi-Image Gallery
+                      </h3>
+                      <span className="text-[10px] text-emerald-800 bg-emerald-50 border border-emerald-200 font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                        🛡️ Loveridge Watermark Applied
+                      </span>
+                    </div>
                     <p className="text-[11px] text-slate-500 font-medium">
-                      Upload image files or paste URLs. Photos uploaded here will populate the product gallery switcher for buyers on the frontend.
+                      All uploaded product photos automatically carry the official Loveridge signature watermark for copyright protection.
                     </p>
                   </div>
                 </div>

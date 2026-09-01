@@ -81,7 +81,6 @@ export const INITIAL_PROPERTIES_STORE: PropertyItem[] = [
     currency: 'USD',
     pricePeriod: 'outright purchase',
     negotiable: true,
-    commission: '5% Standard Agency Fee',
     bedrooms: 4,
     bathrooms: 5,
     guestRooms: 1,

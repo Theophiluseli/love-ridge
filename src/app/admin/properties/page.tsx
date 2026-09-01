@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, CheckCircle, Search, ShieldCheck, Eye, Image as ImageIcon, Trees, Warehouse, Building, Building2, Upload, ArrowRight, X, Sparkles, Phone, Mail, User, Loader2, Clock, Tv, Network, Asterisk, Check } from 'lucide-react';
 import Link from 'next/link';
-import { compressImage } from '@/lib/utils/imageCompressor';
+import { compressImage, watermarkImage } from '@/lib/utils/imageCompressor';
 import { AMENITY_GROUPS, ALL_AMENITIES_LIST } from '@/lib/amenities-constants';
 import { BUILT_PROPERTY_TYPES, LAND_PROPERTY_TYPE, formatPropertyType, isResidentialProperty } from '@/lib/property-categories';
 
@@ -36,7 +36,7 @@ export default function AdminPropertiesPage() {
     currency: 'USD',
     pricePeriod: 'per month',
     negotiable: true,
-    commission: '5% Standard',
+    commission: '',
     bedrooms: '0',
     bathrooms: '0',
     guestRooms: '0',
@@ -330,7 +330,7 @@ export default function AdminPropertiesPage() {
       currency: 'USD',
       pricePeriod: 'outright purchase',
       negotiable: true,
-      commission: '5% Standard',
+      commission: '',
       bedrooms: '0',
       bathrooms: '0',
       guestRooms: '0',
@@ -393,13 +393,22 @@ export default function AdminPropertiesPage() {
     }
   }
 
-  function addGalleryUrl() {
+  async function addGalleryUrl() {
     if (!galleryInput.trim()) return;
-    setForm((prev) => ({
-      ...prev,
-      galleryUrls: [...prev.galleryUrls, galleryInput.trim()],
-    }));
+    const url = galleryInput.trim();
     setGalleryInput('');
+    try {
+      const watermarked = await watermarkImage(url, 1200, 1200, 0.8);
+      setForm((prev) => ({
+        ...prev,
+        galleryUrls: [...prev.galleryUrls, watermarked],
+      }));
+    } catch {
+      setForm((prev) => ({
+        ...prev,
+        galleryUrls: [...prev.galleryUrls, url],
+      }));
+    }
   }
 
   function removeGalleryUrl(index: number) {
@@ -933,10 +942,10 @@ export default function AdminPropertiesPage() {
                 </div>
               </div>
 
-              {/* PRICING TERMS: NEGOTIABLE & COMMISSION (Matching user screenshot) */}
-              <div className="p-5 bg-slate-50/90 rounded-2xl border border-slate-200 space-y-4">
+              {/* PRICING TERMS: NEGOTIABLE */}
+              <div className="p-5 bg-slate-50/90 rounded-2xl border border-slate-200">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  {/* [✓] Negotiable (Exact visual layout from screenshot) */}
+                  {/* [✓] Negotiable */}
                   <label className="flex items-center gap-3 cursor-pointer select-none">
                     <div
                       onClick={() => setForm({ ...form, negotiable: !form.negotiable })}
@@ -964,40 +973,6 @@ export default function AdminPropertiesPage() {
                   <span className="text-xs font-medium text-slate-500">
                     {form.negotiable ? '✓ Price will be shown as Negotiable to clients' : 'Fixed price / non-negotiable'}
                   </span>
-                </div>
-
-                {/* Commission Field (Matching screenshot) */}
-                <div className="pt-3 border-t border-slate-200/80 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold text-slate-800">Commission</label>
-                    <span className="text-[11px] text-slate-400 font-medium">Brokerage fee / agency terms</span>
-                  </div>
-                  <input
-                    type="text"
-                    value={form.commission}
-                    onChange={(e) => setForm({ ...form, commission: e.target.value })}
-                    placeholder="e.g. 5% Standard Agency Fee, 1 Month Rent, or Negotiable"
-                    className="admin-input"
-                  />
-                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                    <span className="text-[10px] font-bold text-slate-400 mr-1">Presets:</span>
-                    {['5% Standard', '10% Commission', '1 Month Rent', 'Negotiable', 'No Commission (0%)'].map(
-                      (preset) => (
-                        <button
-                          key={preset}
-                          type="button"
-                          onClick={() => setForm({ ...form, commission: preset })}
-                          className={`text-[11px] px-2.5 py-1 rounded-lg font-bold border transition ${
-                            form.commission === preset
-                              ? 'bg-emerald-800 text-white border-emerald-800 shadow-2xs'
-                              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
-                          }`}
-                        >
-                          {preset}
-                        </button>
-                      )
-                    )}
-                  </div>
                 </div>
               </div>
 
@@ -1129,11 +1104,16 @@ export default function AdminPropertiesPage() {
               <div className="p-6 bg-slate-50/80 rounded-3xl border border-slate-200 space-y-6">
                 <div className="border-b border-slate-200 pb-3 flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                      <ImageIcon className="w-4 h-4 text-emerald-700" /> Property Cover Photo & Gallery Uploads
-                    </h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                        <ImageIcon className="w-4 h-4 text-emerald-700" /> Property Cover Photo & Gallery Uploads
+                      </h3>
+                      <span className="text-[10px] text-emerald-800 bg-emerald-50 border border-emerald-200 font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                        🛡️ Loveridge Watermark Applied
+                      </span>
+                    </div>
                     <p className="text-[11px] text-slate-500 font-medium">
-                      Upload image files or paste URLs. Uploaded images instantly reflect on the frontend property listing page.
+                      All uploaded photos automatically carry the official Loveridge signature watermark for copyright protection.
                     </p>
                   </div>
                 </div>
@@ -1404,11 +1384,6 @@ export default function AdminPropertiesPage() {
                             <Check className="w-2.5 h-2.5 stroke-[3]" /> Neg.
                           </span>
                         )}
-                        {prop.commission && (
-                          <span className="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-bold">
-                            {prop.commission}
-                          </span>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -1536,11 +1511,6 @@ export default function AdminPropertiesPage() {
                           <span className="text-[10px] text-blue-700 font-black flex items-center gap-0.5 mt-0.5">
                             <Check className="w-3 h-3 stroke-[3]" /> Negotiable
                           </span>
-                        )}
-                        {prop.commission && (
-                          <div className="text-[10px] text-slate-400 font-semibold truncate max-w-[120px]">
-                            Fee: {prop.commission}
-                          </div>
                         )}
                       </td>
                       <td className="px-6 py-4 text-slate-600">{prop.city}</td>

@@ -21,7 +21,7 @@ import {
   Loader2,
   Link as LinkIcon
 } from 'lucide-react';
-import { compressImage } from '@/lib/utils/imageCompressor';
+import { compressImage, watermarkImage } from '@/lib/utils/imageCompressor';
 
 interface HeroSlideItem {
   id: string;
@@ -183,26 +183,8 @@ export default function AdminHeroPage() {
       const newItems: HeroSlideItem[] = [];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        let imageUrl = '';
-
-        try {
-          const formData = new FormData();
-          formData.append('file', file);
-          const uploadRes = await fetch('/api/upload', {
-            method: 'POST',
-            body: formData,
-          });
-          const uploadData = await uploadRes.json();
-          if (uploadRes.ok && uploadData.url) {
-            imageUrl = uploadData.url;
-          }
-        } catch (upErr) {
-          console.warn('Upload API failed, using compressed fallback:', upErr);
-        }
-
-        if (!imageUrl) {
-          imageUrl = await compressImage(file, 1600, 900, 0.70);
-        }
+        // Automatically compress and stamp Loveridge logo watermark
+        const imageUrl = await compressImage(file, 1600, 900, 0.75);
 
         newItems.push({
           id: `hero-${Date.now()}-${i}`,
@@ -232,26 +214,8 @@ export default function AdminHeroPage() {
 
     try {
       const file = files[0];
-      let imageUrl = '';
-
-      try {
-        const formData = new FormData();
-        formData.append('file', file);
-        const uploadRes = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
-        const uploadData = await uploadRes.json();
-        if (uploadRes.ok && uploadData.url) {
-          imageUrl = uploadData.url;
-        }
-      } catch (upErr) {
-        console.warn('Upload API failed, using compressed fallback:', upErr);
-      }
-
-      if (!imageUrl) {
-        imageUrl = await compressImage(file, 1600, 900, 0.70);
-      }
+      // Automatically compress and stamp Loveridge logo watermark
+      const imageUrl = await compressImage(file, 1600, 900, 0.75);
 
       const updated = [...slides];
       updated[index].imageUrl = imageUrl;
@@ -273,13 +237,18 @@ export default function AdminHeroPage() {
     persistSlides(updated);
   }
 
-  function handleAddByUrl(e: React.FormEvent) {
+  async function handleAddByUrl(e: React.FormEvent) {
     e.preventDefault();
     if (!newSlideUrl.trim()) return;
+    const url = newSlideUrl.trim();
+    let finalUrl = url;
+    try {
+      finalUrl = await watermarkImage(url, 1600, 900, 0.75);
+    } catch {}
 
     const newItem: HeroSlideItem = {
       id: `hero-${Date.now()}`,
-      imageUrl: newSlideUrl.trim(),
+      imageUrl: finalUrl,
       title: newSlideTitle.trim() || 'Custom Hero Slide',
       active: true,
       order: slides.length + 1,

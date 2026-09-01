@@ -22,7 +22,6 @@ const SEED_PROPERTIES: Record<string, any> = {
     currency: 'USD',
     pricePeriod: 'outright purchase',
     negotiable: true,
-    commission: '5% Standard Agency Fee',
     listingType: 'SALE',
     propertyType: 'HOUSE',
     bedrooms: 4,
@@ -65,7 +64,6 @@ const SEED_PROPERTIES: Record<string, any> = {
     currency: 'USD',
     pricePeriod: 'per month',
     negotiable: true,
-    commission: '1 Month Rent Brokerage',
     listingType: 'RENT',
     propertyType: 'APARTMENT',
     bedrooms: 2,
@@ -524,15 +522,6 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
                     )}
                   </span>
                 </div>
-
-                {property.commission && (
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
-                    <span className="text-slate-500 text-[11px] block">Commission</span>
-                    <span className="text-slate-900 font-bold block truncate" title={property.commission}>
-                      {property.commission}
-                    </span>
-                  </div>
-                )}
               </div>
 
               {/* Description Body */}
@@ -740,16 +729,6 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
                     </span>
                   )}
                 </div>
-
-                {/* Commission / Brokerage Terms */}
-                {property.commission && (
-                  <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs font-semibold">
-                    <span className="text-slate-500">Commission / Agency Fee:</span>
-                    <span className="text-slate-900 font-bold bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
-                      {property.commission}
-                    </span>
-                  </div>
-                )}
               </div>
 
               {/* ENQUIRY & VIEWING BUTTONS */}
