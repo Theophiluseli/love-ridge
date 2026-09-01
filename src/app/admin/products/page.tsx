@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Package, Globe, Tag, Image as ImageIcon, Sparkles, CheckCircle, Upload, Layers, X, Loader2, Clock, Search, RefreshCw } from 'lucide-react';
-import { compressImage, watermarkImage } from '@/lib/utils/imageCompressor';
+import { Plus, Edit2, Trash2, Package, Globe, Tag, Image as ImageIcon, CheckCircle, Upload, Layers, X, Loader2, Clock, Search, RefreshCw, Link2, ExternalLink, Copy, Check, Zap, AlertTriangle } from 'lucide-react';
+import { compressImage, watermarkImage, optimizeImageToWebP, ImageOptimizationReport } from '@/lib/utils/imageCompressor';
 import { INITIAL_PRODUCTS_STORE, INITIAL_CATEGORIES_STORE } from '@/lib/products-constants';
+import ImageOptimizationModal from '@/components/ImageOptimizationModal';
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<any[]>(INITIAL_PRODUCTS_STORE);
@@ -22,7 +23,9 @@ export default function AdminProductsPage() {
     description: '',
     categoryId: 'cat-1',
     sku: '',
+    referenceUrl: '',
     price: '',
+    priceCny: '',
     currency: 'GHS',
     unit: 'per piece',
     stockQuantity: '50',
@@ -35,7 +38,13 @@ export default function AdminProductsPage() {
     galleryUrls: [] as string[],
   });
 
-  const [galleryInput, setGalleryInput] = useState('')
+  const [galleryInput, setGalleryInput] = useState('');
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedRowId, setCopiedRowId] = useState<string | null>(null);
+  const [optimizationReports, setOptimizationReports] = useState<ImageOptimizationReport[]>([]);
+  const [showOptimizationModal, setShowOptimizationModal] = useState(false);
+  const [pendingCoverUrl, setPendingCoverUrl] = useState<string | null>(null);
+  const [pendingGalleryUrls, setPendingGalleryUrls] = useState<string[] | null>(null);
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -245,8 +254,10 @@ export default function AdminProductsPage() {
       name: prod.name,
       description: prod.description,
       categoryId: prod.categoryId,
-      sku: prod.sku,
-      price: prod.price.toString(),
+      sku: prod.sku || 'SKU-' + Math.floor(100000 + Math.random() * 900000),
+      referenceUrl: prod.referenceUrl || '',
+      price: prod.price?.toString() || '',
+      priceCny: prod.priceCny ? prod.priceCny.toString() : (prod.price ? (prod.price * 0.47).toFixed(2) : ''),
       currency: prod.currency || 'GHS',
       unit: prod.unit,
       stockQuantity: prod.stockQuantity.toString(),
@@ -258,6 +269,7 @@ export default function AdminProductsPage() {
       imageUrl: prod.imageUrl || '',
       galleryUrls: Array.isArray(prod.galleryUrls) ? prod.galleryUrls : [],
     });
+    setCopiedLink(false);
     setActiveTab('EDIT');
   }
 
@@ -268,7 +280,9 @@ export default function AdminProductsPage() {
       description: '',
       categoryId: categories[0]?.id || '',
       sku: 'SKU-' + Math.floor(100000 + Math.random() * 900000),
+      referenceUrl: '',
       price: '',
+      priceCny: '',
       currency: 'GHS',
       unit: 'per piece',
       stockQuantity: '50',
@@ -280,45 +294,77 @@ export default function AdminProductsPage() {
       imageUrl: '',
       galleryUrls: [],
     });
+    setCopiedLink(false);
     setGalleryInput('');
   }
 
-  // Cover Image File Upload Handler (Compresses image client-side to prevent Vercel 413 payload limit error)
+  // Cover Image File Upload Handler (Calculates size and opens popup if above 300KB standard)
   async function handleCoverFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
     try {
-      const compressed = await compressImage(file, 1200, 1200, 0.8);
-      setForm((prev) => ({ ...prev, imageUrl: compressed }));
+      const report = await optimizeImageToWebP(file, true);
+      setOptimizationReports([report]);
+      if (report.isAboveStandard) {
+        // File exceeded 300KB: open calculation warning popup and allow manual reupload or auto-reduce
+        setPendingCoverUrl(report.dataUrl);
+        setShowOptimizationModal(true);
+      } else {
+        // File meets the standard, apply directly
+        setForm((prev) => ({ ...prev, imageUrl: report.dataUrl }));
+      }
     } catch (err) {
-      console.error('Failed to compress cover image:', err);
+      console.error('Failed to process cover image:', err);
       alert('Failed to process image file.');
     } finally {
       setUploading(false);
+      e.target.value = '';
     }
   }
 
-  // Gallery File Upload Handler (Compresses all gallery files client-side)
+  // Gallery File Upload Handler (Calculates sizes and opens popup if any file is above 300KB)
   async function handleGalleryFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     setUploading(true);
     try {
-      const compressedImages = await Promise.all(
-        Array.from(files).map((file) => compressImage(file, 1200, 1200, 0.8))
+      const reports = await Promise.all(
+        Array.from(files).map((file) => optimizeImageToWebP(file, true))
       );
-      setForm((prev) => ({
-        ...prev,
-        galleryUrls: [...prev.galleryUrls, ...compressedImages],
-      }));
+      setOptimizationReports(reports);
+      const hasOversized = reports.some((r) => r.isAboveStandard);
+      if (hasOversized) {
+        setPendingGalleryUrls(reports.map((r) => r.dataUrl));
+        setShowOptimizationModal(true);
+      } else {
+        setForm((prev) => ({
+          ...prev,
+          galleryUrls: [...prev.galleryUrls, ...reports.map((r) => r.dataUrl)],
+        }));
+      }
     } catch (err) {
-      console.error('Failed to compress gallery images:', err);
+      console.error('Failed to process gallery images:', err);
       alert('Failed to process gallery images.');
     } finally {
       setUploading(false);
+      e.target.value = '';
     }
   }
+
+  const handleConfirmAutoOptimization = () => {
+    if (pendingCoverUrl) {
+      setForm((prev) => ({ ...prev, imageUrl: pendingCoverUrl }));
+      setPendingCoverUrl(null);
+    }
+    if (pendingGalleryUrls) {
+      setForm((prev) => ({
+        ...prev,
+        galleryUrls: [...prev.galleryUrls, ...pendingGalleryUrls],
+      }));
+      setPendingGalleryUrls(null);
+    }
+  };
 
   async function addGalleryUrl() {
     if (!galleryInput.trim()) return;
@@ -404,9 +450,9 @@ export default function AdminProductsPage() {
             </div>
 
             <form onSubmit={handleSave} className="space-y-6">
-              {/* Name & SKU */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="sm:col-span-2">
+              {/* Name & Reference Link */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div>
                   <label className="block text-xs font-bold text-slate-800 mb-2">Product Full Name *</label>
                   <input
                     type="text"
@@ -419,20 +465,52 @@ export default function AdminProductsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-800 mb-2">Product Stock SKU *</label>
-                  <input
-                    type="text"
-                    required
-                    value={form.sku}
-                    onChange={(e) => setForm({ ...form, sku: e.target.value })}
-                    placeholder="e.g. TILE-PORC-60120"
-                    className="admin-input"
-                  />
+                  <label className="block text-xs font-bold text-slate-800 mb-2">
+                    Product Reference Link (Supplier / Source URL)
+                  </label>
+                  <div className="flex rounded-xl border border-slate-300/80 overflow-hidden focus-within:border-emerald-700 focus-within:ring-2 focus-within:ring-emerald-700/15 bg-white shadow-xs transition h-12">
+                    <span className="inline-flex items-center px-3 bg-slate-100 text-slate-600 font-bold text-xs border-r border-slate-200 select-none shrink-0">
+                      <Link2 className="w-3.5 h-3.5 text-slate-500 mr-1" /> URL
+                    </span>
+                    <input
+                      type="url"
+                      value={form.referenceUrl}
+                      onChange={(e) => setForm({ ...form, referenceUrl: e.target.value })}
+                      placeholder="Paste 1688, Alibaba, Taobao, or factory supplier link..."
+                      className="w-full bg-transparent px-3.5 py-2.5 text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none h-full"
+                    />
+                    {form.referenceUrl && (
+                      <div className="flex items-center pr-2 gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(form.referenceUrl);
+                            setCopiedLink(true);
+                            setTimeout(() => setCopiedLink(false), 2000);
+                          }}
+                          className="px-2.5 py-1 text-xs font-bold bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 rounded-lg border border-slate-200 flex items-center gap-1 transition"
+                          title="Copy Link to Clipboard"
+                        >
+                          {copiedLink ? <Check className="w-3 h-3 text-emerald-700" /> : <Copy className="w-3 h-3" />}
+                          {copiedLink ? 'Copied' : 'Copy'}
+                        </button>
+                        <a
+                          href={form.referenceUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="p-1.5 text-slate-500 hover:text-emerald-800 rounded-lg hover:bg-slate-100 transition"
+                          title="Open Link in New Tab"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Category, Unit Price & Unit */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Category, Ghana Cedis Price, Chinese Yuan Price & Unit */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-800 mb-2">Catalogue Category *</label>
                   <select
@@ -451,16 +529,56 @@ export default function AdminProductsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-800 mb-2">Unit Price (GHS) *</label>
-                  <input
-                    type="number"
-                    required
-                    step="0.01"
-                    value={form.price}
-                    onChange={(e) => setForm({ ...form, price: e.target.value })}
-                    placeholder="e.g. 145.00"
-                    className="admin-input"
-                  />
+                  <label className="block text-xs font-bold text-slate-800 mb-2 flex items-center justify-between">
+                    <span>Price in Cedis (GH₵) *</span>
+                    <span className="text-[10px] text-emerald-800 bg-emerald-100 font-black px-1.5 py-0.5 rounded">
+                      GHS
+                    </span>
+                  </label>
+                  <div className="flex rounded-xl border border-slate-300/80 overflow-hidden focus-within:border-emerald-700 focus-within:ring-2 focus-within:ring-emerald-700/15 bg-white shadow-xs transition h-12">
+                    <span className="inline-flex items-center px-3.5 bg-slate-100 text-slate-700 font-black text-xs border-r border-slate-200 select-none shrink-0">
+                      GH₵
+                    </span>
+                    <input
+                      type="number"
+                      required
+                      step="0.01"
+                      value={form.price}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const num = parseFloat(val);
+                        setForm((prev) => ({
+                          ...prev,
+                          price: val,
+                          priceCny: !prev.priceCny || isNaN(num) ? (isNaN(num) ? '' : (num * 0.47).toFixed(2)) : prev.priceCny,
+                        }));
+                      }}
+                      placeholder="145.00"
+                      className="w-full bg-transparent px-3.5 py-2.5 text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none h-full"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 mb-2 flex items-center justify-between">
+                    <span>Price in Chinese Yuan (¥) *</span>
+                    <span className="text-[10px] text-red-800 bg-red-100 font-black px-1.5 py-0.5 rounded">
+                      CNY / RMB
+                    </span>
+                  </label>
+                  <div className="flex rounded-xl border border-slate-300/80 overflow-hidden focus-within:border-red-600 focus-within:ring-2 focus-within:ring-red-600/15 bg-white shadow-xs transition h-12">
+                    <span className="inline-flex items-center px-3.5 bg-red-50 text-red-800 font-black text-xs border-r border-red-200 select-none shrink-0">
+                      ¥ CNY
+                    </span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={form.priceCny}
+                      onChange={(e) => setForm({ ...form, priceCny: e.target.value })}
+                      placeholder="68.00"
+                      className="w-full bg-transparent px-3.5 py-2.5 text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none h-full"
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -521,18 +639,21 @@ export default function AdminProductsPage() {
 
               {/* PRODUCT COVER IMAGE & MULTI-IMAGE GALLERY UPLOADER SECTION */}
               <div className="p-6 bg-slate-50/80 rounded-3xl border border-slate-200 space-y-6">
-                <div className="border-b border-slate-200 pb-3 flex items-center justify-between">
+                <div className="border-b border-slate-200 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                         <ImageIcon className="w-4 h-4 text-emerald-700" /> Product Cover Photo & Multi-Image Gallery
                       </h3>
-                      <span className="text-[10px] text-emerald-800 bg-emerald-50 border border-emerald-200 font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
-                        🛡️ Loveridge Watermark Applied
+                      <span className="text-[10px] text-emerald-900 bg-emerald-100/90 border border-emerald-300 font-black px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 shadow-2xs">
+                        <Zap className="w-3 h-3 text-emerald-700" /> 200–300KB WebP Standard
+                      </span>
+                      <span className="text-[10px] text-slate-700 bg-white border border-slate-200 font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 shadow-2xs">
+                        🛡️ Watermark Stamped
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-500 font-medium">
-                      All uploaded product photos automatically carry the official Loveridge signature watermark for copyright protection.
+                    <p className="text-[11px] text-slate-500 font-medium mt-1">
+                      Files are automatically converted to high-speed <strong>WebP (200KB–300KB limit)</strong> and watermarked with Loveridge official signature.
                     </p>
                   </div>
                 </div>
@@ -790,11 +911,53 @@ export default function AdminProductsPage() {
                       </td>
                       <td className="px-6 py-4 font-bold text-slate-900 max-w-xs">
                         <div className="text-sm text-slate-900 line-clamp-1">{prod.name}</div>
-                        <div className="text-[10px] font-mono text-emerald-800">SKU: {prod.sku}</div>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className="text-[10px] font-mono text-slate-400">SKU: {prod.sku}</span>
+                          {prod.referenceUrl ? (
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(prod.referenceUrl);
+                                  setCopiedRowId(prod.id);
+                                  setTimeout(() => setCopiedRowId(null), 2000);
+                                }}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 transition"
+                                title={`Copy supplier link: ${prod.referenceUrl}`}
+                              >
+                                {copiedRowId === prod.id ? (
+                                  <>
+                                    <Check className="w-2.5 h-2.5 text-emerald-700" /> Copied!
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-2.5 h-2.5" /> Copy Ref Link
+                                  </>
+                                )}
+                              </button>
+                              <a
+                                href={prod.referenceUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="p-1 text-slate-400 hover:text-emerald-700 transition"
+                                title="Open Supplier Link in New Tab"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 italic">No ref link</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-slate-600 font-semibold">{prod.category?.name || 'Store Item'}</td>
-                      <td className="px-6 py-4 font-extrabold text-slate-900">
-                        {prod.currency || 'GHS'} {prod.price.toLocaleString()}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="font-extrabold text-slate-900 text-sm">
+                          GH₵ {Number(prod.price).toLocaleString()}
+                        </div>
+                        <div className="text-[11px] font-bold text-red-700 bg-red-50 border border-red-200/80 px-2 py-0.5 rounded-md inline-block mt-0.5">
+                          ¥ {Number(prod.priceCny || Math.round(prod.price * 0.47)).toLocaleString()} CNY
+                        </div>
                       </td>
 
                       {/* STATUS TOGGLE BUTTON COLUMN */}
@@ -884,6 +1047,19 @@ export default function AdminProductsPage() {
           </div>
         </div>
       )}
+
+      {/* Fast-Load WebP Image Optimization Report & Popup Modal */}
+      <ImageOptimizationModal
+        isOpen={showOptimizationModal}
+        onClose={() => {
+          setShowOptimizationModal(false);
+          setPendingCoverUrl(null);
+          setPendingGalleryUrls(null);
+        }}
+        onAutoOptimizeConfirm={handleConfirmAutoOptimization}
+        reports={optimizationReports}
+        title="Image Size Exceeded Fast-Load Standard"
+      />
     </div>
   );
 }

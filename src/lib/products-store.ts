@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { prisma } from './db';
+import { getSystemSetting, setSystemSetting } from './system-settings';
 import {
   ProductItem,
   ProductCategoryItem,
@@ -63,6 +64,21 @@ export async function getAllProducts(): Promise<ProductItem[]> {
     return cachedProducts;
   }
 
+  // 1. Check PostgreSQL system_settings cloud catalog first
+  try {
+    const { data: dbCatalog, isDefault } = await getSystemSetting<ProductItem[]>(
+      'products_catalog',
+      INITIAL_PRODUCTS_STORE
+    );
+    if (!isDefault && Array.isArray(dbCatalog) && dbCatalog.length > 0) {
+      cachedProducts = dbCatalog;
+      cacheTime = now;
+      return dbCatalog;
+    }
+  } catch (e) {
+    console.warn('Could not read products from system_settings:', e);
+  }
+
   const fileProducts = readProductsFromFile();
 
   try {
@@ -86,7 +102,9 @@ export async function getAllProducts(): Promise<ProductItem[]> {
         categoryId: p.categoryId,
         category: p.category ? { id: p.category.id, name: p.category.name, slug: p.category.slug } : null,
         sku: p.sku,
+        referenceUrl: (p as any).referenceUrl || '',
         price: p.price,
+        priceCny: (p as any).priceCny || Math.round(p.price * 0.47),
         currency: p.currency,
         unit: p.unit,
         stockQuantity: p.stockQuantity,
@@ -118,17 +136,26 @@ export async function getAllProducts(): Promise<ProductItem[]> {
 }
 
 export async function saveProduct(prodData: Partial<ProductItem>): Promise<ProductItem> {
-  const fileProducts = readProductsFromFile();
+  const currentProducts = await getAllProducts();
+  const fileProducts = [...currentProducts];
   const now = new Date().toISOString();
 
   let existingIndex = -1;
   if (prodData.id) {
     existingIndex = fileProducts.findIndex((p) => p.id === prodData.id);
   }
+  if (existingIndex === -1 && prodData.slug) {
+    existingIndex = fileProducts.findIndex((p) => p.slug === prodData.slug);
+  }
 
   const categoryName = prodData.category?.name || 
     INITIAL_CATEGORIES_STORE.find(c => c.id === prodData.categoryId)?.name || 
     'Tools & Construction';
+
+  const ghsPrice = typeof prodData.price === 'number' ? prodData.price : parseFloat(prodData.price as any) || 0;
+  const cnyPrice = prodData.priceCny !== undefined && prodData.priceCny !== null
+    ? (typeof prodData.priceCny === 'number' ? prodData.priceCny : parseFloat(prodData.priceCny as any) || 0)
+    : Math.round(ghsPrice * 0.47);
 
   const newProduct: ProductItem = {
     id: prodData.id || `prod-${Date.now()}`,
@@ -141,7 +168,9 @@ export async function saveProduct(prodData: Partial<ProductItem>): Promise<Produ
       name: categoryName,
     },
     sku: prodData.sku || `SKU-${Date.now().toString().slice(-6)}`,
-    price: typeof prodData.price === 'number' ? prodData.price : parseFloat(prodData.price as any) || 0,
+    referenceUrl: prodData.referenceUrl || '',
+    price: ghsPrice,
+    priceCny: cnyPrice,
     currency: prodData.currency || 'GHS',
     unit: prodData.unit || 'per piece',
     stockQuantity: typeof prodData.stockQuantity === 'number' ? prodData.stockQuantity : parseInt(prodData.stockQuantity as any) || 0,
@@ -162,11 +191,15 @@ export async function saveProduct(prodData: Partial<ProductItem>): Promise<Produ
     fileProducts.unshift(newProduct);
   }
 
+  // 1. Save permanently in PostgreSQL system_settings table
+  await setSystemSetting('products_catalog', fileProducts);
+
+  // 2. Best-effort local file write
   writeProductsToFile(fileProducts);
   cachedProducts = fileProducts;
   cacheTime = Date.now();
 
-  // Async Prisma save in background without blocking response
+  // 3. Async Prisma save in background without blocking response
   (async () => {
     try {
       if (prodData.id) {
@@ -193,8 +226,9 @@ export async function saveProduct(prodData: Partial<ProductItem>): Promise<Produ
 }
 
 export async function deleteProduct(id: string): Promise<boolean> {
-  const fileProducts = readProductsFromFile();
-  const updated = fileProducts.filter((p) => p.id !== id);
+  const currentProducts = await getAllProducts();
+  const updated = currentProducts.filter((p) => p.id !== id);
+  await setSystemSetting('products_catalog', updated);
   writeProductsToFile(updated);
   cachedProducts = updated;
   cacheTime = Date.now();

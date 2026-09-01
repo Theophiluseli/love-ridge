@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, CheckCircle, Search, ShieldCheck, Eye, Image as ImageIcon, Trees, Warehouse, Building, Building2, Upload, ArrowRight, X, Sparkles, Phone, Mail, User, Loader2, Clock, Tv, Network, Asterisk, Check } from 'lucide-react';
+import { Plus, Edit2, Trash2, CheckCircle, Search, ShieldCheck, Eye, Image as ImageIcon, Trees, Warehouse, Building, Building2, Upload, ArrowRight, X, Phone, Mail, User, Loader2, Clock, Tv, Network, Asterisk, Check, Zap, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
-import { compressImage, watermarkImage } from '@/lib/utils/imageCompressor';
+import { compressImage, watermarkImage, optimizeImageToWebP, ImageOptimizationReport } from '@/lib/utils/imageCompressor';
 import { AMENITY_GROUPS, ALL_AMENITIES_LIST } from '@/lib/amenities-constants';
 import { BUILT_PROPERTY_TYPES, LAND_PROPERTY_TYPE, formatPropertyType, isResidentialProperty } from '@/lib/property-categories';
+import ImageOptimizationModal from '@/components/ImageOptimizationModal';
 
 const DEFAULT_AGENTS = [
   'Desmond Senanu',
@@ -61,6 +62,10 @@ export default function AdminPropertiesPage() {
   });
 
   const [galleryInput, setGalleryInput] = useState('');
+  const [optimizationReports, setOptimizationReports] = useState<ImageOptimizationReport[]>([]);
+  const [showOptimizationModal, setShowOptimizationModal] = useState(false);
+  const [pendingCoverUrl, setPendingCoverUrl] = useState<string | null>(null);
+  const [pendingGalleryUrls, setPendingGalleryUrls] = useState<string[] | null>(null);
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -356,42 +361,71 @@ export default function AdminPropertiesPage() {
     setGalleryInput('');
   }
 
-  // Cover Image File Upload Handler (Compresses image client-side to prevent Vercel 413 payload limit error)
+  // Cover Image File Upload Handler (Calculates size and opens popup if above 300KB standard)
   async function handleCoverFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
     try {
-      const compressed = await compressImage(file, 900, 900, 0.65);
-      setForm((prev) => ({ ...prev, imageUrl: compressed }));
+      const report = await optimizeImageToWebP(file, true);
+      setOptimizationReports([report]);
+      if (report.isAboveStandard) {
+        setPendingCoverUrl(report.dataUrl);
+        setShowOptimizationModal(true);
+      } else {
+        setForm((prev) => ({ ...prev, imageUrl: report.dataUrl }));
+      }
     } catch (err) {
-      console.error('Failed to compress cover image:', err);
+      console.error('Failed to process cover image:', err);
       alert('Failed to process image file.');
     } finally {
       setUploading(false);
+      e.target.value = '';
     }
   }
 
-  // Gallery File Upload Handler (Compresses all gallery files client-side)
+  // Gallery File Upload Handler (Calculates sizes and opens popup if any file is above 300KB)
   async function handleGalleryFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     setUploading(true);
     try {
-      const compressedImages = await Promise.all(
-        Array.from(files).map((file) => compressImage(file, 900, 900, 0.65))
+      const reports = await Promise.all(
+        Array.from(files).map((file) => optimizeImageToWebP(file, true))
       );
-      setForm((prev) => ({
-        ...prev,
-        galleryUrls: [...prev.galleryUrls, ...compressedImages],
-      }));
+      setOptimizationReports(reports);
+      const hasOversized = reports.some((r) => r.isAboveStandard);
+      if (hasOversized) {
+        setPendingGalleryUrls(reports.map((r) => r.dataUrl));
+        setShowOptimizationModal(true);
+      } else {
+        setForm((prev) => ({
+          ...prev,
+          galleryUrls: [...prev.galleryUrls, ...reports.map((r) => r.dataUrl)],
+        }));
+      }
     } catch (err) {
-      console.error('Failed to compress gallery images:', err);
+      console.error('Failed to process gallery images:', err);
       alert('Failed to process gallery images.');
     } finally {
       setUploading(false);
+      e.target.value = '';
     }
   }
+
+  const handleConfirmAutoOptimization = () => {
+    if (pendingCoverUrl) {
+      setForm((prev) => ({ ...prev, imageUrl: pendingCoverUrl }));
+      setPendingCoverUrl(null);
+    }
+    if (pendingGalleryUrls) {
+      setForm((prev) => ({
+        ...prev,
+        galleryUrls: [...prev.galleryUrls, ...pendingGalleryUrls],
+      }));
+      setPendingGalleryUrls(null);
+    }
+  };
 
   async function addGalleryUrl() {
     if (!galleryInput.trim()) return;
@@ -1093,18 +1127,21 @@ export default function AdminPropertiesPage() {
 
               {/* COVER IMAGE & MULTI-IMAGE GALLERY UPLOADER SECTION */}
               <div className="p-6 bg-slate-50/80 rounded-3xl border border-slate-200 space-y-6">
-                <div className="border-b border-slate-200 pb-3 flex items-center justify-between">
+                <div className="border-b border-slate-200 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                         <ImageIcon className="w-4 h-4 text-emerald-700" /> Property Cover Photo & Gallery Uploads
                       </h3>
-                      <span className="text-[10px] text-emerald-800 bg-emerald-50 border border-emerald-200 font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
-                        🛡️ Loveridge Watermark Applied
+                      <span className="text-[10px] text-emerald-900 bg-emerald-100/90 border border-emerald-300 font-black px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 shadow-2xs">
+                        <Zap className="w-3 h-3 text-emerald-700" /> 200–300KB WebP Standard
+                      </span>
+                      <span className="text-[10px] text-slate-700 bg-white border border-slate-200 font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 shadow-2xs">
+                        🛡️ Watermark Stamped
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-500 font-medium">
-                      All uploaded photos automatically carry the official Loveridge signature watermark for copyright protection.
+                    <p className="text-[11px] text-slate-500 font-medium mt-1">
+                      All property photos are automatically converted to high-speed <strong>WebP (200KB–300KB standard)</strong> and stamped with Loveridge official signature.
                     </p>
                   </div>
                 </div>
@@ -1592,6 +1629,19 @@ export default function AdminPropertiesPage() {
           </div>
         </div>
       )}
+
+      {/* Fast-Load WebP Image Optimization Report & Popup Modal */}
+      <ImageOptimizationModal
+        isOpen={showOptimizationModal}
+        onClose={() => {
+          setShowOptimizationModal(false);
+          setPendingCoverUrl(null);
+          setPendingGalleryUrls(null);
+        }}
+        onAutoOptimizeConfirm={handleConfirmAutoOptimization}
+        reports={optimizationReports}
+        title="Image Size Exceeded Fast-Load Standard"
+      />
     </div>
   );
 }

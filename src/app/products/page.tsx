@@ -5,6 +5,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import ProductCard from '@/components/ProductCard';
 import InquiryModal from '@/components/InquiryModal';
+import CurrencySwitcher from '@/components/CurrencySwitcher';
 import { Search, SlidersHorizontal, Package } from 'lucide-react';
 
 const INITIAL_CATEGORIES = [
@@ -254,17 +255,20 @@ export default function ProductsPage() {
             })}
           </div>
 
-          {/* Search Bar Input */}
-          <div className="relative shrink-0 w-full lg:w-72">
-            <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && fetchProducts()}
-              placeholder="Search products..."
-              className="w-full bg-white border border-slate-200 text-slate-900 text-xs rounded-full pl-10 pr-4 py-2.5 focus:outline-none focus:border-emerald-700 shadow-sm"
-            />
+          {/* Search Bar & Currency Switcher Controls */}
+          <div className="flex items-center gap-2.5 w-full lg:w-auto shrink-0">
+            <CurrencySwitcher />
+            <div className="relative flex-1 lg:w-72">
+              <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && fetchProducts()}
+                placeholder="Search products..."
+                className="w-full bg-white border border-slate-200 text-slate-900 text-xs rounded-full pl-10 pr-4 py-2.5 focus:outline-none focus:border-emerald-700 shadow-sm"
+              />
+            </div>
           </div>
         </div>
 

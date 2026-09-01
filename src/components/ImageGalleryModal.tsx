@@ -88,13 +88,6 @@ export default function ImageGalleryModal({
           loading="eager"
         />
 
-        {/* Verified Loveridge Watermark Overlay */}
-        <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-20 pointer-events-none opacity-90">
-          <div className="bg-slate-950/75 backdrop-blur-md px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl border border-white/20 flex items-center gap-1.5 shadow-lg">
-            <img src="/logo-white.png" alt="Loveridge" className="h-3.5 sm:h-4.5 w-auto object-contain" />
-          </div>
-        </div>
-
         {/* Navigation Arrows */}
         {images.length > 1 && (
           <>

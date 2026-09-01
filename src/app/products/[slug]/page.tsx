@@ -234,17 +234,40 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
               </div>
             </div>
 
-            {/* Price Box */}
-            <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-100 flex items-baseline justify-between">
-              <div>
-                <span className="text-2xl sm:text-3xl font-bold text-slate-900">
-                  {formattedUnitPrice}
+            {/* Dual Currency Price Box (Ghana Cedis & Chinese Yuan) */}
+            <div className="p-5 bg-gradient-to-br from-slate-50 via-emerald-50/30 to-amber-50/20 rounded-3xl border border-emerald-200/80 shadow-xs space-y-3.5">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <div className="flex items-baseline flex-wrap gap-2">
+                  <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                    {formattedUnitPrice}
+                  </span>
+                  <span className="text-xs text-slate-500 font-bold">/ {product.unit || 'per item'}</span>
+                </div>
+                <span className="text-xs font-bold text-slate-700 bg-white px-3 py-1 rounded-xl border border-slate-200 shadow-2xs">
+                  MOQ: {product.moq} {product.unit}
                 </span>
-                <span className="text-xs text-slate-500 font-medium ml-2">/ {product.unit || 'per item'}</span>
               </div>
-              <span className="text-xs font-semibold text-slate-600 bg-white px-3 py-1 rounded-xl border border-slate-200">
-                MOQ: {product.moq} {product.unit}
-              </span>
+
+              {/* Dual Currency Badges (Ghana Cedis & Chinese Yuan) */}
+              <div className="pt-2.5 border-t border-emerald-900/10 flex flex-wrap items-center gap-2.5">
+                <div className="inline-flex items-center gap-1.5 bg-white border border-emerald-300 px-3 py-1.5 rounded-xl shadow-2xs">
+                  <span className="text-[10px] font-black uppercase text-emerald-900 bg-emerald-100 px-2 py-0.5 rounded">
+                    🇬🇭 Ghana Cedis
+                  </span>
+                  <span className="text-xs font-black text-slate-950">
+                    GH₵ {Number(product.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+
+                <div className="inline-flex items-center gap-1.5 bg-white border border-red-300 px-3 py-1.5 rounded-xl shadow-2xs">
+                  <span className="text-[10px] font-black uppercase text-red-900 bg-red-100 px-2 py-0.5 rounded">
+                    🇨🇳 China Direct (Yuan / RMB)
+                  </span>
+                  <span className="text-xs font-black text-red-950">
+                    ¥ {Number(product.priceCny || Math.round(product.price * 0.47)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CNY
+                  </span>
+                </div>
+              </div>
             </div>
 
             {/* Quantity Selector */}
@@ -252,7 +275,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
                 Select Purchase Quantity
               </label>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-4">
                 <div className="flex items-center border border-slate-300/80 rounded-2xl bg-slate-50 p-1">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
@@ -271,11 +294,16 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                   </button>
                 </div>
 
-                <div className="text-xs text-slate-600 font-semibold">
-                  Total Order Estimate: <br />
-                  <span className="text-emerald-800 text-base sm:text-lg font-bold">
-                    {formattedTotalPrice}
-                  </span>
+                <div className="text-xs text-slate-600 font-semibold space-y-0.5">
+                  <div>Total Order Estimate:</div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-emerald-900 text-base sm:text-lg font-black">
+                      {formattedTotalPrice}
+                    </span>
+                    <span className="text-xs font-bold text-red-800 bg-red-50 border border-red-200 px-2 py-0.5 rounded-md">
+                      ¥ {((Number(product.priceCny || Math.round(product.price * 0.47))) * quantity).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CNY
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

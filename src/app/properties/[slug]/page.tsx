@@ -8,7 +8,7 @@ import InquiryModal from '@/components/InquiryModal';
 import ImageGalleryModal from '@/components/ImageGalleryModal';
 import SocialShare from '@/components/SocialShare';
 import { useCurrency } from '@/context/CurrencyContext';
-import { MapPin, Bed, Bath, Maximize2, Shield, Calendar, ChevronLeft, CheckCircle2, Images, X, PhoneCall, Mail, UserCheck, Home, Clock, Sparkles, Tv, Network, Asterisk, Check, Wind, Flame, Shirt, Fan, Wifi, Trees, Car, Sun, Send } from 'lucide-react';
+import { MapPin, Bed, Bath, Maximize2, Shield, Calendar, ChevronLeft, CheckCircle2, Images, X, PhoneCall, Mail, UserCheck, Home, Clock, BadgeCheck, Tv, Network, Asterisk, Check, Wind, Flame, Shirt, Fan, Wifi, Trees, Car, Sun, Send } from 'lucide-react';
 import Link from 'next/link';
 import { formatPropertyType } from '@/lib/property-categories';
 
@@ -341,7 +341,7 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
     if (lower.includes('washing machine')) return <Shirt className="w-4 h-4 text-indigo-600" />;
     if (lower.includes('fan')) return <Fan className="w-4 h-4 text-teal-600" />;
     if (lower.includes('refrigerator')) return <CheckCircle2 className="w-4 h-4 text-blue-600" />;
-    if (lower.includes('microwave')) return <Sparkles className="w-4 h-4 text-amber-600" />;
+    if (lower.includes('microwave')) return <Flame className="w-4 h-4 text-amber-600" />;
     if (lower.includes('internet')) return <Wifi className="w-4 h-4 text-purple-600" />;
     if (lower.includes('satellite') || lower.includes('tv')) return <Tv className="w-4 h-4 text-fuchsia-600" />;
     if (lower.includes('garden')) return <Trees className="w-4 h-4 text-emerald-600" />;
@@ -542,7 +542,7 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
                     <div>
                       <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                        <Sparkles className="w-6 h-6 text-emerald-800" />
+                        <BadgeCheck className="w-6 h-6 text-emerald-800" />
                         General Amenities
                       </h2>
                       <p className="text-xs text-slate-500 font-medium mt-1">

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { MapPin, Phone, Mail, Clock, Send, CheckCircle2, MessageSquare, Sparkles } from 'lucide-react';
+import { MapPin, Phone, Mail, Clock, Send, CheckCircle2, MessageSquare, PhoneCall } from 'lucide-react';
 
 export default function ContactPage() {
   const [form, setForm] = useState({
@@ -57,7 +57,7 @@ export default function ContactPage() {
         {/* Header */}
         <section className="relative py-16 px-4 sm:px-6 lg:px-8 text-center max-w-4xl mx-auto space-y-6">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 text-xs font-bold uppercase tracking-widest shadow-sm">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-800" /> We Are Here to Assist You
+            <MessageSquare className="w-3.5 h-3.5 text-emerald-800" /> We Are Here to Assist You
           </div>
 
           <h1 className="text-4xl sm:text-6xl font-black text-slate-900 tracking-tight leading-tight">

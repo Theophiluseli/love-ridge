@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import InquiryModal from '@/components/InquiryModal';
-import { Building2, Package, ShieldCheck, Wrench, Sparkles, ChevronRight, CheckCircle2, PhoneCall, ArrowRight } from 'lucide-react';
+import { Building2, Package, ShieldCheck, Wrench, Award, ChevronRight, CheckCircle2, PhoneCall, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
 export default function ServicesPage() {
@@ -82,7 +82,7 @@ export default function ServicesPage() {
         {/* Hero Banner */}
         <section className="relative py-16 px-4 sm:px-6 lg:px-8 text-center max-w-5xl mx-auto space-y-6">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 text-xs font-bold uppercase tracking-widest shadow-sm">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-800" /> Full-Spectrum Real Estate & Procurement Solutions
+            <Award className="w-3.5 h-3.5 text-emerald-800" /> Full-Spectrum Real Estate & Procurement Solutions
           </div>
 
           <h1 className="text-4xl sm:text-6xl font-black text-slate-900 tracking-tight leading-tight">

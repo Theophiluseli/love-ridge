@@ -5,6 +5,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import PropertyCard from '@/components/PropertyCard';
 import InquiryModal from '@/components/InquiryModal';
+import CurrencySwitcher from '@/components/CurrencySwitcher';
 import { Search, SlidersHorizontal, Building2, RotateCcw, ChevronDown, Trees, Warehouse, Building } from 'lucide-react';
 import Link from 'next/link';
 import { BUILT_PROPERTY_TYPES } from '@/lib/property-categories';
@@ -150,21 +151,36 @@ export default function PropertiesPage() {
         {/* CENTERED FILTER & SEARCH BAR SECTION */}
         <div className="max-w-5xl mx-auto w-full space-y-6">
           {/* Centered Filter Bar */}
-          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/90 shadow-xl space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-slate-800">
-                <SlidersHorizontal className="w-4 h-4 text-emerald-700" /> Property Search Filter
+          <div className="bg-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-xl space-y-4 sm:space-y-5">
+            <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-slate-800 shrink-0">
+                <SlidersHorizontal className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-700" />
+                <span className="hidden xs:inline">Property</span> Search Filter
               </div>
-              <button
-                onClick={resetFilters}
-                className="text-xs text-emerald-800 font-bold hover:underline flex items-center gap-1"
-              >
-                <RotateCcw className="w-3.5 h-3.5" /> Reset Filters
-              </button>
+
+              <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+                {/* Currency Switcher in Filter Bar */}
+                <div className="flex items-center gap-1">
+                  <span className="hidden sm:inline text-[11px] font-bold text-slate-400">Currency:</span>
+                  <CurrencySwitcher />
+                </div>
+
+                <div className="h-3.5 w-px bg-slate-200 hidden sm:block" />
+
+                <button
+                  onClick={resetFilters}
+                  className="text-[11px] sm:text-xs text-emerald-800 font-bold hover:underline flex items-center gap-1 shrink-0 ml-1"
+                  title="Reset Filters"
+                >
+                  <RotateCcw className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                  <span className="hidden sm:inline">Reset Filters</span>
+                  <span className="sm:hidden">Reset</span>
+                </button>
+              </div>
             </div>
 
             {/* 4-Column Search Filter Inputs */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               {/* 1. Listing Status */}
               <div>
                 <label className="block text-xs font-extrabold text-slate-800 mb-2">Listing Status</label>

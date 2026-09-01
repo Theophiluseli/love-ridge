@@ -14,7 +14,9 @@ export interface ProductItem {
   categoryId: string;
   category?: { id?: string; name: string; slug?: string } | null;
   sku: string;
-  price: number;
+  referenceUrl?: string; // Internal admin supplier/procurement source link (hidden from storefront)
+  price: number; // Ghana Cedis (GHS / GH₵)
+  priceCny?: number; // Chinese Yuan / RMB (CNY / ¥)
   currency: string;
   unit: string;
   stockQuantity: number;
@@ -47,6 +49,7 @@ export const INITIAL_PRODUCTS_STORE: ProductItem[] = [
     category: { id: 'cat-1', name: 'Tiles & Marble Slabs', slug: 'tiles-marble' },
     sku: 'TILE-ITA-60120-CAR',
     price: 145.00,
+    priceCny: 68.00,
     currency: 'GHS',
     unit: 'per box (1.44 sqm)',
     stockQuantity: 450,
@@ -69,6 +72,7 @@ export const INITIAL_PRODUCTS_STORE: ProductItem[] = [
     category: { id: 'cat-2', name: 'Tools & Construction Equipment', slug: 'tools-equipment' },
     sku: 'TOOL-20V-DRILL-KIT',
     price: 1850.00,
+    priceCny: 880.00,
     currency: 'GHS',
     unit: 'per set',
     stockQuantity: 35,
@@ -91,6 +95,7 @@ export const INITIAL_PRODUCTS_STORE: ProductItem[] = [
     category: { id: 'cat-3', name: 'Building Materials & Hardware', slug: 'building-materials' },
     sku: 'SEC-SMART-LOCK-01',
     price: 1200.00,
+    priceCny: 560.00,
     currency: 'GHS',
     unit: 'per piece',
     stockQuantity: 15,
@@ -113,6 +118,7 @@ export const INITIAL_PRODUCTS_STORE: ProductItem[] = [
     category: { id: 'cat-1', name: 'Tiles & Marble Slabs', slug: 'tiles-marble' },
     sku: 'TILE-ESP-3090-CAL-GOLD',
     price: 165.00,
+    priceCny: 78.00,
     currency: 'GHS',
     unit: 'per box (1.35 sqm)',
     stockQuantity: 320,
@@ -135,6 +141,7 @@ export const INITIAL_PRODUCTS_STORE: ProductItem[] = [
     category: { id: 'cat-4', name: 'Solar & Electrical Systems', slug: 'solar-electrical' },
     sku: 'SOLAR-HYBRID-55KVA-KIT',
     price: 28500.00,
+    priceCny: 13500.00,
     currency: 'GHS',
     unit: 'per complete system',
     stockQuantity: 12,
@@ -157,6 +164,7 @@ export const INITIAL_PRODUCTS_STORE: ProductItem[] = [
     category: { id: 'cat-5', name: 'Sanitary Ware & Plumbing', slug: 'sanitary-ware' },
     sku: 'BATH-GOLD-SHOWER-SET',
     price: 2450.00,
+    priceCny: 1150.00,
     currency: 'GHS',
     unit: 'per set',
     stockQuantity: 28,
@@ -179,6 +187,7 @@ export const INITIAL_PRODUCTS_STORE: ProductItem[] = [
     category: { id: 'cat-2', name: 'Tools & Construction Equipment', slug: 'tools-equipment' },
     sku: 'GATE-AUTO-HYD-500',
     price: 4800.00,
+    priceCny: 2280.00,
     currency: 'GHS',
     unit: 'per set',
     stockQuantity: 18,
@@ -201,6 +210,7 @@ export const INITIAL_PRODUCTS_STORE: ProductItem[] = [
     category: { id: 'cat-1', name: 'Tiles & Marble Slabs', slug: 'tiles-marble' },
     sku: 'WOOD-TURK-OAK-15190',
     price: 280.00,
+    priceCny: 132.00,
     currency: 'GHS',
     unit: 'per sqm',
     stockQuantity: 600,
@@ -223,6 +233,7 @@ export const INITIAL_PRODUCTS_STORE: ProductItem[] = [
     category: { id: 'cat-2', name: 'Tools & Construction Equipment', slug: 'tools-equipment' },
     sku: 'SEC-4K-SOLAR-CAM-KIT',
     price: 1650.00,
+    priceCny: 780.00,
     currency: 'GHS',
     unit: 'per kit (4 cameras)',
     stockQuantity: 40,
@@ -245,6 +256,7 @@ export const INITIAL_PRODUCTS_STORE: ProductItem[] = [
     category: { id: 'cat-2', name: 'Tools & Construction Equipment', slug: 'tools-equipment' },
     sku: 'EQP-MIXER-350L-ELE',
     price: 6200.00,
+    priceCny: 2950.00,
     currency: 'GHS',
     unit: 'per unit',
     stockQuantity: 10,

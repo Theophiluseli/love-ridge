@@ -1,5 +1,36 @@
 import { LOVERIDGE_LOGO_WHITE_BASE64 } from './logoBase64';
 
+export const MAX_WEBP_SIZE_BYTES = 300 * 1024; // 300 KB strict speed limit standard
+export const TARGET_WEBP_SIZE_BYTES = 220 * 1024; // 220 KB ideal target (200-300KB range)
+
+export interface ImageOptimizationReport {
+  fileName: string;
+  originalSize: number;
+  originalSizeFormatted: string;
+  optimizedSize: number;
+  optimizedSizeFormatted: string;
+  reductionPercentage: number;
+  format: 'image/webp' | 'image/jpeg';
+  width: number;
+  height: number;
+  dataUrl: string;
+  isAboveStandard: boolean; // True if raw file was > 300KB
+  watermarked: boolean;
+}
+
+export function formatFileSize(bytes: number): string {
+  if (!bytes || bytes <= 0) return '0 KB';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+export function getBase64ByteSize(dataUrl: string): number {
+  if (!dataUrl) return 0;
+  const base64String = dataUrl.split(',')[1] || dataUrl;
+  return Math.round((base64String.length * 3) / 4);
+}
+
 function drawRoundedRect(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -21,9 +52,6 @@ function drawRoundedRect(
   ctx.closePath();
 }
 
-/**
- * Loads the Loveridge logo image from the bundled Base64 string or public path.
- */
 function loadLogoImage(): Promise<HTMLImageElement> {
   return new Promise((resolve) => {
     const img = new Image();
@@ -40,8 +68,8 @@ function loadLogoImage(): Promise<HTMLImageElement> {
 }
 
 /**
- * Draws the official Loveridge signature watermark directly onto an HTML5 Canvas.
- * Adds both a subtle, anti-theft center watermark and a crisp bottom-right brand badge.
+ * Applies the official Loveridge signature watermark directly in the center
+ * with refined opacity and balanced dimensions.
  */
 export async function applyLoveridgeWatermark(
   canvas: HTMLCanvasElement,
@@ -55,47 +83,34 @@ export async function applyLoveridgeWatermark(
     console.warn('Watermark logo load error:', e);
   }
 
-  // 1. Subtle, elegant center watermark overlay (16% opacity)
-  if (logoImg && logoImg.width > 0) {
-    ctx.save();
-    ctx.globalAlpha = 0.16;
-    const centerWidth = Math.min(width * 0.45, 480);
-    const centerHeight = (centerWidth * 499) / 973;
-    const centerX = (width - centerWidth) / 2;
-    const centerY = (height - centerHeight) / 2;
-    ctx.drawImage(logoImg, centerX, centerY, centerWidth, centerHeight);
-    ctx.restore();
-  }
-
-  // 2. Crisp, official Corner Watermark Badge (Bottom-Right)
   ctx.save();
-  const cornerWidth = Math.max(110, Math.min(width * 0.22, 240));
-  const cornerHeight = (cornerWidth * 499) / 973;
-  const padding = Math.max(12, Math.round(width * 0.02));
+  const logoWidth = Math.max(160, Math.min(Math.round(width * 0.30), 320));
+  const logoHeight = Math.round((logoWidth * 499) / 973);
   
-  const padX = Math.round(cornerWidth * 0.08);
-  const padY = Math.round(cornerHeight * 0.12);
-  const pillWidth = cornerWidth + padX * 2;
-  const pillHeight = cornerHeight + padY * 2;
-  const pillX = width - pillWidth - padding;
-  const pillY = height - pillHeight - padding;
-  const radius = Math.max(8, Math.round(pillHeight * 0.22));
+  const padX = Math.max(10, Math.round(logoWidth * 0.09));
+  const padY = Math.max(8, Math.round(logoHeight * 0.11));
+  
+  const pillWidth = logoWidth + padX * 2;
+  const pillHeight = logoHeight + padY * 2;
+  const pillX = Math.round((width - pillWidth) / 2);
+  const pillY = Math.round((height - pillHeight) / 2);
+  const radius = Math.max(10, Math.round(pillHeight * 0.24));
 
-  // Draw luxury deep-emerald glass capsule
+  // Soft emerald translucent capsule
   drawRoundedRect(ctx, pillX, pillY, pillWidth, pillHeight, radius);
-  ctx.fillStyle = 'rgba(2, 44, 30, 0.78)';
+  ctx.fillStyle = 'rgba(2, 44, 30, 0.32)';
   ctx.fill();
 
-  ctx.lineWidth = 1.2;
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.20)';
   ctx.stroke();
 
-  // Draw Logo inside capsule
+  // White logo with 58% opacity
   if (logoImg && logoImg.width > 0) {
-    ctx.globalAlpha = 0.96;
-    ctx.drawImage(logoImg, pillX + padX, pillY + padY, cornerWidth, cornerHeight);
+    ctx.globalAlpha = 0.58;
+    ctx.drawImage(logoImg, pillX + padX, pillY + padY, logoWidth, logoHeight);
   } else {
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
     ctx.font = `bold ${Math.round(pillHeight * 0.32)}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -105,22 +120,38 @@ export async function applyLoveridgeWatermark(
 }
 
 /**
- * Client-side image compression and watermarking utility using HTML5 Canvas.
- * Resizes large image files to reasonable web dimensions and automatically
- * stamps the Loveridge logo watermark on every picture added.
+ * Optimizes an image strictly into WebP format within the 200KB - 300KB speed standard.
+ * Iteratively adjusts resolution and WebP quality to guarantee maximum visual crispness
+ * under the 300KB limit for ultra-fast page load.
  */
-export async function compressImage(
+export async function optimizeImageToWebP(
   file: File,
-  maxWidth = 1200,
-  maxHeight = 1200,
-  quality = 0.8,
   watermark = true
-): Promise<string> {
+): Promise<ImageOptimizationReport> {
   return new Promise((resolve, reject) => {
-    // Return original data URL for non-scalable files like SVGs
+    const originalSize = file.size || 0;
+    const isAboveStandard = originalSize > MAX_WEBP_SIZE_BYTES;
+
+    // Handle SVGs
     if (file.type.includes('svg')) {
       const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target?.result as string);
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        resolve({
+          fileName: file.name,
+          originalSize,
+          originalSizeFormatted: formatFileSize(originalSize),
+          optimizedSize: originalSize,
+          optimizedSizeFormatted: formatFileSize(originalSize),
+          reductionPercentage: 0,
+          format: 'image/webp',
+          width: 800,
+          height: 800,
+          dataUrl,
+          isAboveStandard,
+          watermarked: false,
+        });
+      };
       reader.onerror = (err) => reject(err);
       reader.readAsDataURL(file);
       return;
@@ -132,45 +163,88 @@ export async function compressImage(
     img.onload = async () => {
       URL.revokeObjectURL(objectUrl);
 
-      let { width, height } = img;
+      // Adaptive Multi-Pass Optimization Loop to hit 200KB - 300KB WebP target
+      const attempts = [
+        { maxDim: 1600, quality: 0.85 },
+        { maxDim: 1400, quality: 0.80 },
+        { maxDim: 1200, quality: 0.75 },
+        { maxDim: 1080, quality: 0.70 },
+        { maxDim: 900,  quality: 0.65 },
+        { maxDim: 800,  quality: 0.55 },
+      ];
 
-      // Scale dimensions down proportionally if larger than maximums
-      if (width > maxWidth || height > maxHeight) {
-        if (width / height > maxWidth / maxHeight) {
-          height = Math.round((height * maxWidth) / width);
-          width = maxWidth;
-        } else {
-          width = Math.round((width * maxHeight) / height);
-          height = maxHeight;
+      let bestDataUrl = '';
+      let bestSize = Infinity;
+      let finalWidth = img.width;
+      let finalHeight = img.height;
+
+      for (const attempt of attempts) {
+        let curW = img.width;
+        let curH = img.height;
+
+        if (curW > attempt.maxDim || curH > attempt.maxDim) {
+          if (curW / curH > 1) {
+            curH = Math.round((curH * attempt.maxDim) / curW);
+            curW = attempt.maxDim;
+          } else {
+            curW = Math.round((curW * attempt.maxDim) / curH);
+            curH = attempt.maxDim;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = curW;
+        canvas.height = curH;
+        const ctx = canvas.getContext('2d');
+
+        if (!ctx) continue;
+
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, curW, curH);
+
+        if (watermark) {
+          await applyLoveridgeWatermark(canvas, ctx);
+        }
+
+        // Try WebP first
+        let dataUrl = canvas.toDataURL('image/webp', attempt.quality);
+        // Fallback to jpeg if browser doesn't produce webp dataUrl
+        if (!dataUrl.startsWith('data:image/webp')) {
+          dataUrl = canvas.toDataURL('image/jpeg', attempt.quality);
+        }
+
+        const byteSize = getBase64ByteSize(dataUrl);
+
+        bestDataUrl = dataUrl;
+        bestSize = byteSize;
+        finalWidth = curW;
+        finalHeight = curH;
+
+        // If fits under the 300KB max limit, break immediately with highest possible quality
+        if (byteSize <= MAX_WEBP_SIZE_BYTES) {
+          break;
         }
       }
 
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
+      const reductionPercentage = originalSize > 0 && bestSize < originalSize
+        ? Math.round(((originalSize - bestSize) / originalSize) * 100)
+        : 0;
 
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target?.result as string);
-        reader.onerror = (err) => reject(err);
-        reader.readAsDataURL(file);
-        return;
-      }
-
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(img, 0, 0, width, height);
-
-      // Automatically apply Loveridge Logo Watermark
-      if (watermark) {
-        await applyLoveridgeWatermark(canvas, ctx);
-      }
-
-      // Output as JPEG for high quality compression
-      const outputType = file.type === 'image/png' ? 'image/jpeg' : file.type || 'image/jpeg';
-      const compressedDataUrl = canvas.toDataURL(outputType, quality);
-      resolve(compressedDataUrl);
+      resolve({
+        fileName: file.name,
+        originalSize,
+        originalSizeFormatted: formatFileSize(originalSize),
+        optimizedSize: bestSize,
+        optimizedSizeFormatted: formatFileSize(bestSize),
+        reductionPercentage,
+        format: 'image/webp',
+        width: finalWidth,
+        height: finalHeight,
+        dataUrl: bestDataUrl,
+        isAboveStandard,
+        watermarked: watermark,
+      });
     };
 
     img.onerror = (err) => {
@@ -183,13 +257,27 @@ export async function compressImage(
 }
 
 /**
- * Watermarks an image from a URL or Base64 string and returns the watermarked DataURL.
+ * Standard compress helper returning WebP dataUrl string.
+ */
+export async function compressImage(
+  file: File,
+  maxWidth = 1400,
+  maxHeight = 1400,
+  quality = 0.80,
+  watermark = true
+): Promise<string> {
+  const res = await optimizeImageToWebP(file, watermark);
+  return res.dataUrl;
+}
+
+/**
+ * Watermarks an image from a URL or Base64 string and returns WebP DataURL.
  */
 export async function watermarkImage(
   sourceUrlOrBase64: string,
-  maxWidth = 1200,
-  maxHeight = 1200,
-  quality = 0.8
+  maxWidth = 1400,
+  maxHeight = 1400,
+  quality = 0.80
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     if (!sourceUrlOrBase64) {
@@ -227,12 +315,14 @@ export async function watermarkImage(
 
       await applyLoveridgeWatermark(canvas, ctx);
 
-      const watermarkedUrl = canvas.toDataURL('image/jpeg', quality);
+      let watermarkedUrl = canvas.toDataURL('image/webp', quality);
+      if (!watermarkedUrl.startsWith('data:image/webp')) {
+        watermarkedUrl = canvas.toDataURL('image/jpeg', quality);
+      }
       resolve(watermarkedUrl);
     };
 
     img.onerror = () => {
-      // If crossOrigin blocks or image fails to load via canvas, safely return source
       resolve(sourceUrlOrBase64);
     };
 

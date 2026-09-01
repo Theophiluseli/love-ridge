@@ -2,7 +2,9 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import WhatsAppWidget from '@/components/WhatsAppWidget';
+import GoogleTranslator from '@/components/GoogleTranslator';
 import { CurrencyProvider } from '@/context/CurrencyContext';
+import { LanguageProvider } from '@/context/LanguageContext';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -24,10 +26,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <CurrencyProvider>
-          {children}
-          <WhatsAppWidget />
-        </CurrencyProvider>
+        <LanguageProvider>
+          <CurrencyProvider>
+            {children}
+            <WhatsAppWidget />
+            <GoogleTranslator />
+          </CurrencyProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

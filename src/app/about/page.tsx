@@ -2,7 +2,7 @@
 
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { ShieldCheck, Award, Globe, Users, TrendingUp, Sparkles, Building2, CheckCircle2, ChevronRight } from 'lucide-react';
+import { ShieldCheck, Award, Globe, Users, TrendingUp, Building2, CheckCircle2, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AboutPage() {
@@ -32,7 +32,7 @@ export default function AboutPage() {
         {/* Hero Section */}
         <section className="relative py-16 px-4 sm:px-6 lg:px-8 text-center max-w-5xl mx-auto space-y-6">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 text-xs font-bold uppercase tracking-widest shadow-sm">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-800" /> Excellence in Real Estate & Global Sourcing
+            <Award className="w-3.5 h-3.5 text-emerald-800" /> Excellence in Real Estate & Global Sourcing
           </div>
 
           <h1 className="text-4xl sm:text-6xl font-black text-slate-900 tracking-tight leading-tight">

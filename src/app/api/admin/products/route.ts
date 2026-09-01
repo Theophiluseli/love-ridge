@@ -27,7 +27,9 @@ export async function POST(req: NextRequest) {
       description,
       categoryId,
       sku,
+      referenceUrl,
       price,
+      priceCny,
       currency = 'GHS',
       unit = 'per piece',
       stockQuantity = 0,
@@ -40,16 +42,18 @@ export async function POST(req: NextRequest) {
       galleryUrls = [],
     } = body;
 
-    if (!name || !description || !categoryId || !sku || price === undefined) {
-      return NextResponse.json({ error: 'Name, description, categoryId, SKU, and price are required.' }, { status: 400 });
+    if (!name || !description || !categoryId || price === undefined) {
+      return NextResponse.json({ error: 'Name, description, categoryId, and price are required.' }, { status: 400 });
     }
 
     const product = await saveProduct({
       name,
       description,
       categoryId,
-      sku,
+      sku: sku || `SKU-${Date.now().toString().slice(-6)}`,
+      referenceUrl: referenceUrl || '',
       price: parseFloat(price),
+      priceCny: priceCny !== undefined && priceCny !== '' ? parseFloat(priceCny) : undefined,
       currency,
       unit,
       stockQuantity: parseInt(stockQuantity),

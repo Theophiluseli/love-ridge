@@ -16,7 +16,7 @@ import {
   ChevronRight,
   Menu,
   X,
-  Sparkles,
+  Image as ImageIcon,
 } from 'lucide-react';
 import Logo from '@/components/Logo';
 
@@ -75,7 +75,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/admin/dashboard', label: 'Dashboard Overview', icon: LayoutDashboard },
     { href: '/admin/properties', label: 'Property Listings', icon: Building2 },
     { href: '/admin/products', label: 'Store', icon: Package },
-    { href: '/admin/hero', label: 'Hero Backgrounds', icon: Sparkles },
+    { href: '/admin/hero', label: 'Hero Backgrounds', icon: ImageIcon },
     { href: '/admin/leads', label: 'Inquiry Inbox', icon: Inbox },
     { href: '/admin/settings', label: 'Site Settings & Security', icon: Settings },
   ];

@@ -112,9 +112,14 @@ export default function ProductCard({ product, onRequestQuote }: ProductProps) {
       {/* Bottom Price & View Row */}
       <div className="pt-2 sm:pt-2.5 border-t border-slate-100 flex items-end justify-between gap-1">
         <div className="min-w-0">
-          <span className="text-xs sm:text-sm font-bold text-slate-900 block truncate">
-            {formattedPrice}
-          </span>
+          <div className="flex items-baseline gap-1.5 flex-wrap">
+            <span className="text-xs sm:text-sm font-black text-slate-900 block truncate">
+              {formattedPrice}
+            </span>
+            <span className="text-[9px] font-bold text-red-800 bg-red-50 border border-red-200/70 px-1.5 py-0.2 rounded">
+              ¥{Number((product as any).priceCny || Math.round(product.price * 0.47)).toLocaleString()}
+            </span>
+          </div>
           <span className="text-[10px] sm:text-[11px] text-slate-400 font-normal block truncate">
             {product.unit || 'per item'}
           </span>

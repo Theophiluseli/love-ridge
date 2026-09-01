@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Save, Key, MessageSquare, Globe, CheckCircle, Shield, Sparkles, ArrowRight } from 'lucide-react';
+import { Save, Key, MessageSquare, Globe, CheckCircle, Shield, Image as ImageIcon, ArrowRight } from 'lucide-react';
 
 export default function AdminSettingsPage() {
   const [saved, setSaved] = useState(false);
@@ -163,7 +163,7 @@ export default function AdminSettingsPage() {
       <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-900 p-6 sm:p-8 rounded-3xl text-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 border border-emerald-500/30">
         <div className="space-y-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-extrabold uppercase border border-emerald-500/30">
-            <Sparkles className="w-3.5 h-3.5" /> Homepage Hero Customization
+            <ImageIcon className="w-3.5 h-3.5" /> Homepage Hero Customization
           </div>
           <h3 className="text-xl font-black tracking-tight">Hero Section Background Carousel Manager</h3>
           <p className="text-xs text-emerald-100/80 font-medium max-w-lg">
