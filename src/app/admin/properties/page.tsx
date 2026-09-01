@@ -149,8 +149,8 @@ export default function AdminPropertiesPage() {
             ? 'Property updated & saved as Draft!'
             : 'Property updated & published successfully!'
           : chosenStatus === 'DRAFT'
-          ? 'Property saved as Draft successfully!'
-          : 'Property created & published successfully!'
+            ? 'Property saved as Draft successfully!'
+            : 'Property created & published successfully!'
       );
       setTimeout(() => setMessage(''), 4000);
       resetForm();
@@ -158,7 +158,7 @@ export default function AdminPropertiesPage() {
       fetchProperties();
     } catch (err: any) {
       console.warn('Publish attempt incomplete, performing auto-save as DRAFT fallback:', err);
-      
+
       // AUTO-SAVE AS DRAFT FALLBACK when listing/uploading fails or is incomplete
       try {
         const draftRes = await fetch(url, {
@@ -270,7 +270,7 @@ export default function AdminPropertiesPage() {
   function openEdit(prop: any) {
     setEditItem(prop);
     const existingAgent = prop.contactName || prop.agent?.name || 'Kwame Appiah';
-    
+
     setForm({
       title: prop.title,
       description: prop.description,
@@ -492,20 +492,18 @@ export default function AdminPropertiesPage() {
                     amenities: [],
                   });
                 }}
-                className={`p-6 rounded-3xl border-2 text-left cursor-pointer transition-all flex flex-col justify-between relative overflow-hidden group ${
-                  form.propertyType === 'LAND'
+                className={`p-6 rounded-3xl border-2 text-left cursor-pointer transition-all flex flex-col justify-between relative overflow-hidden group ${form.propertyType === 'LAND'
                     ? 'border-emerald-800 bg-emerald-50/80 shadow-xl ring-4 ring-emerald-800/10'
                     : 'border-slate-200 bg-white hover:border-emerald-400 hover:shadow-md'
-                }`}
+                  }`}
               >
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div
-                      className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
-                        form.propertyType === 'LAND'
+                      className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${form.propertyType === 'LAND'
                           ? 'bg-emerald-800 text-white shadow-md scale-105'
                           : 'bg-emerald-100/70 text-emerald-800 group-hover:scale-105'
-                      }`}
+                        }`}
                     >
                       <Trees className="w-7 h-7" />
                     </div>
@@ -576,11 +574,10 @@ export default function AdminPropertiesPage() {
                               propertyType: item.value,
                             });
                           }}
-                          className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-left text-xs font-bold transition-all ${
-                            isSelected
+                          className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-left text-xs font-bold transition-all ${isSelected
                               ? 'border-blue-600 bg-blue-50 text-blue-950 ring-2 ring-blue-600/20 shadow-2xs'
                               : 'border-slate-200 bg-slate-50/60 text-slate-700 hover:bg-white hover:border-slate-300'
-                          }`}
+                            }`}
                         >
                           <span className="flex items-center gap-2">
                             {isSelected ? (
@@ -595,11 +592,10 @@ export default function AdminPropertiesPage() {
                             </span>
                           </span>
                           <span
-                            className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
-                              item.isResidential
+                            className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${item.isResidential
                                 ? 'text-emerald-700 bg-emerald-50'
                                 : 'text-purple-700 bg-purple-50'
-                            }`}
+                              }`}
                           >
                             {item.isResidential ? 'Residential' : 'Commercial'}
                           </span>
@@ -632,9 +628,8 @@ export default function AdminPropertiesPage() {
                   <button
                     type="button"
                     onClick={() => setForm({ ...form, listingType: 'RENT', pricePeriod: 'per month' })}
-                    className={`px-4 py-2 rounded-lg transition ${
-                      form.listingType === 'RENT' ? 'bg-emerald-800 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                    className={`px-4 py-2 rounded-lg transition ${form.listingType === 'RENT' ? 'bg-emerald-800 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                      }`}
                   >
                     FOR RENT
                   </button>
@@ -642,9 +637,8 @@ export default function AdminPropertiesPage() {
                 <button
                   type="button"
                   onClick={() => setForm({ ...form, listingType: 'SALE', pricePeriod: 'outright purchase' })}
-                  className={`px-4 py-2 rounded-lg transition ${
-                    form.listingType === 'SALE' ? 'bg-emerald-800 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                  className={`px-4 py-2 rounded-lg transition ${form.listingType === 'SALE' ? 'bg-emerald-800 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                    }`}
                 >
                   FOR SALE
                 </button>
@@ -879,18 +873,16 @@ export default function AdminPropertiesPage() {
                                 className="flex items-center gap-3 cursor-pointer group py-1 select-none"
                               >
                                 <div
-                                  className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
-                                    isChecked
+                                  className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${isChecked
                                       ? 'bg-blue-600 border border-blue-600 text-white shadow-xs'
                                       : 'border-2 border-slate-300 bg-white group-hover:border-slate-400'
-                                  }`}
+                                    }`}
                                 >
                                   {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                                 </div>
                                 <span
-                                  className={`text-xs font-semibold transition ${
-                                    isChecked ? 'text-slate-900 font-bold' : 'text-slate-600 group-hover:text-slate-900'
-                                  }`}
+                                  className={`text-xs font-semibold transition ${isChecked ? 'text-slate-900 font-bold' : 'text-slate-600 group-hover:text-slate-900'
+                                    }`}
                                 >
                                   {item}
                                 </span>
@@ -949,11 +941,10 @@ export default function AdminPropertiesPage() {
                   <label className="flex items-center gap-3 cursor-pointer select-none">
                     <div
                       onClick={() => setForm({ ...form, negotiable: !form.negotiable })}
-                      className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
-                        form.negotiable
+                      className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all cursor-pointer ${form.negotiable
                           ? 'bg-blue-600 text-white shadow-xs ring-2 ring-blue-600/20'
                           : 'bg-white border-2 border-slate-300 hover:border-slate-400'
-                      }`}
+                        }`}
                     >
                       {form.negotiable && <Check className="w-4 h-4 stroke-[3]" />}
                     </div>
@@ -1299,27 +1290,24 @@ export default function AdminPropertiesPage() {
                 <button
                   type="button"
                   onClick={() => setStatusFilter('ALL')}
-                  className={`px-3 py-1.5 rounded-lg transition ${
-                    statusFilter === 'ALL' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg transition ${statusFilter === 'ALL' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
                 >
                   All ({properties.length})
                 </button>
                 <button
                   type="button"
                   onClick={() => setStatusFilter('PUBLISHED')}
-                  className={`px-3 py-1.5 rounded-lg transition ${
-                    statusFilter === 'PUBLISHED' ? 'bg-emerald-800 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg transition ${statusFilter === 'PUBLISHED' ? 'bg-emerald-800 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
                 >
                   Published ({properties.filter((p) => p.status === 'PUBLISHED').length})
                 </button>
                 <button
                   type="button"
                   onClick={() => setStatusFilter('DRAFT')}
-                  className={`px-3 py-1.5 rounded-lg transition ${
-                    statusFilter === 'DRAFT' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg transition ${statusFilter === 'DRAFT' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
                 >
                   Drafts ({properties.filter((p) => p.status === 'DRAFT' || p.status === 'PENDING_REVIEW').length})
                 </button>
@@ -1363,10 +1351,10 @@ export default function AdminPropertiesPage() {
                           (prop.propertyType === 'LAND'
                             ? '/property_land.png'
                             : prop.propertyType === 'OFFICE_SPACE'
-                            ? '/property_office.png'
-                            : prop.propertyType === 'WAREHOUSE'
-                            ? '/property_warehouse.png'
-                            : '/property_villa.png')
+                              ? '/property_office.png'
+                              : prop.propertyType === 'WAREHOUSE'
+                                ? '/property_warehouse.png'
+                                : '/property_villa.png')
                         }
                         alt={prop.title}
                         className="w-full h-full object-cover"
@@ -1402,11 +1390,10 @@ export default function AdminPropertiesPage() {
 
                       <div className="flex items-center gap-2">
                         <span
-                          className={`px-2 py-0.5 text-[9px] font-black rounded-full uppercase border ${
-                            prop.status === 'PUBLISHED'
+                          className={`px-2 py-0.5 text-[9px] font-black rounded-full uppercase border ${prop.status === 'PUBLISHED'
                               ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                               : 'bg-amber-100 text-amber-900 border-amber-300'
-                          }`}
+                            }`}
                         >
                           {prop.status}
                         </span>
@@ -1487,10 +1474,10 @@ export default function AdminPropertiesPage() {
                               (prop.propertyType === 'LAND'
                                 ? '/property_land.png'
                                 : prop.propertyType === 'OFFICE_SPACE'
-                                ? '/property_office.png'
-                                : prop.propertyType === 'WAREHOUSE'
-                                ? '/property_warehouse.png'
-                                : '/property_villa.png')
+                                  ? '/property_office.png'
+                                  : prop.propertyType === 'WAREHOUSE'
+                                    ? '/property_warehouse.png'
+                                    : '/property_villa.png')
                             }
                             alt={prop.title}
                             className="w-full h-full object-cover"
@@ -1545,11 +1532,10 @@ export default function AdminPropertiesPage() {
                         <button
                           type="button"
                           onClick={() => toggleFeatured(prop.id, prop.featured)}
-                          className={`px-3 py-1 rounded-full text-xs font-bold transition border ${
-                            prop.featured
+                          className={`px-3 py-1 rounded-full text-xs font-bold transition border ${prop.featured
                               ? 'bg-emerald-100 text-emerald-900 border-emerald-300 hover:bg-emerald-200'
                               : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200 hover:text-slate-800'
-                          }`}
+                            }`}
                           title={prop.featured ? 'Click to unmark as Featured' : 'Click to mark as Featured'}
                         >
                           {prop.featured ? 'Featured' : 'Standard'}
@@ -1559,11 +1545,10 @@ export default function AdminPropertiesPage() {
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-1 items-start">
                           <span
-                            className={`px-2.5 py-1 text-[10px] font-black rounded-full uppercase border flex items-center gap-1.5 shadow-2xs ${
-                              prop.status === 'PUBLISHED'
+                            className={`px-2.5 py-1 text-[10px] font-black rounded-full uppercase border flex items-center gap-1.5 shadow-2xs ${prop.status === 'PUBLISHED'
                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                 : 'bg-amber-100 text-amber-900 border-amber-300'
-                            }`}
+                              }`}
                           >
                             {prop.status === 'PUBLISHED' ? (
                               <>

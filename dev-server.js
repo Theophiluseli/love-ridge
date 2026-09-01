@@ -90,6 +90,14 @@ nextProcess.on('error', (err) => {
     proxyReq.end();
   });
 
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.log(`[Multi-Port Listener] Port ${port} is occupied, skipping reverse proxy.`);
+    } else {
+      console.error(`[Multi-Port Listener] Error on port ${port}:`, err.message);
+    }
+  });
+
   server.listen(port, '0.0.0.0', () => {
     console.log(`[Multi-Port Listener] Active on http://localhost:${port} -> forwarding to http://localhost:3000`);
   });

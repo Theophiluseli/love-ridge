@@ -128,8 +128,8 @@ export default function AdminProductsPage() {
             ? 'Store product updated & saved as Draft!'
             : 'Store product updated & published successfully!'
           : chosenStatus === 'DRAFT'
-          ? 'Store product saved as Draft successfully!'
-          : 'Store product created & published successfully!'
+            ? 'Store product saved as Draft successfully!'
+            : 'Store product created & published successfully!'
       );
       setTimeout(() => setMessage(''), 4000);
       resetForm();
@@ -137,7 +137,7 @@ export default function AdminProductsPage() {
       fetchProducts();
     } catch (err: any) {
       console.warn('Product publish incomplete, executing auto-save as DRAFT fallback:', err);
-      
+
       // AUTO-SAVE AS DRAFT FALLBACK when listing or uploading couldn't complete fully
       try {
         const draftRes = await fetch(url, {
@@ -780,8 +780,8 @@ export default function AdminProductsPage() {
                               (prod.slug.includes('drill')
                                 ? '/product_drill.png'
                                 : prod.slug.includes('lock')
-                                ? '/product_lock.png'
-                                : '/product_tiles.png')
+                                  ? '/product_lock.png'
+                                  : '/product_tiles.png')
                             }
                             alt={prod.name}
                             className="w-full h-full object-cover"
@@ -801,11 +801,10 @@ export default function AdminProductsPage() {
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-1 items-start">
                           <span
-                            className={`px-2.5 py-1 text-[10px] font-black rounded-full uppercase border flex items-center gap-1.5 shadow-2xs ${
-                              prod.status === 'PUBLISHED'
+                            className={`px-2.5 py-1 text-[10px] font-black rounded-full uppercase border flex items-center gap-1.5 shadow-2xs ${prod.status === 'PUBLISHED'
                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                 : 'bg-amber-100 text-amber-900 border-amber-300'
-                            }`}
+                              }`}
                           >
                             {prod.status === 'PUBLISHED' ? (
                               <>
@@ -833,11 +832,10 @@ export default function AdminProductsPage() {
                         <button
                           type="button"
                           onClick={() => toggleFeatured(prod.id, prod.featured)}
-                          className={`px-3 py-1 rounded-full text-xs font-bold transition border ${
-                            prod.featured
+                          className={`px-3 py-1 rounded-full text-xs font-bold transition border ${prod.featured
                               ? 'bg-emerald-100 text-emerald-900 border-emerald-300 hover:bg-emerald-200'
                               : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200 hover:text-slate-800'
-                          }`}
+                            }`}
                           title={prod.featured ? 'Click to unmark as Featured' : 'Click to mark as Featured'}
                         >
                           {prod.featured ? 'Featured' : 'Standard'}
@@ -846,19 +844,18 @@ export default function AdminProductsPage() {
 
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
-                          className={`px-3 py-1 text-xs font-bold rounded-full border inline-block ${
-                            prod.stockStatus === 'PRE_ORDER' || prod.stockStatus === 'PREORDER'
+                          className={`px-3 py-1 text-xs font-bold rounded-full border inline-block ${prod.stockStatus === 'PRE_ORDER' || prod.stockStatus === 'PREORDER'
                               ? 'bg-amber-100 text-amber-900 border-amber-300'
                               : prod.stockStatus === 'OUT_OF_STOCK'
-                              ? 'bg-rose-100 text-rose-900 border-rose-300'
-                              : 'bg-emerald-100 text-emerald-900 border-emerald-300'
-                          }`}
+                                ? 'bg-rose-100 text-rose-900 border-rose-300'
+                                : 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                            }`}
                         >
                           {prod.stockStatus === 'PRE_ORDER' || prod.stockStatus === 'PREORDER'
                             ? 'Available on Pre-Order'
                             : prod.stockStatus === 'OUT_OF_STOCK'
-                            ? 'Out of Stock'
-                            : 'In Stock'}{' '}
+                              ? 'Out of Stock'
+                              : 'In Stock'}{' '}
                           <span className="text-[10px] opacity-80">({prod.stockQuantity})</span>
                         </span>
                       </td>
