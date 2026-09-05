@@ -1,104 +1,41 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import PropertyCard from '@/components/PropertyCard';
+import PropertyCardSkeleton from '@/components/PropertyCardSkeleton';
 import InquiryModal from '@/components/InquiryModal';
 import CurrencySwitcher from '@/components/CurrencySwitcher';
 import { Search, SlidersHorizontal, Building2, RotateCcw, ChevronDown, Trees, Warehouse, Building } from 'lucide-react';
 import Link from 'next/link';
 import { BUILT_PROPERTY_TYPES } from '@/lib/property-categories';
+import { useRealtimeSync } from '@/hooks/useRealtimeSync';
 
-const INITIAL_PROPERTIES = [
-  {
-    id: 'prop-1',
-    title: 'Luxury 4-Bedroom Smart Villa with Swimming Pool',
-    slug: 'luxury-4-bedroom-smart-villa-east-legon',
-    description: 'Contemporary multi-level smart home in East Legon featuring automated lighting, high security, private pool, and staff quarters.',
-    listingType: 'SALE',
-    propertyType: 'HOUSE',
-    price: 450000,
-    currency: 'USD',
-    pricePeriod: 'outright purchase',
-    negotiable: true,
-    bedrooms: 4,
-    bathrooms: 5,
-    sizeSqft: 4500,
-    locationAddress: 'Boundary Road, East Legon',
-    city: 'Accra',
-    region: 'Greater Accra',
-    featured: true,
-    imageUrl: '/property_villa.png',
-  },
-  {
-    id: 'prop-2',
-    title: 'Prime Commercial Land Plot (1.2 Acres) - Cantonments',
-    slug: 'prime-commercial-land-cantonments-embassy-quarter',
-    description: '1.2 acres of prime commercial land located in Cantonments Embassy Quarter. Fully registered title with Lands Commission clearance.',
-    listingType: 'SALE',
-    propertyType: 'LAND',
-    price: 1800000,
-    currency: 'USD',
-    pricePeriod: 'outright purchase',
-    bedrooms: 0,
-    bathrooms: 0,
-    sizeSqft: 52272,
-    locationAddress: 'Cantonments Embassy Quarter',
-    city: 'Accra',
-    region: 'Greater Accra',
-    featured: true,
-    imageUrl: '/property_land.png',
-  },
-  {
-    id: 'prop-3',
-    title: 'High-Bay Logistics & Distribution Warehouse (2,500 sqm)',
-    slug: 'high-bay-logistics-distribution-warehouse-tema',
-    description: 'Modern 2,500 sqm high-bay logistics warehouse facility in Tema Heavy Industrial Area.',
-    listingType: 'RENT',
-    propertyType: 'WAREHOUSE',
-    price: 15000,
-    currency: 'USD',
-    pricePeriod: 'per month',
-    bedrooms: 0,
-    bathrooms: 4,
-    sizeSqft: 26910,
-    locationAddress: 'Harbour Commercial Expressway',
-    city: 'Tema',
-    region: 'Greater Accra',
-    featured: true,
-    imageUrl: '/property_warehouse.png',
-  },
-  {
-    id: 'prop-4',
-    title: 'Grade-A Executive Office Suite (350 sqm) - Ridge',
-    slug: 'grade-a-executive-office-suite-ridge-financial-district',
-    description: 'Ultra-modern 350 sqm open-plan commercial office space located in Accra’s premier financial hub in Ridge.',
-    listingType: 'RENT',
-    propertyType: 'OFFICE_SPACE',
-    price: 8750,
-    currency: 'USD',
-    pricePeriod: 'per month',
-    bedrooms: 0,
-    bathrooms: 4,
-    sizeSqft: 3767,
-    locationAddress: 'Financial District, Ridge',
-    city: 'Accra',
-    region: 'Greater Accra',
-    featured: true,
-    imageUrl: '/property_villa.png',
-  },
-];
-
-export default function PropertiesPage() {
-  const [properties, setProperties] = useState<any[]>(INITIAL_PROPERTIES);
-  const [loading, setLoading] = useState(false);
+function PropertiesContent() {
+  const searchParams = useSearchParams();
+  const [properties, setProperties] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Filter States
-  const [listingType, setListingType] = useState('ALL');
-  const [propertyType, setPropertyType] = useState('ALL');
-  const [city, setCity] = useState('ALL');
-  const [search, setSearch] = useState('');
+  const [listingType, setListingType] = useState(searchParams.get('listingType') || 'ALL');
+  const [propertyType, setPropertyType] = useState(searchParams.get('propertyType') || 'ALL');
+  const [city, setCity] = useState(searchParams.get('city') || 'ALL');
+  const [search, setSearch] = useState(searchParams.get('search') || '');
+
+  // Sync state when URL params change (e.g. clicking footer links)
+  useEffect(() => {
+    const lType = searchParams.get('listingType');
+    const pType = searchParams.get('propertyType');
+    const cCity = searchParams.get('city');
+    const sSearch = searchParams.get('search');
+    
+    setListingType(lType || 'ALL');
+    setPropertyType(pType || 'ALL');
+    setCity(cCity || 'ALL');
+    setSearch(sSearch || '');
+  }, [searchParams]);
 
   // Modal State
   const [modalState, setModalState] = useState<{
@@ -108,10 +45,7 @@ export default function PropertiesPage() {
   }>({ isOpen: false });
 
   async function fetchProperties() {
-    // Only show loading spinner if no property items exist to ensure instant page load
-    if (properties.length === 0) {
-      setLoading(true);
-    }
+    setLoading(true);
     try {
       const params = new URLSearchParams();
       if (listingType !== 'ALL') params.append('listingType', listingType);
@@ -119,13 +53,16 @@ export default function PropertiesPage() {
       if (city !== 'ALL') params.append('city', city);
       if (search) params.append('search', search);
 
-      const res = await fetch(`/api/properties?${params.toString()}`);
+      const res = await fetch(`/api/properties?${params.toString()}`, { cache: 'no-store' });
       const data = await res.json();
-      if (data.properties && data.properties.length > 0) {
+      if (data.properties && Array.isArray(data.properties)) {
         setProperties(data.properties);
+      } else {
+        setProperties([]);
       }
     } catch (err) {
       console.error('Error loading properties:', err);
+      setProperties([]);
     } finally {
       setLoading(false);
     }
@@ -133,7 +70,12 @@ export default function PropertiesPage() {
 
   useEffect(() => {
     fetchProperties();
-  }, [listingType, propertyType, city]);
+  }, [listingType, propertyType, city, search]);
+
+  // Real-time sync: auto-refetch when any device adds/updates/deletes a property
+  useRealtimeSync((type) => {
+    if (type === 'properties') fetchProperties();
+  });
 
   function resetFilters() {
     setListingType('ALL');
@@ -281,7 +223,11 @@ export default function PropertiesPage() {
 
         {/* Property Grid */}
         {loading ? (
-          <div className="py-20 text-center text-slate-500 text-sm font-semibold">Loading listed properties...</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <PropertyCardSkeleton key={i} />
+            ))}
+          </div>
         ) : properties.length === 0 ? (
           <div className="bg-white p-12 rounded-3xl border border-slate-200 shadow-sm text-center space-y-4 max-w-xl mx-auto">
             <Building2 className="w-12 h-12 text-slate-400 mx-auto" />
@@ -322,5 +268,17 @@ export default function PropertiesPage() {
         itemName={modalState.itemName}
       />
     </div>
+  );
+}
+
+export default function PropertiesPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-emerald-200 border-t-emerald-800 rounded-full animate-spin" />
+      </div>
+    }>
+      <PropertiesContent />
+    </Suspense>
   );
 }

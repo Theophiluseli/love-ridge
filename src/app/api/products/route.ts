@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
       { products, count: products.length },
       {
         headers: {
-          'Cache-Control': 'public, max-age=15, stale-while-revalidate=60',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
         },
       }
     );

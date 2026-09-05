@@ -219,23 +219,26 @@ model Media {
 }
 
 model Lead {
-  id          String    @id @default(uuid())
-  type        String    // PROPERTY_VIEWING, PRODUCT_QUOTE, GENERAL_CONTACT
-  propertyId  String?
-  property    Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
-  productId   String?
-  product     Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+  id            String    @id @default(uuid())
+  type          String    // PROPERTY_VIEWING, PRODUCT_QUOTE, GENERAL_CONTACT
+  propertyId    String?
+  property      Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  productId     String?
+  product       Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
   
-  name        String
-  email       String
-  phone       String
-  message     String
-  status      String    @default("NEW") // NEW, CONTACTED, QUALIFIED, CONVERTED, CLOSED
+  name          String
+  email         String
+  phone         String
+  message       String
+  status        String    @default("NEW") // NEW, CONTACTED, QUALIFIED, CONVERTED, CLOSED
   
-  assignedToId String?
-  assignedTo  User?     @relation("AssignedLeads", fields: [assignedToId], references: [id])
-  source      String    @default("website")
-  createdAt   DateTime  @default(now())
+  preferredDate String?
+  preferredTime String?
+  
+  assignedToId  String?
+  assignedTo    User?     @relation("AssignedLeads", fields: [assignedToId], references: [id])
+  source        String    @default("website")
+  createdAt     DateTime  @default(now())
 
   @@map("leads")
 }

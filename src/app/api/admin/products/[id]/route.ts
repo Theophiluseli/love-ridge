@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuthPermission } from '@/lib/auth/rbac';
 import { saveProduct, deleteProduct, getAllProducts } from '@/lib/products-store';
 import { logAuditAction } from '@/lib/auth/audit';
+import { broadcastCatalogUpdate } from '@/lib/realtime-broadcast';
 
 export async function PATCH(
   req: NextRequest,
@@ -36,6 +37,9 @@ export async function PATCH(
       newValue: updated,
     });
 
+    // Broadcast real-time update to all connected clients
+    broadcastCatalogUpdate('products', 'UPDATE').catch(() => null);
+
     return NextResponse.json({ message: 'Product updated successfully', product: updated });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to update product.' }, { status: 500 });
@@ -67,6 +71,9 @@ export async function DELETE(
       entityId: id,
       oldValue: existing,
     });
+
+    // Broadcast real-time update to all connected clients
+    broadcastCatalogUpdate('products', 'DELETE').catch(() => null);
 
     return NextResponse.json({ message: 'Product deleted successfully.' });
   } catch (error) {

@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import PropertyCard from '@/components/PropertyCard';
+import PropertyCardSkeleton from '@/components/PropertyCardSkeleton';
 import ProductCard from '@/components/ProductCard';
+import ProductCardSkeleton from '@/components/ProductCardSkeleton';
 import InquiryModal from '@/components/InquiryModal';
 import ScrollToTop from '@/components/ScrollToTop';
 import {
@@ -12,117 +14,6 @@ import {
   Star, ChevronLeft, HelpCircle, MapPin, Send, CheckCircle2, Phone, Mail, MessageSquare, Quote, ShieldCheck, ArrowRight, Trees, Warehouse, Layers, ExternalLink
 } from 'lucide-react';
 import Link from 'next/link';
-
-const INITIAL_PROPERTIES = [
-  {
-    id: 'prop-1',
-    title: 'Luxury 4-Bedroom Smart Villa with Swimming Pool',
-    slug: 'luxury-4-bedroom-smart-villa-east-legon',
-    description: 'Contemporary multi-level smart home in East Legon featuring automated lighting, high security, private pool, and staff quarters.',
-    listingType: 'SALE',
-    propertyType: 'HOUSE',
-    price: 450000,
-    currency: 'USD',
-    pricePeriod: 'outright purchase',
-    bedrooms: 4,
-    bathrooms: 5,
-    sizeSqft: 4500,
-    locationAddress: 'Boundary Road, East Legon',
-    city: 'Accra',
-    region: 'Greater Accra',
-    featured: true,
-    imageUrl: '/property_villa.png',
-  },
-  {
-    id: 'prop-2',
-    title: 'Prime Commercial Land Plot (1.2 Acres) - Cantonments',
-    slug: 'prime-commercial-land-cantonments-embassy-quarter',
-    description: '1.2 acres of prime commercial land located in Cantonments Embassy Quarter.',
-    listingType: 'SALE',
-    propertyType: 'LAND',
-    price: 1800000,
-    currency: 'USD',
-    pricePeriod: 'outright purchase',
-    bedrooms: 0,
-    bathrooms: 0,
-    sizeSqft: 52272,
-    locationAddress: 'Cantonments Embassy Quarter',
-    city: 'Accra',
-    region: 'Greater Accra',
-    featured: true,
-    imageUrl: '/property_land.png',
-  },
-  {
-    id: 'prop-3',
-    title: 'High-Bay Logistics & Distribution Warehouse (2,500 sqm)',
-    slug: 'high-bay-logistics-distribution-warehouse-tema',
-    description: 'Modern 2,500 sqm high-bay logistics warehouse facility in Tema Heavy Industrial Area.',
-    listingType: 'RENT',
-    propertyType: 'WAREHOUSE',
-    price: 15000,
-    currency: 'USD',
-    pricePeriod: 'per month',
-    bedrooms: 0,
-    bathrooms: 4,
-    sizeSqft: 26910,
-    locationAddress: 'Harbour Commercial Expressway',
-    city: 'Tema',
-    region: 'Greater Accra',
-    featured: true,
-    imageUrl: '/property_warehouse.png',
-  },
-];
-
-const INITIAL_PRODUCTS = [
-  {
-    id: 'prod-1',
-    name: 'Italian Carrara Porcelain Floor Tiles (60x120cm)',
-    slug: 'italian-60x120-porcelain-floor-tiles',
-    description: 'Premium nano-polished porcelain floor tiles with authentic Carrara marble pattern. High wear resistance.',
-    sku: 'TILE-ITA-60120-CAR',
-    price: 145.00,
-    currency: 'GHS',
-    unit: 'per box (1.44 sqm)',
-    stockQuantity: 450,
-    stockStatus: 'IN_STOCK',
-    moq: 20,
-    featured: true,
-    category: { name: 'TILES & MARBLE SLABS' },
-    imageUrl: '/product_tiles.png',
-  },
-  {
-    id: 'prod-2',
-    name: 'Industrial 20V Brushless Cordless Drill & Impact Driver Set',
-    slug: 'industrial-20v-brushless-cordless-drill-kit',
-    description: 'Heavy duty construction grade cordless power tool combo kit.',
-    sku: 'TOOL-20V-DRILL-KIT',
-    price: 1850.00,
-    currency: 'GHS',
-    unit: 'per set',
-    stockQuantity: 35,
-    stockStatus: 'IN_STOCK',
-    moq: 1,
-    featured: true,
-    category: { name: 'TOOLS & CONSTRUCTION EQUIPMENT' },
-    imageUrl: '/product_drill.png',
-  },
-  {
-    id: 'prod-3',
-    name: 'Smart Biometric Fingerprint & Keypad Front Door Lock',
-    slug: 'smart-biometric-fingerprint-front-door-lock',
-    description: 'High-security 5-in-1 smart lock.',
-    sku: 'SEC-SMART-LOCK-01',
-    price: 1200.00,
-    currency: 'GHS',
-    unit: 'per piece',
-    stockQuantity: 15,
-    stockStatus: 'IN_STOCK',
-    moq: 5,
-    featured: true,
-    category: { name: 'TOOLS & CONSTRUCTION EQUIPMENT' },
-    imageUrl: '/product_lock.png',
-  },
-];
 
 const DEFAULT_HERO_SLIDES = [
   '/hero_carousel_1.jpg',
@@ -132,9 +23,9 @@ const DEFAULT_HERO_SLIDES = [
 ];
 
 export default function HomePage() {
-  const [properties, setProperties] = useState<any[]>(INITIAL_PROPERTIES);
-  const [products, setProducts] = useState<any[]>(INITIAL_PRODUCTS);
-  const [loading, setLoading] = useState(false);
+  const [properties, setProperties] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Background Hero Carousel State
   const [heroSlidesList, setHeroSlidesList] = useState<string[]>(DEFAULT_HERO_SLIDES);
@@ -245,7 +136,7 @@ export default function HomePage() {
       role: 'Principal Commercial Architect',
       location: 'Airport Residential Area',
       avatar: 'SM',
-      comment: 'We imported 3,500 sqm of Carrara Italian porcelain tiles through Loveridge. Direct factory sourcing saved our commercial project over 25% in material budget while delivering top-tier quality.',
+      comment: 'We imported 500 cartons of solar lights with built-in cameras through Loveridge. Their team confirmed the specifications, inspected the products and coordinated shipping from China to Ghana. Communication was clear, and the order arrived exactly as approved.',
       rating: 5,
       type: 'Store Client',
     },
@@ -255,7 +146,7 @@ export default function HomePage() {
       role: 'Diaspora Property Investors',
       location: 'London, UK & Cantonments',
       avatar: 'DO',
-      comment: 'Acquiring property from abroad used to be stressful until we worked with Loveridge. Live video walkthroughs, clear indentures, and swift execution made the entire transaction effortless.',
+      comment: 'Buying property while living abroad felt difficult at first. Loveridge arranged live video viewings, kept me updated and guided me through the documentation and payment process. When I finally returned to Ghana, my property was ready for me. The entire process was transparent and well managed.',
       rating: 5,
       type: 'Diaspora Client',
     },
@@ -365,11 +256,6 @@ export default function HomePage() {
               {/* Refined Subtext 1 */}
               <p className="text-emerald-300 font-extrabold text-xs sm:text-sm tracking-wider uppercase max-w-xl mx-auto drop-shadow-sm">
                 Your Ultimate Destination for Premium Properties & Smart Building Solutions
-              </p>
-
-              {/* Refined Intro Subtext 2 */}
-              <p className="text-slate-200 text-xs sm:text-sm font-medium max-w-2xl mx-auto leading-relaxed pt-1 drop-shadow-sm">
-                Loveridge Properties and Consult bridges luxury real estate brokerage in Ghana with direct factory procurement of high-grade building materials, porcelain tiles, and construction tools globally.
               </p>
             </div>
 
@@ -519,15 +405,19 @@ export default function HomePage() {
               </h2>
 
               <p className="text-xs sm:text-sm leading-relaxed font-medium text-slate-600">
-                At Loveridge Properties and Consult, we cultivate a flexible and inclusive work culture, leveraging remote and hybrid models to support our global team while addressing the evolving demands of the real estate industry.
+                Today, Loveridge is Ghana&apos;s and Africa&apos;s bridge between premium real estate, brokerage, sales, rentals, investment, and valuation advisory, and direct-import building materials, smart tools, and construction equipment. One platform, built on trust, transparency, and direct relationships.
               </p>
 
               <p className="text-xs sm:text-sm leading-relaxed font-medium text-slate-600">
-                Our expertise includes luxury homes, property renovation and management, property sales and rentals, brokerage, advisory services, and strategic investments. As a leader in sourcing and exporting building materials, tools, and equipment from China, we provide streamlined solutions for construction and renovation projects tailored to all economic levels.
+                On the property side, every home, apartment, and land parcel we list goes through full verification checks before it&apos;s approved for a client. On the materials side, we work directly with certified factories in China to import high-grade building materials, smart tools, and construction equipment, cutting out resellers so you get factory-level pricing without the factory-level hassle.
               </p>
 
               <p className="text-xs sm:text-sm leading-relaxed font-medium text-slate-600">
-                Our mission is to simplify the global home-buying and renting process while optimizing the sourcing and export of essential materials. We are committed to ensuring families worldwide enjoy comfortable, stylish homes by transforming real estate experiences with excellence and practicality.
+                Whether you&apos;re a family searching for your first home, a developer sourcing materials for a large-scale build, or a diaspora client investing from abroad, Loveridge is built to make the journey simpler, safer, and more affordable, from your first inquiry to final handover.
+              </p>
+
+              <p className="text-xs sm:text-sm leading-relaxed font-medium text-slate-600">
+                Our mission is simple: make it easier for families and developers everywhere to find a home they love and build it with materials they can trust.
               </p>
 
               <div className="pt-3 flex flex-wrap items-center gap-4">
@@ -569,7 +459,11 @@ export default function HomePage() {
           </div>
 
           {loading ? (
-            <div className="py-12 text-center text-slate-500 text-sm">Loading properties...</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <PropertyCardSkeleton key={i} />
+              ))}
+            </div>
           ) : (
             <div className="space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -624,8 +518,12 @@ export default function HomePage() {
               </Link>
             </div>
 
-            {loading && products.length === 0 ? (
-              <div className="py-12 text-center text-slate-500 text-sm">Loading store inventory...</div>
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <ProductCardSkeleton key={i} />
+                ))}
+              </div>
             ) : (
               <div className="space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -665,14 +563,14 @@ export default function HomePage() {
           <div className="bg-gradient-to-br from-emerald-50/90 via-white to-emerald-50/70 backdrop-blur-md rounded-3xl p-8 sm:p-12 border border-emerald-200/80 shadow-xl grid grid-cols-1 lg:grid-cols-5 gap-8 items-center relative overflow-hidden">
             {/* Left Header Column */}
             <div className="lg:col-span-2 space-y-4">
-              <span className="text-emerald-800 font-bold text-xs uppercase tracking-widest block">
-                CLIENT EXPERIENCES
-              </span>
               <h2 className="text-xl sm:text-2xl font-bold text-slate-900 leading-tight tracking-tight">
-                Trusted by Homeowners & Commercial Developers
+                What Our Clients Say
               </h2>
               <p className="text-slate-600 text-xs sm:text-sm font-medium leading-relaxed">
-                Hear how our legal title guarantee and direct international factory sourcing transform property acquisitions and construction projects in Ghana.
+                Read feedback from property buyers, owners, investors, diaspora clients, developers and businesses we have supported with real estate, property valuation, renovation, maintenance and management, as well as international sourcing and shipping across Ghana and Africa.
+              </p>
+              <p className="text-emerald-800 font-bold text-xs uppercase tracking-widest">
+                Real Estate • Valuation • Renovation • Management • Sourcing
               </p>
 
               <div className="pt-2 space-y-3">
@@ -892,7 +790,7 @@ export default function HomePage() {
                 </div>
                 <div className="flex items-center gap-2.5 sm:justify-end">
                   <Phone className="w-4 h-4 text-emerald-700 shrink-0" />
-                  <span>+233 (0) 24 000 1111</span>
+                  <span>+233 24 643 2493</span>
                 </div>
               </div>
             </div>

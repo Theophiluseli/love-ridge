@@ -15,14 +15,14 @@ export default function ServicesPage() {
     {
       id: 'property-brokerage',
       icon: Building2,
-      title: 'Property Sales & Rental Brokerage',
-      subtitle: 'Luxury Homes, Executive Apartments & Titled Land',
-      description: 'We connect discerning buyers, tenants, and investors with high-value real estate assets across Accra’s prime districts (East Legon, Airport Residential, Cantonments, and Labone). Every property listed is subjected to thorough title searches.',
+      title: 'Property Sales, Rentals & Brokerage',
+      subtitle: 'Homes, Apartments, Commercial Property & Land',
+      description: 'We help buyers, tenants, landlords and investors find suitable residential and commercial properties across Accra and other key locations in Ghana and Africa. We coordinate documentation checks and guide clients through viewings, negotiations and the transaction process.',
       features: [
-        'Verified Lands Commission Title Searches',
-        'Luxury Villa Sales & Executive Furnished Rentals',
-        'Prime Commercial Land Plot Brokerage',
-        'Transparent Deed & Title Transfer Advisory',
+        'Residential & Commercial Property Listings',
+        'Rental, Lease & Property Viewing Support',
+        'Land Documentation & Title Search Coordination',
+        'Negotiation, Sale & Transfer Assistance',
       ],
       linkText: 'Browse Property Listings',
       linkHref: '/properties',
@@ -30,14 +30,14 @@ export default function ServicesPage() {
     {
       id: 'materials-sourcing',
       icon: Package,
-      title: 'Direct International Building Materials Sourcing',
-      subtitle: 'Porcelain Tiles, Marble, Power Tools & Smart Lock Imports',
-      description: 'We eliminate intermediary markups by directly importing construction materials, nano-polished porcelain tiles, natural marble, and industrial tools directly from certified manufacturers in Italy, Germany, and China.',
+      title: 'International Building Materials & Equipment Sourcing',
+      subtitle: 'Building Materials, Tools, Equipment & Smart Solutions',
+      description: 'We help homeowners, contractors, developers and businesses source building materials, tools and equipment from reliable manufacturers in China and other major markets. We support procurement, supplier checks, quality control and shipping for projects in Ghana and across Africa.',
       features: [
-        'Wholesale Carrara & Porcelain Floor Tiles (60x120cm, 80x80cm)',
-        'Heavy-Duty Cordless Power Tools & Construction Sets',
-        'Biometric 5-in-1 Smart Door Locks & Security Hardware',
-        'CIF / FOB Shipping & Customs Clearance Management',
+        'Building Materials, Fixtures & Finishing Products',
+        'Construction Tools, Machinery & Safety Equipment',
+        'Supplier Verification, Negotiation & Quality Control',
+        'Shipping, Consolidation & Customs Support',
       ],
       linkText: 'Explore Building Materials Store',
       linkHref: '/products',
@@ -45,14 +45,14 @@ export default function ServicesPage() {
     {
       id: 'renovation-management',
       icon: Wrench,
-      title: 'Property Renovation & Development Management',
-      subtitle: 'Turnkey Construction & Interior Renovation Supervision',
-      description: 'From partial residential refurbishments to full commercial interior fit-outs, our engineering and management team oversees procurement, site labor, tile laying, and quality inspection to deliver stunning finishes on schedule.',
+      title: 'Property Renovation & Project Management',
+      subtitle: 'Property Renovation, Interior Finishing & Project Support',
+      description: 'We help property owners, developers and businesses plan and manage residential and commercial renovation projects in Ghana and across Africa. Our support covers budgeting, material sourcing, contractor coordination, site supervision and quality checks from planning through completion.',
       features: [
-        'Complete Residential & Villa Renovation',
-        'Tile & Marble Cladding Installation Supervision',
-        'Smart Home Lock & Automation Fitting',
-        'Budget Optimization & Quality Audit Reports',
+        'Residential & Commercial Property Renovation',
+        'Interior Finishing, Tiling & Fixture Installation',
+        'Budget Planning, Procurement & Contractor Coordination',
+        'Site Supervision, Quality Checks & Progress Reporting',
       ],
       linkText: 'Book Renovation Consultation',
       action: 'renovation',
@@ -60,14 +60,15 @@ export default function ServicesPage() {
     {
       id: 'titling-advisory',
       icon: ShieldCheck,
-      title: 'Real Estate Titling & Strategic Investment Advisory',
-      subtitle: 'Legal Due Diligence, Valuation & High-Yield Portfolio Management',
-      description: 'Navigating land ownership in Ghana requires meticulous legal diligence. Our advisory service provides clear title verification, land registration assistance, property valuation, and ROI forecasting for commercial developers.',
+      title: 'Property Valuation, Due Diligence & Investment Advisory',
+      subtitle: 'Property Valuation, Due Diligence & Investment Support',
+      description: 'We help buyers, property owners, diaspora clients and investors determine property value and make informed real estate decisions in Ghana and selected African markets. We provide valuation support and coordinate document checks and title searches with the relevant professionals and public institutions.',
       features: [
-        'Lands Commission Title Verification & Site Plans',
-        'Commercial Real Estate Yield Analysis',
+        'Residential, Commercial Property & Land Valuation',
+        'Property Ownership & Document Verification Support',
+        'Lands Commission Search & Site Plan Coordination',
         'Land Registration & Indenture Legal Guidance',
-        'Foreign Investor & Diaspora Acquisition Support',
+        'Investment Feasibility & Diaspora Buyer Support',
       ],
       linkText: 'Request Advisory Session',
       action: 'advisory',
@@ -86,7 +87,7 @@ export default function ServicesPage() {
           </div>
 
           <h1 className="text-4xl sm:text-6xl font-black text-slate-900 tracking-tight leading-tight">
-            Our Specialist Real Estate & <span className="gradient-text">Procurement Services</span>
+            Our Property & <span className="gradient-text">Global Sourcing Services</span>
           </h1>
 
           <p className="text-slate-600 text-base sm:text-lg max-w-3xl mx-auto font-medium leading-relaxed">
@@ -168,32 +169,32 @@ export default function ServicesPage() {
               <span className="w-10 h-10 rounded-full bg-emerald-800 text-white font-black text-sm flex items-center justify-center mx-auto shadow-md">
                 1
               </span>
-              <h4 className="text-base font-bold text-slate-900">Initial Inquiry</h4>
-              <p className="text-xs text-slate-600 font-medium">Submit your property viewing request or building material quote specifications.</p>
+              <h4 className="text-base font-bold text-slate-900">Submit Your Request</h4>
+              <p className="text-xs text-slate-600 font-medium">Tell us whether you need real estate, property valuation, renovation or building-material sourcing support.</p>
             </div>
 
             <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 text-center space-y-3">
               <span className="w-10 h-10 rounded-full bg-emerald-800 text-white font-black text-sm flex items-center justify-center mx-auto shadow-md">
                 2
               </span>
-              <h4 className="text-base font-bold text-slate-900">Title Audit & Quote</h4>
-              <p className="text-xs text-slate-600 font-medium">We verify property titles at Lands Commission or calculate factory CIF material quotes.</p>
+              <h4 className="text-base font-bold text-slate-900">Viewing or Product Quotation</h4>
+              <p className="text-xs text-slate-600 font-medium">We identify suitable properties and schedule viewings, or confirm your product specifications, quantities and pricing.</p>
             </div>
 
             <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 text-center space-y-3">
               <span className="w-10 h-10 rounded-full bg-emerald-800 text-white font-black text-sm flex items-center justify-center mx-auto shadow-md">
                 3
               </span>
-              <h4 className="text-base font-bold text-slate-900">Site Inspection & Sample</h4>
-              <p className="text-xs text-slate-600 font-medium">Conduct physical property walkthrough or inspect porcelain tile / tool samples.</p>
+              <h4 className="text-base font-bold text-slate-900">Verification & Confirmation</h4>
+              <p className="text-xs text-slate-600 font-medium">We coordinate property document checks, valuation and negotiation, or verify suppliers, samples and product quality.</p>
             </div>
 
             <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 text-center space-y-3">
               <span className="w-10 h-10 rounded-full bg-emerald-800 text-white font-black text-sm flex items-center justify-center mx-auto shadow-md">
                 4
               </span>
-              <h4 className="text-base font-bold text-slate-900">Deed Transfer / Delivery</h4>
-              <p className="text-xs text-slate-600 font-medium">Final legal title execution or container dispatch to your site location.</p>
+              <h4 className="text-base font-bold text-slate-900">Transaction, Delivery & Handover</h4>
+              <p className="text-xs text-slate-600 font-medium">We complete the property transaction or renovation handover, or coordinate the shipping and delivery of approved products.</p>
             </div>
           </div>
         </section>

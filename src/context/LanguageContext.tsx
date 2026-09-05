@@ -95,7 +95,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     'store.unit_set': 'per set',
 
     // Footer
-    'footer.company_desc': 'Loveridge Properties & Consult is Ghana’s premier real estate consultancy and direct imported building materials distributor located in East Legon, Accra.',
+    'footer.company_desc': 'Loveridge Properties & Consult provides real estate, property valuation and renovation services, as well as international sourcing and shipping of building materials, construction equipment and machinery to clients in Ghana and across Africa.',
     'footer.quick_links': 'Quick Links',
     'footer.store_links': 'Building Store',
     'footer.contact_info': 'Contact Details',

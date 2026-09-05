@@ -34,7 +34,7 @@ const SEED_PROPERTIES: Record<string, any> = {
     region: 'Greater Accra',
     imageUrl: '/property_villa.png',
     galleryUrls: ['/property_villa.png', '/hero_carousel_1.jpg', '/hero_carousel_2.jpg'],
-    agent: { name: 'Kwame Appiah', email: 'k.appiah@loveridgeproperty.com', phone: '+233 55 666 7777', title: 'Senior Real Estate Consultant' },
+    agent: { name: 'Kwame Appiah', email: 'k.appiah@loveridgeproperty.com', phone: '+233 24 643 2493', title: 'Senior Real Estate Consultant' },
     updatedAt: new Date().toISOString(),
     amenities: [
       'Air conditioning',
@@ -76,7 +76,7 @@ const SEED_PROPERTIES: Record<string, any> = {
     region: 'Greater Accra',
     imageUrl: '/property_apartment.png',
     galleryUrls: ['/property_apartment.png', '/hero_carousel_3.jpg'],
-    agent: { name: 'Sandra Mensah', email: 's.mensah@loveridgeproperty.com', phone: '+233 24 111 2222', title: 'Commercial Property Specialist' },
+    agent: { name: 'Sandra Mensah', email: 's.mensah@loveridgeproperty.com', phone: '+233 24 643 2493', title: 'Commercial Property Specialist' },
     updatedAt: new Date().toISOString(),
     amenities: [
       'Air conditioning',
@@ -113,7 +113,7 @@ const SEED_PROPERTIES: Record<string, any> = {
     region: 'Greater Accra',
     imageUrl: '/property_land.png',
     galleryUrls: ['/property_land.png'],
-    agent: { name: 'Kwame Appiah', email: 'k.appiah@loveridgeproperty.com', phone: '+233 55 666 7777', title: 'Senior Real Estate Consultant' },
+    agent: { name: 'Kwame Appiah', email: 'k.appiah@loveridgeproperty.com', phone: '+233 24 643 2493', title: 'Senior Real Estate Consultant' },
     updatedAt: new Date().toISOString(),
     amenities: [
       { amenity: { name: 'Lands Commission Title Certificate' } },

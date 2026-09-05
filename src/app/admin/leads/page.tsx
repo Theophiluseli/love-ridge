@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import {
-  Inbox, PhoneCall, Mail, Calendar, Package, Building2, CheckCircle2,
+  Inbox, PhoneCall, Mail, Calendar, Clock, Package, Building2, CheckCircle2,
   Eye, X, MessageSquare, ExternalLink, Search, Filter, ShieldCheck, User
 } from 'lucide-react';
 import Link from 'next/link';
@@ -66,6 +66,8 @@ export default function AdminLeadsPage() {
       lead.email?.toLowerCase().includes(q) ||
       lead.phone?.toLowerCase().includes(q) ||
       lead.message?.toLowerCase().includes(q) ||
+      lead.preferredDate?.toLowerCase().includes(q) ||
+      lead.preferredTime?.toLowerCase().includes(q) ||
       lead.property?.title?.toLowerCase().includes(q) ||
       lead.product?.name?.toLowerCase().includes(q);
 
@@ -163,6 +165,7 @@ export default function AdminLeadsPage() {
               <tr>
                 <th className="px-5 py-3 font-semibold">Inquirer Details</th>
                 <th className="px-5 py-3 font-semibold">Inquiry Type & Reference</th>
+                <th className="px-5 py-3 font-semibold">Requested Schedule</th>
                 <th className="px-5 py-3 font-semibold">Message Summary</th>
                 <th className="px-5 py-3 font-semibold">Received Date</th>
                 <th className="px-5 py-3 font-semibold">Pipeline Status</th>
@@ -172,13 +175,13 @@ export default function AdminLeadsPage() {
             <tbody className="divide-y divide-slate-100 text-slate-700 font-normal">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-500 font-medium">
+                  <td colSpan={7} className="p-8 text-center text-slate-500 font-medium">
                     Loading lead inquiries pipeline...
                   </td>
                 </tr>
               ) : filteredLeads.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-500 font-medium">
+                  <td colSpan={7} className="p-8 text-center text-slate-500 font-medium">
                     No lead inquiries match your current filter.
                   </td>
                 </tr>
@@ -218,7 +221,29 @@ export default function AdminLeadsPage() {
                       </div>
                     </td>
 
-                    {/* 3. Message Snippet (Clickable to open pop-up) */}
+                    {/* 3. Requested Schedule (Date & Time) */}
+                    <td className="px-5 py-3.5 whitespace-nowrap">
+                      {lead.preferredDate || lead.preferredTime ? (
+                        <div className="space-y-1">
+                          {lead.preferredDate && (
+                            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-900 border border-emerald-200 text-[11px] font-semibold">
+                              <Calendar className="w-3 h-3 text-emerald-700 shrink-0" />
+                              <span>{lead.preferredDate}</span>
+                            </div>
+                          )}
+                          {lead.preferredTime && (
+                            <div className="text-[11px] text-slate-600 flex items-center gap-1.5 font-medium">
+                              <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                              <span>{lead.preferredTime}</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 text-[11px] italic font-normal">Flexible</span>
+                      )}
+                    </td>
+
+                    {/* 4. Message Snippet (Clickable to open pop-up) */}
                     <td className="px-5 py-3.5 max-w-xs">
                       <div
                         onClick={() => setSelectedLead(lead)}
@@ -229,7 +254,7 @@ export default function AdminLeadsPage() {
                       </div>
                     </td>
 
-                    {/* 4. Date */}
+                    {/* 5. Date */}
                     <td className="px-5 py-3.5 text-slate-500 text-[11px] font-normal whitespace-nowrap">
                       {new Date(lead.createdAt).toLocaleDateString(undefined, {
                         year: 'numeric',
@@ -238,7 +263,7 @@ export default function AdminLeadsPage() {
                       })}
                     </td>
 
-                    {/* 5. Pipeline Status Badge */}
+                    {/* 6. Pipeline Status Badge */}
                     <td className="px-5 py-3.5 whitespace-nowrap">
                       <span
                         className={`px-2.5 py-0.5 text-[10px] font-medium rounded-full uppercase border ${
@@ -255,7 +280,7 @@ export default function AdminLeadsPage() {
                       </span>
                     </td>
 
-                    {/* 6. Staff Actions */}
+                    {/* 7. Staff Actions */}
                     <td className="px-5 py-3.5 text-right whitespace-nowrap space-x-2">
                       <button
                         onClick={() => setSelectedLead(lead)}
@@ -370,6 +395,42 @@ export default function AdminLeadsPage() {
                 </a>
               </div>
             </div>
+
+            {/* Requested Appointment / Viewing Schedule */}
+            {(selectedLead.preferredDate || selectedLead.preferredTime) && (
+              <div className="bg-emerald-50/70 p-4 rounded-xl border border-emerald-200/90 space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-emerald-800 shrink-0" />
+                  <span className="text-xs font-black uppercase tracking-wider text-emerald-950">
+                    Client's Requested Appointment Schedule
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="bg-white p-3 rounded-xl border border-emerald-200/60 flex items-center gap-2.5 shadow-2xs">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                      <Calendar className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Requested Date</span>
+                      <span className="text-xs font-black text-slate-900">
+                        {selectedLead.preferredDate || 'Flexible / Any Day'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="bg-white p-3 rounded-xl border border-emerald-200/60 flex items-center gap-2.5 shadow-2xs">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                      <Clock className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Requested Time Slot</span>
+                      <span className="text-xs font-black text-slate-900">
+                        {selectedLead.preferredTime || 'Anytime during working hours'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Referenced Catalog Item */}
             {(selectedLead.property || selectedLead.product) && (

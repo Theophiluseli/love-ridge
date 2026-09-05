@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuthPermission } from '@/lib/auth/rbac';
 import { getAllProducts, saveProduct } from '@/lib/products-store';
 import { logAuditAction } from '@/lib/auth/audit';
+import { broadcastCatalogUpdate } from '@/lib/realtime-broadcast';
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuthPermission(req, 'product.create');
@@ -73,6 +74,9 @@ export async function POST(req: NextRequest) {
       entityId: product.id,
       newValue: product,
     });
+
+    // Broadcast real-time update to all connected clients
+    broadcastCatalogUpdate('products', 'INSERT').catch(() => null);
 
     return NextResponse.json({ message: 'Product created successfully', product }, { status: 201 });
   } catch (error: any) {

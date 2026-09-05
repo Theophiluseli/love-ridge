@@ -3,6 +3,7 @@ import { requireAuthPermission } from '@/lib/auth/rbac';
 import { prisma } from '@/lib/db';
 import { logAuditAction } from '@/lib/auth/audit';
 import { getAllProperties, saveProperty } from '@/lib/properties-store';
+import { broadcastCatalogUpdate } from '@/lib/realtime-broadcast';
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuthPermission(req, 'property.create');
@@ -173,6 +174,9 @@ export async function POST(req: NextRequest) {
     } catch (e) {
       // audit log error ignored
     }
+
+    // Broadcast real-time update to all connected clients
+    broadcastCatalogUpdate('properties', 'INSERT').catch(() => null);
 
     return NextResponse.json({ message: 'Property created successfully', property: savedProperty }, { status: 201 });
   } catch (error) {

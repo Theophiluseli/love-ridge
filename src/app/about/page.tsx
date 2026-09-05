@@ -44,27 +44,7 @@ export default function AboutPage() {
           </p>
         </section>
 
-        {/* Company Stats Grid */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 bg-white p-8 rounded-3xl border border-slate-200 shadow-xl">
-            <div className="text-center space-y-1">
-              <span className="text-3xl sm:text-4xl font-black text-emerald-900">150+</span>
-              <span className="text-xs text-slate-500 font-bold block uppercase tracking-wider">Titled Properties Listed</span>
-            </div>
-            <div className="text-center space-y-1">
-              <span className="text-3xl sm:text-4xl font-black text-emerald-900">$12M+</span>
-              <span className="text-xs text-slate-500 font-bold block uppercase tracking-wider">Materials Exported</span>
-            </div>
-            <div className="text-center space-y-1">
-              <span className="text-3xl sm:text-4xl font-black text-emerald-900">100%</span>
-              <span className="text-xs text-slate-500 font-bold block uppercase tracking-wider">Title Legal Guarantee</span>
-            </div>
-            <div className="text-center space-y-1">
-              <span className="text-3xl sm:text-4xl font-black text-emerald-900">15+</span>
-              <span className="text-xs text-slate-500 font-bold block uppercase tracking-wider">Years Industry Expertise</span>
-            </div>
-          </div>
-        </section>
+
 
         {/* Vision & Mission */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -85,7 +65,7 @@ export default function AboutPage() {
               </div>
               <h3 className="text-2xl font-bold text-slate-900">Our Mission</h3>
               <p className="text-slate-600 text-sm leading-relaxed font-medium">
-                To simplify the global home-buying and renting process while optimizing the sourcing and export of essential materials. We are committed to ensuring families and developers worldwide enjoy comfortable, stylish properties.
+                Make it easier for families and developers everywhere to find a home they love and build it with materials they can trust.
               </p>
             </div>
           </div>
@@ -101,17 +81,17 @@ export default function AboutPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
               <ShieldCheck className="w-8 h-8 text-emerald-800" />
-              <h4 className="text-lg font-bold text-slate-900">Legal Integrity & Title Assurance</h4>
+              <h4 className="text-lg font-bold text-slate-900">Property Integrity & Due Diligence</h4>
               <p className="text-xs text-slate-600 leading-relaxed font-medium">
-                Every property and land parcel listed with Loveridge undergoes rigorous verification at the Lands Commission before marketing.
+                We coordinate property document checks, title searches and valuation support with the relevant professionals and institutions before clients proceed with a transaction.
               </p>
             </div>
 
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
               <TrendingUp className="w-8 h-8 text-emerald-800" />
-              <h4 className="text-lg font-bold text-slate-900">Direct Factory Procurement</h4>
+              <h4 className="text-lg font-bold text-slate-900">International Sourcing & Direct Factory Procurement</h4>
               <p className="text-xs text-slate-600 leading-relaxed font-medium">
-                By maintaining direct relations with certified factories in Italy and China, we eliminate reseller markups for real estate developers.
+                Our China office helps clients source building materials, construction equipment and machinery, while coordinating supplier verification, product inspections and shipping to Africa.
               </p>
             </div>
 
@@ -119,7 +99,7 @@ export default function AboutPage() {
               <Users className="w-8 h-8 text-emerald-800" />
               <h4 className="text-lg font-bold text-slate-900">Client-Centric Advisory</h4>
               <p className="text-xs text-slate-600 leading-relaxed font-medium">
-                Our dedicated advisory staff provide end-to-end guidance from initial viewing request to final deed handover and material delivery.
+                We guide clients through property viewings, negotiations, renovation, maintenance, project management and material delivery, with clear communication throughout every stage.
               </p>
             </div>
           </div>

@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
       { properties: publicProperties, count: publicProperties.length },
       {
         headers: {
-          'Cache-Control': 'public, max-age=5, stale-while-revalidate=30',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
         },
       }
     );

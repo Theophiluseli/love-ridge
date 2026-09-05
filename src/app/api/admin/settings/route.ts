@@ -5,8 +5,8 @@ export const dynamic = 'force-dynamic';
 
 const DEFAULT_SETTINGS = {
   siteName: 'Love Ridge Properties & Hardware Platform',
-  contactPhone: '+233 24 123 4567',
-  whatsappNumber: '+233 24 123 4567',
+  contactPhone: '+233 24 643 2493',
+  whatsappNumber: '+233 24 643 2493',
   contactEmail: 'info@loveridge.com',
   enableQuoteInquiries: true,
   enablePropertyBookings: true,

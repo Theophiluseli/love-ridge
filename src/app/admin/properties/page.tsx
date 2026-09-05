@@ -54,7 +54,7 @@ export default function AdminPropertiesPage() {
     galleryUrls: [] as string[],
     amenities: [] as string[],
     contactName: 'Kwame Appiah',
-    contactPhone: '+233 24 000 1111',
+    contactPhone: '+233 24 643 2493',
     contactEmail: 'agent@loveridge.com',
     ownerName: '',
     ownerPhone: '',
@@ -304,7 +304,7 @@ export default function AdminPropertiesPage() {
         ? prop.amenities.map((a: any) => (typeof a === 'string' ? a : a.amenity?.name || a.name || ''))
         : [],
       contactName: existingAgent,
-      contactPhone: '+233 24 000 1111',
+      contactPhone: '+233 24 643 2493',
       contactEmail: 'agent@loveridge.com',
       ownerName: prop.ownerName || '',
       ownerPhone: prop.ownerPhone || '',
@@ -352,7 +352,7 @@ export default function AdminPropertiesPage() {
       galleryUrls: [],
       amenities: [],
       contactName: 'Loveridge Staff Agent',
-      contactPhone: '+233 24 000 1111',
+      contactPhone: '+233 24 643 2493',
       contactEmail: 'agent@loveridge.com',
       ownerName: '',
       ownerPhone: '',
@@ -1076,7 +1076,7 @@ export default function AdminPropertiesPage() {
                       type="tel"
                       value={form.ownerPhone || ''}
                       onChange={(e) => setForm({ ...form, ownerPhone: e.target.value })}
-                      placeholder="e.g. +233 24 123 4567"
+                      placeholder="e.g. +233 24 643 2493"
                       className="admin-input"
                     />
                   </div>

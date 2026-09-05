@@ -15,7 +15,7 @@ export default function Footer() {
             <Logo className="h-10 sm:h-12" variant="dark" />
           </div>
           <p className="text-xs text-slate-600 leading-relaxed font-medium mt-1 max-w-sm">
-            Ghana’s premier real estate consultancy for luxury properties and direct imported building materials, porcelain tiles, and smart construction tools.
+            Loveridge Properties & Consult provides real estate, property valuation and renovation services, as well as international sourcing and shipping of building materials, construction equipment and machinery to clients in Ghana and across Africa.
           </p>
           <div className="flex items-center justify-center sm:justify-start gap-2 pt-1 w-full">
             <span className="px-3 py-1.5 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 text-[10px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-2xs">
@@ -31,23 +31,33 @@ export default function Footer() {
           </h4>
           <ul className="space-y-2.5 text-xs font-medium w-full flex flex-col items-center sm:items-start">
             <li>
-              <Link href="/properties?listingType=SALE" className="hover:text-emerald-800 transition flex items-center justify-center sm:justify-start gap-1.5">
-                <ArrowRight className="w-3 h-3 text-emerald-700 shrink-0" /> Houses for Sale in East Legon
+              <Link href="/properties?propertyType=HOUSE" className="hover:text-emerald-800 transition flex items-center justify-center sm:justify-start gap-1.5">
+                <ArrowRight className="w-3 h-3 text-emerald-700 shrink-0" /> Houses
+              </Link>
+            </li>
+            <li>
+              <Link href="/properties?propertyType=APARTMENT" className="hover:text-emerald-800 transition flex items-center justify-center sm:justify-start gap-1.5">
+                <ArrowRight className="w-3 h-3 text-emerald-700 shrink-0" /> Apartments
               </Link>
             </li>
             <li>
               <Link href="/properties?listingType=RENT" className="hover:text-emerald-800 transition flex items-center justify-center sm:justify-start gap-1.5">
-                <ArrowRight className="w-3 h-3 text-emerald-700 shrink-0" /> Furnished Apartments for Rent
+                <ArrowRight className="w-3 h-3 text-emerald-700 shrink-0" /> For Rent
               </Link>
             </li>
             <li>
-              <Link href="/properties?propertyType=LAND" className="hover:text-emerald-800 transition flex items-center justify-center sm:justify-start gap-1.5">
-                <ArrowRight className="w-3 h-3 text-emerald-700 shrink-0" /> Titled Commercial Land in Cantonments
+              <Link href="/properties?listingType=SALE" className="hover:text-emerald-800 transition flex items-center justify-center sm:justify-start gap-1.5">
+                <ArrowRight className="w-3 h-3 text-emerald-700 shrink-0" /> For Sale
+              </Link>
+            </li>
+            <li>
+              <Link href="/properties?propertyType=WAREHOUSE" className="hover:text-emerald-800 transition flex items-center justify-center sm:justify-start gap-1.5">
+                <ArrowRight className="w-3 h-3 text-emerald-700 shrink-0" /> Warehouses
               </Link>
             </li>
             <li>
               <Link href="/properties" className="hover:text-emerald-800 transition flex items-center justify-center sm:justify-start gap-1.5">
-                <ArrowRight className="w-3 h-3 text-emerald-700 shrink-0" /> All Property Listings
+                <ArrowRight className="w-3 h-3 text-emerald-700 shrink-0" /> All Properties
               </Link>
             </li>
           </ul>
@@ -60,18 +70,23 @@ export default function Footer() {
           </h4>
           <ul className="space-y-2.5 text-xs font-medium w-full flex flex-col items-center sm:items-start">
             <li>
-              <Link href="/products?category=tiles-marble" className="hover:text-emerald-800 transition flex items-center justify-center sm:justify-start gap-1.5">
-                <ArrowRight className="w-3 h-3 text-emerald-700 shrink-0" /> Italian Porcelain & Carrara Tiles
+              <Link href="/products?category=doors-and-smart-locks" className="hover:text-emerald-800 transition flex items-center justify-center sm:justify-start gap-1.5">
+                <ArrowRight className="w-3 h-3 text-emerald-700 shrink-0" /> Doors & Smart Locks
               </Link>
             </li>
             <li>
-              <Link href="/products?category=tools-equipment" className="hover:text-emerald-800 transition flex items-center justify-center sm:justify-start gap-1.5">
-                <ArrowRight className="w-3 h-3 text-emerald-700 shrink-0" /> Power Tools & Safety Gear
+              <Link href="/products?category=solar-lighting-and-cctv" className="hover:text-emerald-800 transition flex items-center justify-center sm:justify-start gap-1.5">
+                <ArrowRight className="w-3 h-3 text-emerald-700 shrink-0" /> Solar Lighting & CCTV
               </Link>
             </li>
             <li>
-              <Link href="/products" className="hover:text-emerald-800 transition flex items-center justify-center sm:justify-start gap-1.5">
-                <ArrowRight className="w-3 h-3 text-emerald-700 shrink-0" /> Request Wholesale Bulk Quote
+              <Link href="/products?category=construction-equipment" className="hover:text-emerald-800 transition flex items-center justify-center sm:justify-start gap-1.5">
+                <ArrowRight className="w-3 h-3 text-emerald-700 shrink-0" /> Construction Equipment
+              </Link>
+            </li>
+            <li>
+              <Link href="/products?category=building-materials" className="hover:text-emerald-800 transition flex items-center justify-center sm:justify-start gap-1.5">
+                <ArrowRight className="w-3 h-3 text-emerald-700 shrink-0" /> Building Materials & Tiles
               </Link>
             </li>
             <li>
@@ -90,11 +105,11 @@ export default function Footer() {
           <ul className="space-y-3 text-xs font-medium w-full flex flex-col items-center sm:items-start">
             <li className="flex items-center sm:items-start justify-center sm:justify-start gap-2 text-slate-700">
               <MapPin className="w-4 h-4 text-emerald-800 shrink-0 mt-0.5" />
-              <span>Lagos Avenue, East Legon, Accra - Ghana</span>
+              <span>Boundary Road, East Legon, Accra – Ghana</span>
             </li>
             <li className="flex items-center justify-center sm:justify-start gap-2 text-slate-700">
               <Phone className="w-4 h-4 text-emerald-800 shrink-0" />
-              <span>+233 (0) 24 643 2493 / 0246432493</span>
+              <span>+233 24 643 2493</span>
             </li>
             <li className="flex items-center justify-center sm:justify-start gap-2 text-slate-700">
               <Mail className="w-4 h-4 text-emerald-800 shrink-0" />
