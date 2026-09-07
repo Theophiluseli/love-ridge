@@ -8,7 +8,7 @@ import ProductCard from '@/components/ProductCard';
 import ProductCardSkeleton from '@/components/ProductCardSkeleton';
 import InquiryModal from '@/components/InquiryModal';
 import CurrencySwitcher from '@/components/CurrencySwitcher';
-import { Search, SlidersHorizontal, Package, ChevronDown, Loader2, CheckCircle2 } from 'lucide-react';
+import { Search, Package, ChevronDown, Loader2, CheckCircle2 } from 'lucide-react';
 import { INITIAL_CATEGORIES_STORE } from '@/lib/products-constants';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
 
@@ -134,7 +134,6 @@ function ProductsContent() {
 
   const visibleProducts = products.slice(0, visibleCount);
   const hasMore = visibleCount < products.length;
-  const remainingCount = Math.max(0, products.length - visibleCount);
 
   function handleLoadMore() {
     setLoadingMore(true);
@@ -203,23 +202,6 @@ function ProductsContent() {
           </div>
         </div>
 
-        {/* Sub-header Product Counter */}
-        <div className="flex items-center justify-between text-xs font-medium text-slate-500">
-          <div className="flex items-center gap-2">
-            <SlidersHorizontal className="w-4 h-4 text-slate-400" />
-            {loading ? (
-              <span className="inline-block w-28 h-4 bg-slate-200 rounded animate-pulse" />
-            ) : products.length > 0 ? (
-              <span>
-                Showing <strong className="text-slate-900 font-extrabold">{Math.min(visibleCount, products.length)}</strong> of{' '}
-                <strong className="text-slate-900 font-extrabold">{products.length}</strong> products
-              </span>
-            ) : (
-              <span>0 products</span>
-            )}
-          </div>
-        </div>
-
         {/* Product Grid */}
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
@@ -253,49 +235,27 @@ function ProductsContent() {
               ))}
             </div>
 
-            {/* Load More Pagination Section (Responsive for Mobile & Desktop) */}
+            {/* View More Pagination Section (Responsive for Mobile & Desktop) */}
             {products.length > 0 && (
-              <div className="pt-6 pb-2 flex flex-col items-center justify-center space-y-4">
-                {/* Progress bar */}
-                <div className="w-full max-w-xs space-y-1.5 text-center">
-                  <div className="flex justify-between text-[11px] font-bold text-slate-500">
-                    <span>Showing {Math.min(visibleCount, products.length)} products</span>
-                    <span>{products.length} Total</span>
-                  </div>
-                  <div className="w-full h-1.5 bg-slate-200/80 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-emerald-800 transition-all duration-500 ease-out rounded-full"
-                      style={{
-                        width: `${Math.min(
-                          100,
-                          (Math.min(visibleCount, products.length) / Math.max(1, products.length)) * 100
-                        )}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Load More Button or All Caught Up Status */}
+              <div className="pt-6 pb-2 flex flex-col items-center justify-center">
+                {/* View More Button or All Caught Up Status */}
                 {hasMore ? (
                   <button
                     type="button"
                     onClick={handleLoadMore}
                     disabled={loadingMore}
                     id="store-load-more-btn"
-                    aria-label="Load more products"
-                    className="w-full sm:w-auto min-w-[240px] px-8 py-3.5 bg-emerald-900 hover:bg-emerald-950 active:scale-[0.98] text-white rounded-full text-xs font-extrabold shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 border border-emerald-800 group cursor-pointer disabled:opacity-75"
+                    aria-label="View more products"
+                    className="w-full sm:w-auto min-w-[200px] px-8 py-3.5 bg-emerald-900 hover:bg-emerald-950 active:scale-[0.98] text-white rounded-full text-xs font-extrabold shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 border border-emerald-800 group cursor-pointer disabled:opacity-75"
                   >
                     {loadingMore ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
-                        <span>Loading more products...</span>
+                        <span>Loading...</span>
                       </>
                     ) : (
                       <>
-                        <span>Load More Products</span>
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-950/60 text-[10px] text-emerald-200 font-bold">
-                          +{Math.min(PAGE_INCREMENT, remainingCount)}
-                        </span>
+                        <span>View More</span>
                         <ChevronDown className="w-4 h-4 text-amber-400 group-hover:translate-y-0.5 transition-transform" />
                       </>
                     )}

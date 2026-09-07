@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Logo from './Logo';
-import { MapPin, Phone, Mail, ArrowRight, ShieldCheck, Shield } from 'lucide-react';
+import { MapPin, Phone, Mail, ArrowRight, ShieldCheck } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -97,10 +97,10 @@ export default function Footer() {
           </ul>
         </div>
 
-        {/* Col 4: Contact & Staff Access */}
+        {/* Col 4: Contact Information */}
         <div className="flex flex-col items-center sm:items-start">
           <h4 className="text-slate-900 font-extrabold mb-3 sm:mb-4 text-xs uppercase tracking-widest text-emerald-900">
-            Office & Staff Access
+            Contact Information
           </h4>
           <ul className="space-y-3 text-xs font-medium w-full flex flex-col items-center sm:items-start">
             <li className="flex items-center sm:items-start justify-center sm:justify-start gap-2 text-slate-700">
@@ -115,24 +115,31 @@ export default function Footer() {
               <Mail className="w-4 h-4 text-emerald-800 shrink-0" />
               <span>info@loveridgeproperty.com</span>
             </li>
-            <li className="pt-2 w-full flex justify-center sm:justify-start">
-              <Link
-                href="/admin/login"
-                className="inline-flex items-center justify-center gap-2 text-xs font-bold text-white bg-slate-900 hover:bg-emerald-900 border border-slate-700 px-4 py-2.5 rounded-xl transition shadow-md w-full sm:w-auto"
-              >
-                <Shield className="w-3.5 h-3.5 text-emerald-400" /> Staff Portal / Admin Login
-              </Link>
-            </li>
           </ul>
         </div>
       </div>
 
       {/* Lower Footer */}
-      <div className="bg-emerald-950 border-t border-emerald-900/60 text-emerald-100 py-6 px-4 sm:px-6 lg:px-8 text-center text-xs font-medium">
-        <div className="max-w-7xl mx-auto flex items-center justify-center">
+      <div className="bg-emerald-950 border-t border-emerald-900/60 text-emerald-100 py-6 px-4 sm:px-6 lg:px-8 text-xs font-medium">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
           <p className="text-emerald-200 text-xs font-semibold">
             © {new Date().getFullYear()} LOVERIDGE Properties & Consult. All rights reserved.
           </p>
+          <div className="flex items-center gap-4 sm:gap-6">
+            <Link
+              href="/privacy-policy"
+              className="text-emerald-300 hover:text-white transition-colors underline-offset-4 hover:underline text-xs font-medium"
+            >
+              Privacy Policy
+            </Link>
+            <span className="text-emerald-800 text-xs">•</span>
+            <Link
+              href="/terms-and-conditions"
+              className="text-emerald-300 hover:text-white transition-colors underline-offset-4 hover:underline text-xs font-medium"
+            >
+              Terms &amp; Conditions
+            </Link>
+          </div>
         </div>
       </div>
     </footer>

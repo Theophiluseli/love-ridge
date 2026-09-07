@@ -129,11 +129,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </nav>
         </div>
 
-        {/* PWA App Install Button */}
-        <div className="pt-2">
-          <PwaInstallButton variant="admin-sidebar" role="admin" />
-        </div>
-
         {/* Footer Actions */}
         <div className="pt-4 border-t border-slate-100 space-y-2">
           <Link
@@ -206,11 +201,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   );
                 })}
               </nav>
-            </div>
-
-            {/* PWA App Install Button */}
-            <div className="pt-2">
-              <PwaInstallButton variant="admin-sidebar" role="admin" />
             </div>
 
             {/* Mobile Footer Actions */}
