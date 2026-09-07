@@ -56,6 +56,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (body.isFavourite === true || body.favourite === true) {
+      const currentProps = await getAllProperties();
+      const favCount = currentProps.filter((p) => p.isFavourite).length;
+      if (favCount >= 3) {
+        return NextResponse.json(
+          { error: 'Only 3 properties can be selected as Favourite. Please deselect an existing Favourite first.' },
+          { status: 400 }
+        );
+      }
+    }
+
     const slug = title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
@@ -118,6 +129,7 @@ export async function POST(req: NextRequest) {
       ownerPhone: body.ownerPhone || '',
       ownerCompany: body.ownerCompany || '',
       negotiable: Boolean(body.negotiable),
+      isFavourite: Boolean(body.isFavourite ?? body.favourite),
       commission: body.commission || '',
       amenities: Array.isArray(body.amenities) ? body.amenities : [],
     };

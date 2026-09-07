@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -8,15 +8,18 @@ import PropertyCard from '@/components/PropertyCard';
 import PropertyCardSkeleton from '@/components/PropertyCardSkeleton';
 import InquiryModal from '@/components/InquiryModal';
 import CurrencySwitcher from '@/components/CurrencySwitcher';
-import { Search, SlidersHorizontal, Building2, RotateCcw, ChevronDown, Trees, Warehouse, Building } from 'lucide-react';
+import { Search, SlidersHorizontal, Building2, RotateCcw, ChevronDown, Trees, Warehouse, Building, Briefcase } from 'lucide-react';
 import Link from 'next/link';
-import { BUILT_PROPERTY_TYPES } from '@/lib/property-categories';
+import { BUILT_PROPERTY_TYPES, isResidentialProperty } from '@/lib/property-categories';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
+
+// Client-side module cache for instant sub-millisecond loads
+let cachedClientProperties: any[] | null = null;
 
 function PropertiesContent() {
   const searchParams = useSearchParams();
-  const [properties, setProperties] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [allProperties, setAllProperties] = useState<any[]>(cachedClientProperties || []);
+  const [loading, setLoading] = useState(!cachedClientProperties || cachedClientProperties.length === 0);
 
   // Filter States
   const [listingType, setListingType] = useState(searchParams.get('listingType') || 'ALL');
@@ -44,38 +47,89 @@ function PropertiesContent() {
     itemName?: string;
   }>({ isOpen: false });
 
-  async function fetchProperties() {
-    setLoading(true);
+  const fetchProperties = useCallback(async (showSkeleton = false) => {
+    if (showSkeleton) setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (listingType !== 'ALL') params.append('listingType', listingType);
-      if (propertyType !== 'ALL') params.append('propertyType', propertyType);
-      if (city !== 'ALL') params.append('city', city);
-      if (search) params.append('search', search);
-
-      const res = await fetch(`/api/properties?${params.toString()}`, { cache: 'no-store' });
+      const res = await fetch('/api/properties', { cache: 'no-store' });
       const data = await res.json();
       if (data.properties && Array.isArray(data.properties)) {
-        setProperties(data.properties);
-      } else {
-        setProperties([]);
+        cachedClientProperties = data.properties;
+        setAllProperties(data.properties);
       }
     } catch (err) {
       console.error('Error loading properties:', err);
-      setProperties([]);
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    fetchProperties();
-  }, [listingType, propertyType, city, search]);
+    fetchProperties(!cachedClientProperties || cachedClientProperties.length === 0);
+  }, [fetchProperties]);
 
-  // Real-time sync: auto-refetch when any device adds/updates/deletes a property
+  // Real-time sync: auto-refetch when any admin or device adds/updates/deletes a property
   useRealtimeSync((type) => {
-    if (type === 'properties') fetchProperties();
+    if (type === 'properties') fetchProperties(false);
   });
+
+  // Filter properties in-memory instantly (0ms latency, zero screen flicker)
+  const filteredProperties = useMemo(() => {
+    const result = allProperties.filter((p) => {
+      // 1. Search keyword
+      if (search.trim()) {
+        const q = search.toLowerCase().trim();
+        const matchesTitle = p.title?.toLowerCase().includes(q);
+        const matchesDesc = p.description?.toLowerCase().includes(q);
+        const matchesAddress = p.locationAddress?.toLowerCase().includes(q);
+        const matchesCity = p.city?.toLowerCase().includes(q);
+        if (!matchesTitle && !matchesDesc && !matchesAddress && !matchesCity) {
+          return false;
+        }
+      }
+
+      // 2. Listing Type (SALE / RENT)
+      if (listingType !== 'ALL') {
+        if (p.listingType?.toUpperCase() !== listingType.toUpperCase()) {
+          return false;
+        }
+      }
+
+      // 3. Property Type
+      if (propertyType !== 'ALL') {
+        const pTypeUpper = propertyType.toUpperCase();
+        if (pTypeUpper === 'COMMERCIAL' || pTypeUpper === 'COMMERCIAL_SPACE') {
+          const isComm =
+            ['LAND', 'OFFICE_SPACE', 'OFFICE', 'WAREHOUSE', 'COMMERCIAL_SPACE', 'RETAIL', 'SHOP'].includes(
+              (p.propertyType || '').toUpperCase()
+            ) || !isResidentialProperty(p.propertyType);
+          if (!isComm) return false;
+        } else if (pTypeUpper === 'RESIDENTIAL') {
+          if (!isResidentialProperty(p.propertyType)) return false;
+        } else {
+          if ((p.propertyType || '').toUpperCase() !== pTypeUpper) {
+            return false;
+          }
+        }
+      }
+
+      // 4. City
+      if (city !== 'ALL') {
+        if (p.city?.toLowerCase() !== city.toLowerCase()) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
+    // Ensure Favourites occupy the first positions (first 3 roles/rows)
+    return [...result].sort((a, b) => {
+      const aFav = a.isFavourite ? 1 : 0;
+      const bFav = b.isFavourite ? 1 : 0;
+      if (aFav !== bFav) return bFav - aFav;
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+    });
+  }, [allProperties, search, listingType, propertyType, city]);
 
   function resetFilters() {
     setListingType('ALL');
@@ -88,11 +142,96 @@ function PropertiesContent() {
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between">
       <Navbar />
 
-      {/* Main Container with Extra Top Padding for header & filter bar */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-12 sm:pt-16 pb-12 space-y-10">
+      {/* Main Container */}
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-12 sm:pt-16 pb-12 space-y-8">
+        
+        {/* PAGE HEADER */}
+        <div className="max-w-5xl mx-auto text-center space-y-2">
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
+            Properties & <span className="text-emerald-800">Commercial Listings</span>
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-600 max-w-2xl mx-auto">
+            Browse verified luxury villas, residential homes, prime commercial offices, logistics warehouses, and titled lands across Ghana.
+          </p>
+
+          {/* QUICK CATEGORY PILLS */}
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-3">
+            <button
+              onClick={() => { setPropertyType('ALL'); setListingType('ALL'); }}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+                propertyType === 'ALL' && listingType === 'ALL'
+                  ? 'bg-emerald-800 text-white shadow-md'
+                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              All Listings ({allProperties.length})
+            </button>
+            <button
+              onClick={() => setPropertyType('COMMERCIAL')}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all ${
+                propertyType === 'COMMERCIAL'
+                  ? 'bg-emerald-800 text-white shadow-md'
+                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <Briefcase className="w-3.5 h-3.5" />
+              Commercial & Offices
+            </button>
+            <button
+              onClick={() => setPropertyType('HOUSE')}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+                propertyType === 'HOUSE'
+                  ? 'bg-emerald-800 text-white shadow-md'
+                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              Houses & Villas
+            </button>
+            <button
+              onClick={() => setPropertyType('APARTMENT')}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+                propertyType === 'APARTMENT'
+                  ? 'bg-emerald-800 text-white shadow-md'
+                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              Apartments
+            </button>
+            <button
+              onClick={() => setPropertyType('LAND')}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+                propertyType === 'LAND'
+                  ? 'bg-emerald-800 text-white shadow-md'
+                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              Land & Plots
+            </button>
+            <button
+              onClick={() => { setListingType('RENT'); }}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+                listingType === 'RENT'
+                  ? 'bg-emerald-800 text-white shadow-md'
+                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              For Rent
+            </button>
+            <button
+              onClick={() => { setListingType('SALE'); }}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+                listingType === 'SALE'
+                  ? 'bg-emerald-800 text-white shadow-md'
+                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              For Sale
+            </button>
+          </div>
+        </div>
+
         {/* CENTERED FILTER & SEARCH BAR SECTION */}
         <div className="max-w-5xl mx-auto w-full space-y-6">
-          {/* Centered Filter Bar */}
           <div className="bg-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-xl space-y-4 sm:space-y-5">
             <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
               <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-slate-800 shrink-0">
@@ -101,7 +240,7 @@ function PropertiesContent() {
               </div>
 
               <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-                {/* Currency Switcher in Filter Bar */}
+                {/* Currency Switcher */}
                 <div className="flex items-center gap-1">
                   <span className="hidden sm:inline text-[11px] font-bold text-slate-400">Currency:</span>
                   <CurrencySwitcher />
@@ -111,7 +250,7 @@ function PropertiesContent() {
 
                 <button
                   onClick={resetFilters}
-                  className="text-[11px] sm:text-xs text-emerald-800 font-bold hover:underline flex items-center gap-1 shrink-0 ml-1"
+                  className="text-[11px] sm:text-xs text-emerald-800 font-bold hover:underline flex items-center gap-1 shrink-0 ml-1 cursor-pointer"
                   title="Reset Filters"
                 >
                   <RotateCcw className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
@@ -158,6 +297,7 @@ function PropertiesContent() {
                     className="w-full bg-slate-50/90 border border-slate-200 rounded-2xl px-4 py-3 text-xs text-slate-900 font-semibold appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-800/20 focus:border-emerald-700 focus:bg-white shadow-2xs pr-10 transition-all cursor-pointer"
                   >
                     <option value="ALL">All Categories</option>
+                    <option value="COMMERCIAL">Commercial & Offices (All)</option>
                     <optgroup label="Dedicated Land Section">
                       <option value="LAND">Land & Plots</option>
                     </optgroup>
@@ -204,21 +344,24 @@ function PropertiesContent() {
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && fetchProperties()}
                     placeholder="e.g. Ridge, Spintex, Tema..."
                     className="w-full bg-slate-50/90 border border-slate-200 rounded-2xl px-4 py-3 text-xs text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-800/20 focus:border-emerald-700 focus:bg-white shadow-2xs transition-all pr-11"
                   />
-                  <button
-                    onClick={fetchProperties}
-                    title="Search"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-emerald-800 text-white hover:bg-emerald-950 flex items-center justify-center transition-all shadow-sm"
-                  >
-                    <Search className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                    <Search className="w-4 h-4" />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Results Header Counter */}
+        <div className="flex items-center justify-between text-xs text-slate-500 max-w-5xl mx-auto px-1">
+          <span>
+            Showing <strong className="text-slate-900">{filteredProperties.length}</strong> matching{' '}
+            {propertyType === 'COMMERCIAL' ? 'commercial ' : ''}listings
+          </span>
         </div>
 
         {/* Property Grid */}
@@ -228,7 +371,7 @@ function PropertiesContent() {
               <PropertyCardSkeleton key={i} />
             ))}
           </div>
-        ) : properties.length === 0 ? (
+        ) : filteredProperties.length === 0 ? (
           <div className="bg-white p-12 rounded-3xl border border-slate-200 shadow-sm text-center space-y-4 max-w-xl mx-auto">
             <Building2 className="w-12 h-12 text-slate-400 mx-auto" />
             <h3 className="text-xl font-bold text-slate-900">No Listed Properties Found</h3>
@@ -236,14 +379,17 @@ function PropertiesContent() {
               We couldn't find any property matching your search keywords or filter options.
             </p>
             <div className="flex justify-center gap-3 pt-2">
-              <button onClick={resetFilters} className="bg-slate-100 px-5 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-200">
+              <button
+                onClick={resetFilters}
+                className="bg-slate-100 px-5 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-200 cursor-pointer transition-colors"
+              >
                 Reset Filters
               </button>
             </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {properties.map((prop) => (
+            {filteredProperties.map((prop) => (
               <PropertyCard
                 key={prop.id}
                 property={prop}
@@ -273,11 +419,13 @@ function PropertiesContent() {
 
 export default function PropertiesPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-emerald-200 border-t-emerald-800 rounded-full animate-spin" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+          <div className="w-10 h-10 border-4 border-emerald-200 border-t-emerald-800 rounded-full animate-spin" />
+        </div>
+      }
+    >
       <PropertiesContent />
     </Suspense>
   );

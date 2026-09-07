@@ -34,8 +34,7 @@ interface HeroSlideItem {
 const DEFAULT_SLIDES: HeroSlideItem[] = [
   { id: 'slide-1', imageUrl: '/hero_carousel_1.jpg', title: 'Luxury Smart Villa Showcase', active: true, order: 1 },
   { id: 'slide-2', imageUrl: '/hero_carousel_2.jpg', title: 'Modern Estate Residence', active: true, order: 2 },
-  { id: 'slide-3', imageUrl: '/hero_carousel_3.jpg', title: 'Commercial Suites & Lands', active: true, order: 3 },
-  { id: 'slide-4', imageUrl: '/hero_carousel_4.jpg', title: 'Executive Living Spaces', active: true, order: 4 },
+  { id: 'slide-4', imageUrl: '/hero_carousel_4.jpg', title: 'Executive Living Spaces', active: true, order: 3 },
 ];
 
 export default function AdminHeroPage() {

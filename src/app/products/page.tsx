@@ -12,11 +12,21 @@ import { Search, SlidersHorizontal, Package } from 'lucide-react';
 import { INITIAL_CATEGORIES_STORE } from '@/lib/products-constants';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
 
+// Module-level client cache for instant category switching and return navigation
+const clientProductsCache = new Map<string, any[]>();
+let clientCategoriesCache: any[] | null = null;
+
 function ProductsContent() {
   const searchParams = useSearchParams();
-  const [products, setProducts] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>(INITIAL_CATEGORIES_STORE);
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<any[]>(() => {
+    const initialKey = `${searchParams.get('category') || 'ALL'}_${searchParams.get('search') || ''}`;
+    return clientProductsCache.get(initialKey) || [];
+  });
+  const [categories, setCategories] = useState<any[]>(() => clientCategoriesCache || INITIAL_CATEGORIES_STORE);
+  const [loading, setLoading] = useState<boolean>(() => {
+    const initialKey = `${searchParams.get('category') || 'ALL'}_${searchParams.get('search') || ''}`;
+    return !clientProductsCache.has(initialKey);
+  });
 
   // Filters
   const [search, setSearch] = useState(searchParams.get('search') || '');
@@ -37,51 +47,77 @@ function ProductsContent() {
     itemName?: string;
   }>({ isOpen: false });
 
-  useEffect(() => {
-    async function loadCategories() {
-      try {
-        const res = await fetch('/api/categories');
-        const data = await res.json();
-        if (data.categories && Array.isArray(data.categories) && data.categories.length > 0) {
-          const cats: any[] = [];
-          data.categories.forEach((c: any) => {
-            cats.push(c);
-            if (c.children) cats.push(...c.children);
-          });
-          setCategories(cats);
-        }
-      } catch (err) {
-        console.error('Failed to load categories:', err);
-      }
+  async function loadCategories(forceFresh = false) {
+    if (!forceFresh && clientCategoriesCache && clientCategoriesCache.length > 0) {
+      setCategories(clientCategoriesCache);
+      return;
     }
+    try {
+      const res = await fetch('/api/categories');
+      const data = await res.json();
+      if (data.categories && Array.isArray(data.categories) && data.categories.length > 0) {
+        clientCategoriesCache = data.categories;
+        setCategories(data.categories);
+      }
+    } catch (err) {
+      console.error('Failed to load categories:', err);
+    }
+  }
+
+  useEffect(() => {
     loadCategories();
   }, []);
 
-  async function fetchProducts() {
-    setLoading(true);
+  async function fetchProducts(forceFresh = false) {
+    const cacheKey = `${selectedCategory}_${search.trim().toLowerCase()}`;
+
+    // Instant paint from client cache if available
+    if (!forceFresh && clientProductsCache.has(cacheKey)) {
+      const cached = clientProductsCache.get(cacheKey)!;
+      setProducts(cached);
+      setLoading(false);
+      return;
+    }
+
+    // Only show full skeleton if we have no cached data at all
+    if (!clientProductsCache.has(cacheKey)) {
+      setLoading(true);
+    }
+
     try {
       const params = new URLSearchParams();
       if (search) params.append('search', search);
       if (selectedCategory !== 'ALL') params.append('category', selectedCategory);
 
-      const res = await fetch(`/api/products?${params.toString()}`, { cache: 'no-store' });
+      const res = await fetch(`/api/products?${params.toString()}`);
       const data = await res.json();
       if (data.products && Array.isArray(data.products)) {
+        clientProductsCache.set(cacheKey, data.products);
         setProducts(data.products);
       } else {
+        clientProductsCache.set(cacheKey, []);
         setProducts([]);
       }
     } catch (err) {
       console.error('Failed to fetch products:', err);
-      setProducts([]);
+      if (!clientProductsCache.has(cacheKey)) {
+        setProducts([]);
+      }
     } finally {
       setLoading(false);
     }
   }
 
-  // Real-time sync: auto-refetch when any device adds/updates/deletes a product
+  // Real-time sync: bust client cache and auto-refetch when any device adds/updates/deletes a product or category
   useRealtimeSync((type) => {
-    if (type === 'products') fetchProducts();
+    if (type === 'products') {
+      clientProductsCache.clear();
+      fetchProducts(true);
+    }
+    if (type === 'categories') {
+      clientCategoriesCache = null;
+      loadCategories(true);
+    }
   });
 
   useEffect(() => {
@@ -109,7 +145,7 @@ function ProductsContent() {
             </button>
 
             {categories.map((cat) => {
-              const isActive = selectedCategory === cat.slug;
+              const isActive = selectedCategory === cat.slug || selectedCategory === cat.id;
               return (
                 <button
                   key={cat.id}

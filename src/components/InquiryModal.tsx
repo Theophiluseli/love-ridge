@@ -26,6 +26,8 @@ export default function InquiryModal({
   customMessage,
   defaultInquiryType = 'General Consultancy',
 }: InquiryModalProps) {
+  const isProductQuote = type === 'PRODUCT_QUOTE';
+
   const [formData, setFormData] = useState({
     name: '',
     inquiryType: defaultInquiryType,
@@ -79,8 +81,8 @@ export default function InquiryModal({
           inquiryType: formData.inquiryType,
           email: formData.email,
           phone: formData.phone,
-          preferredDate: formData.preferredDate || null,
-          preferredTime: formData.preferredTime || null,
+          preferredDate: isProductQuote ? null : (formData.preferredDate || null),
+          preferredTime: isProductQuote ? null : (formData.preferredTime || null),
           message: formData.message,
         }),
       });
@@ -219,52 +221,54 @@ export default function InquiryModal({
                 </div>
               </div>
 
-              {/* Row 3: Preferred Date & Time Slot */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-emerald-50/50 p-3.5 rounded-2xl border border-emerald-100">
-                <div>
-                  <label className="block text-xs font-bold text-slate-800 mb-1.5 flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
-                    <span>Preferred Date</span>
-                  </label>
-                  <input
-                    type="date"
-                    min={new Date().toISOString().split('T')[0]}
-                    value={formData.preferredDate}
-                    onChange={(e) => setFormData({ ...formData, preferredDate: e.target.value })}
-                    className="w-full bg-white border border-slate-200 focus:border-emerald-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-100 transition shadow-2xs cursor-pointer"
-                  />
-                </div>
+              {/* Row 3: Preferred Date & Time Slot (Only for property viewings & general inquiries) */}
+              {!isProductQuote && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-emerald-50/50 p-3.5 rounded-2xl border border-emerald-100">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 mb-1.5 flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
+                      <span>Preferred Date</span>
+                    </label>
+                    <input
+                      type="date"
+                      min={new Date().toISOString().split('T')[0]}
+                      value={formData.preferredDate}
+                      onChange={(e) => setFormData({ ...formData, preferredDate: e.target.value })}
+                      className="w-full bg-white border border-slate-200 focus:border-emerald-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-100 transition shadow-2xs cursor-pointer"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-800 mb-1.5 flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
-                    <span>Preferred Time Slot</span>
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={formData.preferredTime}
-                      onChange={(e) => setFormData({ ...formData, preferredTime: e.target.value })}
-                      className="w-full bg-white border border-slate-200 focus:border-emerald-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-semibold appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-100 transition cursor-pointer pr-8 shadow-2xs"
-                    >
-                      <option value="09:00 AM - 10:00 AM">09:00 AM - 10:00 AM (Morning)</option>
-                      <option value="10:00 AM - 11:00 AM">10:00 AM - 11:00 AM (Morning)</option>
-                      <option value="11:00 AM - 12:00 PM">11:00 AM - 12:00 PM (Midday)</option>
-                      <option value="12:00 PM - 01:00 PM">12:00 PM - 01:00 PM (Afternoon)</option>
-                      <option value="01:00 PM - 02:00 PM">01:00 PM - 02:00 PM (Afternoon)</option>
-                      <option value="02:00 PM - 03:00 PM">02:00 PM - 03:00 PM (Afternoon)</option>
-                      <option value="03:00 PM - 04:00 PM">03:00 PM - 04:00 PM (Late Afternoon)</option>
-                      <option value="04:00 PM - 05:00 PM">04:00 PM - 05:00 PM (Evening)</option>
-                      <option value="05:00 PM - 06:00 PM">05:00 PM - 06:00 PM (Evening)</option>
-                      <option value="Flexible / Anytime">Flexible / Anytime</option>
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 9l4 4 4-4" />
-                      </svg>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 mb-1.5 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
+                      <span>Preferred Time Slot</span>
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={formData.preferredTime}
+                        onChange={(e) => setFormData({ ...formData, preferredTime: e.target.value })}
+                        className="w-full bg-white border border-slate-200 focus:border-emerald-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-semibold appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-100 transition cursor-pointer pr-8 shadow-2xs"
+                      >
+                        <option value="09:00 AM - 10:00 AM">09:00 AM - 10:00 AM (Morning)</option>
+                        <option value="10:00 AM - 11:00 AM">10:00 AM - 11:00 AM (Morning)</option>
+                        <option value="11:00 AM - 12:00 PM">11:00 AM - 12:00 PM (Midday)</option>
+                        <option value="12:00 PM - 01:00 PM">12:00 PM - 01:00 PM (Afternoon)</option>
+                        <option value="01:00 PM - 02:00 PM">01:00 PM - 02:00 PM (Afternoon)</option>
+                        <option value="02:00 PM - 03:00 PM">02:00 PM - 03:00 PM (Afternoon)</option>
+                        <option value="03:00 PM - 04:00 PM">03:00 PM - 04:00 PM (Late Afternoon)</option>
+                        <option value="04:00 PM - 05:00 PM">04:00 PM - 05:00 PM (Evening)</option>
+                        <option value="05:00 PM - 06:00 PM">05:00 PM - 06:00 PM (Evening)</option>
+                        <option value="Flexible / Anytime">Flexible / Anytime</option>
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 9l4 4 4-4" />
+                        </svg>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Row 4: Message Details */}
               <div>

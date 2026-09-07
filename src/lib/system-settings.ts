@@ -36,8 +36,8 @@ export async function getSystemSetting<T>(key: string, defaultValue: T): Promise
       key
     );
 
-    // 1500ms timeout race to prevent slow cold starts
-    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500));
+    // 4000ms timeout race to prevent slow cold starts
+    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000));
     const result = await Promise.race([queryPromise, timeoutPromise]);
 
     if (result && Array.isArray(result) && result.length > 0) {
@@ -47,6 +47,11 @@ export async function getSystemSetting<T>(key: string, defaultValue: T): Promise
     }
   } catch (err) {
     console.warn(`Failed to read system setting "${key}" from database:`, err);
+  }
+
+  // If query failed or timed out, but we have a previous cached value, return it
+  if (cached && cached.value) {
+    return { data: cached.value as T, isDefault: false };
   }
 
   return { data: defaultValue, isDefault: true };

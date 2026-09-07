@@ -16,6 +16,17 @@ export async function PATCH(
     const { id } = params;
     const body = await req.json();
 
+    if (body.isFavourite === true) {
+      const currentProds = await getAllProducts();
+      const favCount = currentProds.filter((p) => p.isFavourite && p.id !== id).length;
+      if (favCount >= 3) {
+        return NextResponse.json(
+          { error: 'Only 3 products can be selected as Favourite. Please deselect an existing Favourite first.' },
+          { status: 400 }
+        );
+      }
+    }
+
     const products = await getAllProducts();
     const existing = products.find((p) => p.id === id);
     if (!existing) {

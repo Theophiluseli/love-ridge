@@ -23,6 +23,7 @@ export interface PropertyItem {
   region: string;
   country: string;
   featured: boolean;
+  isFavourite?: boolean;
   imageUrl?: string | null;
   galleryUrls: string[];
   contactName?: string;
@@ -48,6 +49,111 @@ export function sanitizePropertyForPublic(property: PropertyItem): PropertyItem 
 }
 
 export const INITIAL_PROPERTIES_STORE: PropertyItem[] = [
+  {
+    "id": "prop-1788673496508",
+    "title": "Luxury 6-Bedroom House for Sale – Peduase Lodge, Aburi",
+    "slug": "luxury-6-bedroom-house-for-sale-peduase-lodge-aburi-5823",
+    "description": "Luxury 6-Bedroom House for Sale – Peduase Lodge, Aburi\n\nLocated near former President Kufuor’s residence.\n\n* All bedrooms ensuite\n* Nanny’s quarters with kitchen\n* Massive private cinema room\n* Serene and prestigious estate\n\nPrice: US$1,000,000\nCall/WhatsApp: +233 24 643 2493",
+    "listingType": "SALE",
+    "propertyType": "HOUSE",
+    "status": "PUBLISHED",
+    "price": 1000000,
+    "currency": "USD",
+    "pricePeriod": "Hot Cake",
+    "negotiable": true,
+    "commission": "",
+    "bedrooms": 6,
+    "bathrooms": 6,
+    "guestRooms": 1,
+    "boysQuarters": 1,
+    "garage": 2,
+    "sizeSqft": 100,
+    "livingAreaSqft": 100,
+    "locationAddress": "Peduase Lodge, Aburi",
+    "city": "Accra",
+    "region": "Greater Accra",
+    "country": "Ghana",
+    "featured": true,
+    "imageUrl": "/uploads/prop-prop-1788673496508-cover-1788804484345-k4g4.webp",
+    "galleryUrls": [
+      "/uploads/prop-prop-1788673496508-gallery-0-1788804484346-jfx7.webp",
+      "/uploads/prop-prop-1788673496508-gallery-1-1788804484348-rsq0.webp",
+      "/uploads/prop-prop-1788673496508-gallery-2-1788804484349-h5mr.webp",
+      "/uploads/prop-prop-1788673496508-gallery-3-1788804484350-1b5z.webp",
+      "/uploads/prop-prop-1788673496508-gallery-4-1788804484351-cw3j.webp",
+      "/uploads/prop-prop-1788673496508-gallery-5-1788804484352-axgp.webp",
+      "/uploads/prop-prop-1788673496508-gallery-6-1788804484354-alzv.webp",
+      "/uploads/prop-prop-1788673496508-gallery-7-1788804484355-bnte.webp",
+      "/uploads/prop-prop-1788673496508-gallery-8-1788804484356-ikxn.webp"
+    ],
+    "contactName": "Desmond Senanu",
+    "contactPhone": "+233 24 643 2493",
+    "contactEmail": "sales@loveridgeproperties.com",
+    "amenities": [
+      "Air conditioning",
+      "Swimming Pool",
+      "Cinema Room",
+      "Gated Community Security",
+      "Backup Generator",
+      "Boys Quarters"
+    ],
+    "createdAt": "2026-09-06T05:44:58.251Z",
+    "updatedAt": "2026-09-07T18:08:04.358Z"
+  },
+  {
+    "id": "prop-1788676291872",
+    "title": "Beautiful 4-Bedroom House for Sale",
+    "slug": "beautiful-4-bedroom-house-for-sale-8573",
+    "description": "Beautiful 4-Bedroom House for Sale\n\nLocation: Adjiringanor, East Legon\nBedrooms: 4\nPrice: US$280,000\n\nA beautiful and spacious home located in one of Accra’s most desirable residential areas.\n\nContact us today to schedule a viewing.",
+    "listingType": "SALE",
+    "propertyType": "HOUSE",
+    "status": "PUBLISHED",
+    "price": 280000,
+    "currency": "USD",
+    "pricePeriod": "outright purchase",
+    "negotiable": true,
+    "commission": "",
+    "bedrooms": 4,
+    "bathrooms": 4,
+    "guestRooms": 0,
+    "boysQuarters": 0,
+    "garage": 0,
+    "sizeSqft": 100,
+    "livingAreaSqft": 100,
+    "locationAddress": "East Legon Adjiringanor",
+    "city": "Accra",
+    "region": "Greater Accra",
+    "country": "Ghana",
+    "featured": true,
+    "imageUrl": "/uploads/prop-prop-1788676291872-cover-1788804485242-9jt8.webp",
+    "galleryUrls": [
+      "/uploads/prop-prop-1788676291872-gallery-0-1788804485243-ev7c.webp",
+      "/uploads/prop-prop-1788676291872-gallery-1-1788804485244-pvmq.webp",
+      "/uploads/prop-prop-1788676291872-gallery-2-1788804485244-f8zq.webp",
+      "/uploads/prop-prop-1788676291872-gallery-3-1788804485245-aeyh.webp",
+      "/uploads/prop-prop-1788676291872-gallery-4-1788804485247-dgwx.webp",
+      "/uploads/prop-prop-1788676291872-gallery-5-1788804485248-uvjw.webp",
+      "/uploads/prop-prop-1788676291872-gallery-6-1788804485251-a1xq.webp",
+      "/uploads/prop-prop-1788676291872-gallery-7-1788804485254-lsu6.webp",
+      "/uploads/prop-prop-1788676291872-gallery-8-1788804485255-0myp.webp",
+      "/uploads/prop-prop-1788676291872-gallery-9-1788804485257-lgzq.webp",
+      "/uploads/prop-prop-1788676291872-gallery-10-1788804485259-8cmb.webp",
+      "/uploads/prop-prop-1788676291872-gallery-11-1788804485260-6pj3.webp",
+      "/uploads/prop-prop-1788676291872-gallery-12-1788804485264-glpb.webp"
+    ],
+    "contactName": "Desmond Senanu",
+    "contactPhone": "+233 24 643 2493",
+    "contactEmail": "sales@loveridgeproperties.com",
+    "amenities": [
+      "Air conditioning",
+      "Modern Kitchen",
+      "Paved Compound",
+      "Water Reservoir",
+      "Gated Security"
+    ],
+    "createdAt": "2026-09-06T06:31:34.296Z",
+    "updatedAt": "2026-09-07T18:08:05.269Z"
+  },
   {
     "id": "5d7876fb-e79c-45eb-806c-722c65778866",
     "title": "4-Bedroom House for Sale – Tse Addo, Burma Hills",

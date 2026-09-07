@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuthPermission } from '@/lib/auth/rbac';
 import { prisma } from '@/lib/db';
 import { logAuditAction } from '@/lib/auth/audit';
-import { saveProperty, deleteProperty } from '@/lib/properties-store';
+import { saveProperty, deleteProperty, getAllProperties } from '@/lib/properties-store';
 import { broadcastCatalogUpdate } from '@/lib/realtime-broadcast';
 
 export async function PATCH(
@@ -16,6 +16,17 @@ export async function PATCH(
   try {
     const { id } = params;
     const body = await req.json();
+
+    if (body.isFavourite === true) {
+      const currentProps = await getAllProperties();
+      const favCount = currentProps.filter((p) => p.isFavourite && p.id !== id).length;
+      if (favCount >= 3) {
+        return NextResponse.json(
+          { error: 'Only 3 properties can be selected as Favourite. Please deselect an existing Favourite first.' },
+          { status: 400 }
+        );
+      }
+    }
 
     const updated = await saveProperty({
       id,

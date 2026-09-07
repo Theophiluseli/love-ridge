@@ -39,20 +39,34 @@ export async function GET(req: NextRequest) {
     }
 
     if (featured === 'true') {
-      products = products.filter((p) => p.featured);
+      products = products.filter((p) => p.featured || p.isFavourite);
     }
+
+    // Sort: Favourites come first (max 3), then newest
+    products.sort((a, b) => {
+      const aFav = a.isFavourite ? 1 : 0;
+      const bFav = b.isFavourite ? 1 : 0;
+      if (aFav !== bFav) return bFav - aFav;
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+    });
 
     return NextResponse.json(
       { products, count: products.length },
       {
         headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Cache-Control': 'public, max-age=30, s-maxage=60, stale-while-revalidate=300',
         },
       }
     );
   } catch (error) {
     console.error('Error fetching public products:', error);
-    const products = await getAllProducts();
+    let products = await getAllProducts();
+    products.sort((a, b) => {
+      const aFav = a.isFavourite ? 1 : 0;
+      const bFav = b.isFavourite ? 1 : 0;
+      if (aFav !== bFav) return bFav - aFav;
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+    });
     return NextResponse.json({ products, count: products.length });
   }
 }

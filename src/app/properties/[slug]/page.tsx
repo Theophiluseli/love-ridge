@@ -8,7 +8,7 @@ import InquiryModal from '@/components/InquiryModal';
 import ImageGalleryModal from '@/components/ImageGalleryModal';
 import SocialShare from '@/components/SocialShare';
 import { useCurrency } from '@/context/CurrencyContext';
-import { MapPin, Bed, Bath, Maximize2, Shield, Calendar, ChevronLeft, CheckCircle2, Images, X, PhoneCall, Mail, UserCheck, Home, Clock, BadgeCheck, Tv, Network, Asterisk, Check, Wind, Flame, Shirt, Fan, Wifi, Trees, Car, Sun, Send } from 'lucide-react';
+import { MapPin, Bed, Bath, Maximize2, Shield, Calendar, ChevronLeft, ChevronRight, CheckCircle2, Images, X, PhoneCall, Mail, UserCheck, Home, Clock, BadgeCheck, Tv, Network, Asterisk, Check, Wind, Flame, Shirt, Fan, Wifi, Trees, Car, Sun, Send } from 'lucide-react';
 import Link from 'next/link';
 import { formatPropertyType } from '@/lib/property-categories';
 
@@ -383,6 +383,41 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
             }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent z-10 pointer-events-none" />
+
+          {/* Left & Right Navigation Arrows */}
+          {galleryImages.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const currentIndex = galleryImages.indexOf(currentCover);
+                  const prevIndex = currentIndex <= 0 ? galleryImages.length - 1 : currentIndex - 1;
+                  setActivePhoto(galleryImages[prevIndex]);
+                }}
+                className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-slate-950/70 hover:bg-slate-950/95 text-white border border-white/25 shadow-xl backdrop-blur-md flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-90 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 cursor-pointer"
+                title="Previous photo"
+                aria-label="Previous photo"
+              >
+                <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </button>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const currentIndex = galleryImages.indexOf(currentCover);
+                  const nextIndex = currentIndex >= galleryImages.length - 1 ? 0 : currentIndex + 1;
+                  setActivePhoto(galleryImages[nextIndex]);
+                }}
+                className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-slate-950/70 hover:bg-slate-950/95 text-white border border-white/25 shadow-xl backdrop-blur-md flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-90 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 cursor-pointer"
+                title="Next photo"
+                aria-label="Next photo"
+              >
+                <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </button>
+            </>
+          )}
 
           <button
             onClick={() => {

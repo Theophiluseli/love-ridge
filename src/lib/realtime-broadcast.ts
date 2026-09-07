@@ -1,18 +1,55 @@
 import { createClient } from '@supabase/supabase-js';
 
-type CatalogType = 'properties' | 'products';
-type EventType = 'INSERT' | 'UPDATE' | 'DELETE';
+export type CatalogType = 'properties' | 'products' | 'categories';
+export type EventType = 'INSERT' | 'UPDATE' | 'DELETE';
+
+// Global revision registry shared across server modules
+declare global {
+  var __catalogRevision: {
+    version: number;
+    properties: number;
+    products: number;
+    categories: number;
+  } | undefined;
+}
+
+if (!globalThis.__catalogRevision) {
+  globalThis.__catalogRevision = {
+    version: Date.now(),
+    properties: Date.now(),
+    products: Date.now(),
+    categories: Date.now(),
+  };
+}
+
+export function getCatalogRevision() {
+  if (!globalThis.__catalogRevision) {
+    globalThis.__catalogRevision = {
+      version: Date.now(),
+      properties: Date.now(),
+      products: Date.now(),
+      categories: Date.now(),
+    };
+  }
+  return globalThis.__catalogRevision;
+}
 
 /**
- * Broadcasts a catalog mutation event over Supabase Realtime.
+ * Broadcasts a catalog mutation event over Supabase Realtime and advances the server revision.
  * All subscribed browser clients receive this and re-fetch fresh data.
- * Uses the service-role key so it works from server-side API routes.
  */
 export async function broadcastCatalogUpdate(
   catalog: CatalogType,
   event: EventType,
   payload?: Record<string, any>
 ) {
+  const now = Date.now();
+  if (!globalThis.__catalogRevision) {
+    globalThis.__catalogRevision = { version: now, properties: now, products: now, categories: now };
+  }
+  globalThis.__catalogRevision[catalog] = now;
+  globalThis.__catalogRevision.version = now;
+
   try {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -21,7 +58,7 @@ export async function broadcastCatalogUpdate(
 
     const supabase = createClient(url, serviceKey, {
       auth: { persistSession: false },
-      realtime: { params: { eventsPerSecond: 10 } },
+      realtime: { params: { eventsPerSecond: 20 } },
     });
 
     const channel = supabase.channel('loveridge:catalog');
@@ -32,7 +69,7 @@ export async function broadcastCatalogUpdate(
           channel.send({
             type: 'broadcast',
             event: 'catalog_update',
-            payload: { catalog, event, timestamp: Date.now(), ...payload },
+            payload: { catalog, event, timestamp: now, version: now, ...payload },
           });
           // Small delay to allow message to flush before unsubscribing
           setTimeout(() => {
@@ -46,6 +83,6 @@ export async function broadcastCatalogUpdate(
       setTimeout(() => resolve(), 2000);
     });
   } catch (_) {
-    // Never throw — real-time is best-effort, data is already saved
+    // Real-time broadcast is best-effort; data is already securely saved
   }
 }

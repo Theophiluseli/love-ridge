@@ -54,10 +54,7 @@ export default function Navbar() {
 
         {/* Right Actions: Language Selector & Currency Switcher */}
         <div className="hidden lg:flex items-center space-x-2 z-10">
-          {/* Language Switcher Dropdown */}
           <LanguageSwitcher />
-
-          {/* Currency Switcher Dropdown */}
           <CurrencySwitcher />
         </div>
 

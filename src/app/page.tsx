@@ -14,11 +14,11 @@ import {
   Star, ChevronLeft, HelpCircle, MapPin, Send, CheckCircle2, Phone, Mail, MessageSquare, Quote, ShieldCheck, ArrowRight, Trees, Warehouse, Layers, ExternalLink
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRealtimeSync } from '@/hooks/useRealtimeSync';
 
 const DEFAULT_HERO_SLIDES = [
   '/hero_carousel_1.jpg',
   '/hero_carousel_2.jpg',
-  '/hero_carousel_3.jpg',
   '/hero_carousel_4.jpg',
 ];
 
@@ -171,25 +171,33 @@ export default function HomePage() {
     },
   ];
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const [propRes, prodRes] = await Promise.all([
-          fetch('/api/properties?featured=true'),
-          fetch('/api/products?featured=true'),
-        ]);
-        const propData = await propRes.json();
-        const prodData = await prodRes.json();
-        setProperties(propData.properties || []);
-        setProducts(prodData.products || []);
-      } catch (err) {
-        console.error('Failed to load homepage data:', err);
-      } finally {
-        setLoading(false);
-      }
+  async function fetchData() {
+    try {
+      const [propRes, prodRes] = await Promise.all([
+        fetch('/api/properties?featured=true'),
+        fetch('/api/products?featured=true'),
+      ]);
+      const propData = await propRes.json();
+      const prodData = await prodRes.json();
+      setProperties(propData.properties || []);
+      setProducts(prodData.products || []);
+    } catch (err) {
+      console.error('Failed to load homepage data:', err);
+    } finally {
+      setLoading(false);
     }
+  }
+
+  useEffect(() => {
     fetchData();
   }, []);
+
+  // Real-time multi-device sync: auto-refresh homepage when properties or products update
+  useRealtimeSync((type) => {
+    if (type === 'properties' || type === 'products') {
+      fetchData();
+    }
+  });
 
   async function handleContactSubmit(e: React.FormEvent) {
     e.preventDefault();

@@ -25,6 +25,7 @@ export interface ProductItem {
   originCountry?: string;
   moq: number;
   featured: boolean;
+  isFavourite?: boolean;
   categoryId?: string;
   category?: {
     id?: string;

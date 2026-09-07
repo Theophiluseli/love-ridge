@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuthPermission } from '@/lib/auth/rbac';
 import { prisma } from '@/lib/db';
 import { logAuditAction } from '@/lib/auth/audit';
+import { saveProperty } from '@/lib/properties-store';
+import { broadcastCatalogUpdate } from '@/lib/realtime-broadcast';
 
 export async function PATCH(
   req: NextRequest,
@@ -30,6 +32,27 @@ export async function PATCH(
       },
     });
 
+    // Synchronize into properties-store, system_settings, and scratch file
+    await saveProperty({
+      id,
+      status,
+      title: existing.title,
+      slug: existing.slug,
+      description: existing.description,
+      listingType: existing.listingType,
+      propertyType: existing.propertyType,
+      price: existing.price,
+      currency: existing.currency,
+      bedrooms: existing.bedrooms,
+      bathrooms: existing.bathrooms,
+      locationAddress: existing.locationAddress,
+      city: existing.city,
+      region: existing.region,
+      featured: existing.featured,
+      imageUrl: existing.imageUrl || undefined,
+      galleryUrls: existing.galleryUrls || [],
+    });
+
     await logAuditAction({
       userId: user.userId,
       action: `PROPERTY_${status}`,
@@ -38,6 +61,9 @@ export async function PATCH(
       oldValue: { status: existing.status },
       newValue: { status: updated.status },
     });
+
+    // Broadcast real-time update
+    broadcastCatalogUpdate('properties', 'UPDATE').catch(() => null);
 
     return NextResponse.json({ message: `Property status set to ${status}`, property: updated });
   } catch (error) {

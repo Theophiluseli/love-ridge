@@ -19,6 +19,7 @@ import {
   Image as ImageIcon,
 } from 'lucide-react';
 import Logo from '@/components/Logo';
+import PwaInstallButton from '@/components/PwaInstallButton';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -128,6 +129,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </nav>
         </div>
 
+        {/* PWA App Install Button */}
+        <div className="pt-2">
+          <PwaInstallButton variant="admin-sidebar" role="admin" />
+        </div>
+
         {/* Footer Actions */}
         <div className="pt-4 border-t border-slate-100 space-y-2">
           <Link
@@ -202,6 +208,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </nav>
             </div>
 
+            {/* PWA App Install Button */}
+            <div className="pt-2">
+              <PwaInstallButton variant="admin-sidebar" role="admin" />
+            </div>
+
             {/* Mobile Footer Actions */}
             <div className="pt-4 border-t border-slate-100 space-y-2">
               <Link
@@ -243,7 +254,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <PwaInstallButton variant="admin-header" role="admin" />
             <span className="text-[11px] sm:text-xs text-emerald-800 font-bold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 shrink-0">
               Administrator Portal
             </span>

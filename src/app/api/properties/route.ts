@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllProperties, sanitizePropertyForPublic } from '@/lib/properties-store';
+import { isResidentialProperty } from '@/lib/property-categories';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,10 +36,14 @@ export async function GET(req: NextRequest) {
     }
 
     if (propertyType && propertyType !== 'ALL') {
-      if (propertyType.toUpperCase() === 'COMMERCIAL') {
-        properties = properties.filter((p) => ['LAND', 'OFFICE_SPACE', 'WAREHOUSE'].includes(p.propertyType.toUpperCase()));
+      const pUpper = propertyType.toUpperCase();
+      if (pUpper === 'COMMERCIAL' || pUpper === 'COMMERCIAL_SPACE') {
+        properties = properties.filter((p) =>
+          ['LAND', 'OFFICE_SPACE', 'OFFICE', 'WAREHOUSE', 'COMMERCIAL_SPACE', 'RETAIL', 'SHOP'].includes(p.propertyType.toUpperCase()) ||
+          !isResidentialProperty(p.propertyType)
+        );
       } else {
-        properties = properties.filter((p) => p.propertyType.toUpperCase() === propertyType.toUpperCase());
+        properties = properties.filter((p) => p.propertyType.toUpperCase() === pUpper);
       }
     }
 
@@ -68,8 +73,16 @@ export async function GET(req: NextRequest) {
     }
 
     if (featured === 'true') {
-      properties = properties.filter((p) => p.featured);
+      properties = properties.filter((p) => p.featured || p.isFavourite);
     }
+
+    // Sort so Favourites occupy the first positions (first 3 roles/rows), followed by newest listings
+    properties.sort((a, b) => {
+      const aFav = a.isFavourite ? 1 : 0;
+      const bFav = b.isFavourite ? 1 : 0;
+      if (aFav !== bFav) return bFav - aFav;
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+    });
 
     const publicProperties = properties.map(sanitizePropertyForPublic);
 
@@ -77,15 +90,28 @@ export async function GET(req: NextRequest) {
       { properties: publicProperties, count: publicProperties.length },
       {
         headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=59',
         },
       }
     );
   } catch (error) {
     console.error('Error fetching public properties:', error);
-    const properties = await getAllProperties();
+    let properties = await getAllProperties();
+    properties.sort((a, b) => {
+      const aFav = a.isFavourite ? 1 : 0;
+      const bFav = b.isFavourite ? 1 : 0;
+      if (aFav !== bFav) return bFav - aFav;
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+    });
     const publicProperties = properties.map(sanitizePropertyForPublic);
-    return NextResponse.json({ properties: publicProperties, count: publicProperties.length });
+    return NextResponse.json(
+      { properties: publicProperties, count: publicProperties.length },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=59',
+        },
+      }
+    );
   }
 }
 

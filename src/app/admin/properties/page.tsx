@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, CheckCircle, Search, ShieldCheck, Eye, Image as ImageIcon, Trees, Warehouse, Building, Building2, Upload, ArrowRight, X, Phone, Mail, User, Loader2, Clock, Tv, Network, Asterisk, Check, Zap, AlertTriangle } from 'lucide-react';
+import { Plus, Edit2, Trash2, CheckCircle, Search, ShieldCheck, Eye, Image as ImageIcon, Trees, Warehouse, Building, Building2, Upload, ArrowRight, X, Phone, Mail, User, Loader2, Clock, Tv, Network, Asterisk, Check, Zap, AlertTriangle, Star } from 'lucide-react';
 import Link from 'next/link';
 import { compressImage, watermarkImage, optimizeImageToWebP, ImageOptimizationReport } from '@/lib/utils/imageCompressor';
 import { AMENITY_GROUPS, ALL_AMENITIES_LIST } from '@/lib/amenities-constants';
 import { BUILT_PROPERTY_TYPES, LAND_PROPERTY_TYPE, formatPropertyType, isResidentialProperty } from '@/lib/property-categories';
 import ImageOptimizationModal from '@/components/ImageOptimizationModal';
+import { useRealtimeSync } from '@/hooks/useRealtimeSync';
 
 const DEFAULT_AGENTS = [
   'Desmond Senanu',
@@ -37,6 +38,7 @@ export default function AdminPropertiesPage() {
     currency: 'USD',
     pricePeriod: 'per month',
     negotiable: true,
+    isFavourite: false,
     commission: '',
     bedrooms: '0',
     bathrooms: '0',
@@ -49,7 +51,7 @@ export default function AdminPropertiesPage() {
     city: 'Accra',
     region: 'Greater Accra',
     featured: true,
-    status: 'DRAFT',
+    status: 'PUBLISHED',
     imageUrl: '',
     galleryUrls: [] as string[],
     amenities: [] as string[],
@@ -98,6 +100,13 @@ export default function AdminPropertiesPage() {
     fetchProperties();
   }, []);
 
+  // Real-time multi-device sync: auto-refresh property listings table
+  useRealtimeSync((type) => {
+    if (type === 'properties') {
+      fetchProperties();
+    }
+  });
+
   const filteredProperties = properties.filter((prop) => {
     const matchesStatus = statusFilter === 'ALL' || prop.status === statusFilter;
     const matchesSearch =
@@ -117,7 +126,7 @@ export default function AdminPropertiesPage() {
     const url = editItem ? `/api/admin/properties/${editItem.id}` : '/api/admin/properties';
     const method = editItem ? 'PATCH' : 'POST';
 
-    const chosenStatus = targetStatus || form.status || 'DRAFT';
+    const chosenStatus = targetStatus || form.status || 'PUBLISHED';
 
     try {
       const res = await fetch(url, {
@@ -272,6 +281,36 @@ export default function AdminPropertiesPage() {
     }
   }
 
+  async function toggleFavourite(id: string, currentFav: boolean) {
+    const token = localStorage.getItem('loveridge_token');
+    const nextFav = !currentFav;
+    if (nextFav) {
+      const currentFavCount = properties.filter((p) => p.isFavourite && p.id !== id).length;
+      if (currentFavCount >= 3) {
+        alert('Only 3 properties can be selected as Favourite. Please deselect an existing Favourite first.');
+        return;
+      }
+    }
+    try {
+      const res = await fetch(`/api/admin/properties/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ isFavourite: nextFav, ...(nextFav ? { featured: true } : {}) }),
+      });
+      if (res.ok) {
+        fetchProperties();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        if (data.error) alert(data.error);
+      }
+    } catch (err) {
+      console.error('Failed to toggle favourite status:', err);
+    }
+  }
+
   function openEdit(prop: any) {
     setEditItem(prop);
     const existingAgent = prop.contactName || prop.agent?.name || 'Kwame Appiah';
@@ -285,6 +324,7 @@ export default function AdminPropertiesPage() {
       currency: prop.currency || 'USD',
       pricePeriod: prop.propertyType === 'LAND' ? 'outright purchase' : (prop.pricePeriod || (prop.listingType === 'RENT' ? 'per month' : 'outright purchase')),
       negotiable: prop.negotiable !== undefined ? Boolean(prop.negotiable) : true,
+      isFavourite: Boolean(prop.isFavourite || prop.favourite),
       commission: prop.commission || '',
       bedrooms: (prop.bedrooms || 0).toString(),
       bathrooms: (prop.bathrooms || 0).toString(),
@@ -335,6 +375,7 @@ export default function AdminPropertiesPage() {
       currency: 'USD',
       pricePeriod: 'outright purchase',
       negotiable: true,
+      isFavourite: false,
       commission: '',
       bedrooms: '0',
       bathrooms: '0',
@@ -347,7 +388,7 @@ export default function AdminPropertiesPage() {
       city: 'Accra',
       region: 'Greater Accra',
       featured: true,
-      status: 'DRAFT',
+      status: 'PUBLISHED',
       imageUrl: '',
       galleryUrls: [],
       amenities: [],
@@ -359,6 +400,25 @@ export default function AdminPropertiesPage() {
       ownerCompany: '',
     });
     setGalleryInput('');
+  }
+
+  // Upload base64 WebP image to server disk and receive clean URL
+  async function uploadBase64Image(base64: string): Promise<string> {
+    if (!base64 || !base64.startsWith('data:')) return base64;
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base64 }),
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        return data.url;
+      }
+    } catch (err) {
+      console.warn('Upload API fallback note:', err);
+    }
+    return base64;
   }
 
   // Cover Image File Upload Handler (Calculates size and opens popup if above 300KB standard)
@@ -373,7 +433,8 @@ export default function AdminPropertiesPage() {
         setPendingCoverUrl(report.dataUrl);
         setShowOptimizationModal(true);
       } else {
-        setForm((prev) => ({ ...prev, imageUrl: report.dataUrl }));
+        const cleanUrl = await uploadBase64Image(report.dataUrl);
+        setForm((prev) => ({ ...prev, imageUrl: cleanUrl }));
       }
     } catch (err) {
       console.error('Failed to process cover image:', err);
@@ -399,9 +460,10 @@ export default function AdminPropertiesPage() {
         setPendingGalleryUrls(reports.map((r) => r.dataUrl));
         setShowOptimizationModal(true);
       } else {
+        const uploadedUrls = await Promise.all(reports.map((r) => uploadBase64Image(r.dataUrl)));
         setForm((prev) => ({
           ...prev,
-          galleryUrls: [...prev.galleryUrls, ...reports.map((r) => r.dataUrl)],
+          galleryUrls: [...prev.galleryUrls, ...uploadedUrls],
         }));
       }
     } catch (err) {
@@ -413,17 +475,24 @@ export default function AdminPropertiesPage() {
     }
   }
 
-  const handleConfirmAutoOptimization = () => {
-    if (pendingCoverUrl) {
-      setForm((prev) => ({ ...prev, imageUrl: pendingCoverUrl }));
-      setPendingCoverUrl(null);
-    }
-    if (pendingGalleryUrls) {
-      setForm((prev) => ({
-        ...prev,
-        galleryUrls: [...prev.galleryUrls, ...pendingGalleryUrls],
-      }));
-      setPendingGalleryUrls(null);
+  const handleConfirmAutoOptimization = async () => {
+    setUploading(true);
+    try {
+      if (pendingCoverUrl) {
+        const cleanCover = await uploadBase64Image(pendingCoverUrl);
+        setForm((prev) => ({ ...prev, imageUrl: cleanCover }));
+        setPendingCoverUrl(null);
+      }
+      if (pendingGalleryUrls) {
+        const cleanGallery = await Promise.all(pendingGalleryUrls.map(uploadBase64Image));
+        setForm((prev) => ({
+          ...prev,
+          galleryUrls: [...prev.galleryUrls, ...cleanGallery],
+        }));
+        setPendingGalleryUrls(null);
+      }
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -1001,6 +1070,59 @@ export default function AdminPropertiesPage() {
                 </div>
               </div>
 
+              {/* ADMIN PRIORITY: FAVOURITE (APPEARS FIRST ON FRONT PAGE & PROPERTIES PAGE, MAX 3) */}
+              <div className="p-5 bg-slate-50/90 rounded-2xl border border-slate-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  {/* [✓] Favourite */}
+                  <label className="flex items-center gap-3 cursor-pointer select-none">
+                    <div
+                      onClick={() => {
+                        if (!form.isFavourite) {
+                          const currentFavCount = properties.filter((p) => p.isFavourite && p.id !== editItem?.id).length;
+                          if (currentFavCount >= 3) {
+                            alert('Only 3 properties can be selected as Favourite. Please deselect an existing Favourite first.');
+                            return;
+                          }
+                        }
+                        setForm({ ...form, isFavourite: !form.isFavourite });
+                      }}
+                      className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all cursor-pointer ${form.isFavourite
+                          ? 'bg-blue-600 text-white shadow-xs ring-2 ring-blue-600/20'
+                          : 'bg-white border-2 border-slate-300 hover:border-slate-400'
+                        }`}
+                    >
+                      {form.isFavourite && <Check className="w-4 h-4 stroke-[3]" />}
+                    </div>
+                    <span
+                      onClick={() => {
+                        if (!form.isFavourite) {
+                          const currentFavCount = properties.filter((p) => p.isFavourite && p.id !== editItem?.id).length;
+                          if (currentFavCount >= 3) {
+                            alert('Only 3 properties can be selected as Favourite. Please deselect an existing Favourite first.');
+                            return;
+                          }
+                        }
+                        setForm({ ...form, isFavourite: !form.isFavourite });
+                      }}
+                      className="text-sm font-bold text-slate-800 cursor-pointer flex items-center gap-2"
+                    >
+                      Favourite
+                      {form.isFavourite && (
+                        <span className="text-[10px] bg-blue-50 text-blue-700 font-extrabold px-2 py-0.5 rounded-full border border-blue-200">
+                          Active
+                        </span>
+                      )}
+                    </span>
+                  </label>
+
+                  <span className="text-xs font-medium text-slate-500">
+                    {form.isFavourite
+                      ? '✓ Appears first on properties page and front page (Maximum 3 properties)'
+                      : 'Standard display order'}
+                  </span>
+                </div>
+              </div>
+
               {/* City & Address */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -1409,6 +1531,11 @@ export default function AdminPropertiesPage() {
                             <Check className="w-2.5 h-2.5 stroke-[3]" /> Neg.
                           </span>
                         )}
+                        {prop.isFavourite && (
+                          <span className="text-[9px] bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded font-black flex items-center gap-0.5">
+                            <Star className="w-2.5 h-2.5 fill-blue-600 text-blue-600" /> Fav
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1482,6 +1609,7 @@ export default function AdminPropertiesPage() {
                   <th className="px-6 py-4">Price</th>
                   <th className="px-6 py-4">Location</th>
                   <th className="px-6 py-4">Internal Owner / Sourcing Record</th>
+                  <th className="px-6 py-4">Favourite</th>
                   <th className="px-6 py-4">Featured</th>
                   <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4 text-right">Staff Actions</th>
@@ -1490,13 +1618,13 @@ export default function AdminPropertiesPage() {
               <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
                 {loading ? (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-slate-500">
+                    <td colSpan={9} className="p-8 text-center text-slate-500">
                       Loading property listings...
                     </td>
                   </tr>
                 ) : filteredProperties.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-slate-500">
+                    <td colSpan={9} className="p-8 text-center text-slate-500">
                       No matching property listings found.
                     </td>
                   </tr>
@@ -1562,6 +1690,22 @@ export default function AdminPropertiesPage() {
                             🔒 Confidential
                           </span>
                         </div>
+                      </td>
+
+                      {/* FAVOURITE TOGGLE BUTTON COLUMN */}
+                      <td className="px-6 py-4">
+                        <button
+                          type="button"
+                          onClick={() => toggleFavourite(prop.id, Boolean(prop.isFavourite))}
+                          className={`px-3 py-1 rounded-full text-xs font-bold transition border flex items-center gap-1.5 ${prop.isFavourite
+                              ? 'bg-blue-100 text-blue-900 border-blue-300 hover:bg-blue-200 shadow-2xs'
+                              : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200 hover:text-slate-800'
+                            }`}
+                          title={prop.isFavourite ? 'Click to unmark as Favourite' : 'Click to set as Favourite'}
+                        >
+                          <Star className={`w-3.5 h-3.5 ${prop.isFavourite ? 'fill-blue-600 text-blue-600' : 'text-slate-400'}`} />
+                          {prop.isFavourite ? 'Favourite' : 'Standard'}
+                        </button>
                       </td>
 
                       {/* FEATURED TOGGLE BUTTON COLUMN */}

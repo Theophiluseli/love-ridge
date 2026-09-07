@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllProducts } from '@/lib/products-store';
+import { getProductBySlug, getRelatedProducts } from '@/lib/products-store';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,25 +9,19 @@ export async function GET(
 ) {
   try {
     const { slug } = params;
-    const products = await getAllProducts();
-
-    const product = products.find(
-      (p) => p.slug.toLowerCase() === slug.toLowerCase() || p.id.toLowerCase() === slug.toLowerCase()
-    );
+    const product = await getProductBySlug(slug);
 
     if (!product) {
       return NextResponse.json({ error: 'Product not found.' }, { status: 404 });
     }
 
-    const related = products
-      .filter((p) => p.id !== product.id && p.status === 'PUBLISHED')
-      .slice(0, 4);
+    const related = await getRelatedProducts(product, 4);
 
     return NextResponse.json(
       { product, related },
       {
         headers: {
-          'Cache-Control': 'public, max-age=15, stale-while-revalidate=60',
+          'Cache-Control': 'public, max-age=60, s-maxage=120, stale-while-revalidate=600',
         },
       }
     );

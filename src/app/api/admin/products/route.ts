@@ -47,6 +47,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Name, description, categoryId, and price are required.' }, { status: 400 });
     }
 
+    if (body.isFavourite === true || body.favourite === true) {
+      const currentProds = await getAllProducts();
+      const favCount = currentProds.filter((p) => p.isFavourite).length;
+      if (favCount >= 3) {
+        return NextResponse.json(
+          { error: 'Only 3 products can be selected as Favourite. Please deselect an existing Favourite first.' },
+          { status: 400 }
+        );
+      }
+    }
+
     const product = await saveProduct({
       name,
       description,
@@ -63,6 +74,7 @@ export async function POST(req: NextRequest) {
       moq: parseInt(moq),
       status,
       featured: Boolean(featured),
+      isFavourite: Boolean(body.isFavourite ?? body.favourite),
       imageUrl: imageUrl || null,
       galleryUrls: Array.isArray(galleryUrls) ? galleryUrls : [],
     });

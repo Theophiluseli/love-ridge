@@ -18,8 +18,8 @@ interface ProductProps {
     stockStatus: string;
     originCountry?: string;
     moq: number;
-    category?: { name: string };
-    imageUrl?: string;
+    category?: { name: string } | null;
+    imageUrl?: string | null;
     featured?: boolean;
     popular?: boolean;
     updatedAt?: string | Date;
@@ -53,7 +53,7 @@ export default function ProductCard({ product, onRequestQuote }: ProductProps) {
         {/* Image Frame Container */}
         <div className="relative w-full h-44 sm:h-56 bg-slate-100 rounded-xl overflow-hidden mb-2.5 sm:mb-3 border border-slate-100/90">
           {/* Badge at top-left */}
-          <div className="absolute top-2 left-2 sm:top-2.5 sm:left-2.5 z-10 flex flex-wrap gap-1">
+          <div className="absolute top-2 left-2 sm:top-2.5 sm:left-2.5 z-10 flex flex-wrap gap-1 pointer-events-none">
             {product.featured && (
               <span className="bg-slate-900 text-white text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider px-2 sm:px-2.5 py-0.5 rounded-full shadow-sm">
                 FEATURED
@@ -74,18 +74,21 @@ export default function ProductCard({ product, onRequestQuote }: ProductProps) {
             )}
           </div>
 
-          {/* Product Image */}
-          <img
-            src={imgSrc}
-            alt={product.name}
-            loading="lazy"
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          />
+          {/* Product Image Link */}
+          <Link href={`/products/${product.slug}`} className="block w-full h-full">
+            <img
+              src={imgSrc}
+              alt={product.name}
+              loading="lazy"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          </Link>
 
           {/* Floating Circle "+" Button */}
           <button
             onClick={(e) => {
               e.preventDefault();
+              e.stopPropagation();
               onRequestQuote?.(product.id, product.name);
             }}
             title="Request Quote"
@@ -101,7 +104,9 @@ export default function ProductCard({ product, onRequestQuote }: ProductProps) {
         </span>
 
         <h3 className="text-xs sm:text-base font-semibold text-slate-800 group-hover:text-emerald-800 transition-colors line-clamp-1 mb-1 leading-snug">
-          {product.name}
+          <Link href={`/products/${product.slug}`}>
+            {product.name}
+          </Link>
         </h3>
 
         <p className="text-[11px] sm:text-xs text-slate-500 line-clamp-2 leading-relaxed mb-2.5 sm:mb-3 font-normal">
@@ -127,9 +132,10 @@ export default function ProductCard({ product, onRequestQuote }: ProductProps) {
 
         <Link
           href={`/products/${product.slug}`}
-          className="text-[11px] sm:text-xs font-medium text-emerald-800 hover:text-emerald-950 flex items-center gap-0.5 sm:gap-1 group/link py-0.5 shrink-0"
+          className="bg-emerald-900 hover:bg-emerald-950 text-white text-[11px] sm:text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1 shadow-sm hover:shadow transition-all group/link shrink-0 active:scale-95"
         >
-          View <ArrowRight className="w-3 h-3 group-hover/link:translate-x-0.5 transition-transform" />
+          <span>View</span>
+          <ArrowRight className="w-3 h-3 text-white/90 group-hover/link:translate-x-0.5 transition-transform" />
         </Link>
       </div>
     </div>

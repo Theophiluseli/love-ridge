@@ -1,7 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { Bed, Bath, Maximize2, MapPin, Building, Warehouse as WarehouseIcon, Trees, Clock, Home, Check, Send } from 'lucide-react';
+import { Bed, Bath, Maximize2, MapPin, Building, Warehouse as WarehouseIcon, Trees, Clock, Home, Check, Send, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useCurrency } from '@/context/CurrencyContext';
 import { formatPropertyType } from '@/lib/property-categories';
 
@@ -29,6 +30,8 @@ interface PropertyProps {
     city: string;
     featured?: boolean;
     imageUrl?: string;
+    galleryUrls?: string[];
+    images?: string[];
     updatedAt?: string | Date;
     createdAt?: string | Date;
   };
@@ -41,21 +44,63 @@ export default function PropertyCard({ property, onRequestViewing, hidePropertyT
   const isRent = property.listingType === 'RENT';
   const propType = (property.propertyType || '').toUpperCase();
 
-  // Determine property picture
-  let imgSrc = property.imageUrl;
-  if (!imgSrc) {
+  // Determine fallback property picture
+  const fallbackImg = (() => {
     if (propType === 'OFFICE_SPACE' || propType === 'OFFICE' || property.slug?.includes('office')) {
-      imgSrc = '/property_office.png';
+      return '/property_office.png';
     } else if (propType === 'WAREHOUSE' || property.slug?.includes('warehouse')) {
-      imgSrc = '/property_warehouse.png';
+      return '/property_warehouse.png';
     } else if (propType === 'LAND' || property.slug?.includes('land')) {
-      imgSrc = '/property_land.png';
+      return '/property_land.png';
     } else if (property.slug?.includes('apartment') || propType === 'APARTMENT') {
-      imgSrc = '/property_apartment.png';
+      return '/property_apartment.png';
     } else {
-      imgSrc = '/property_villa.png';
+      return '/property_villa.png';
     }
-  }
+  })();
+
+  // Aggregate all unique property photos
+  const rawImages = [
+    property.imageUrl,
+    ...(Array.isArray(property.galleryUrls) ? property.galleryUrls : []),
+    ...(Array.isArray((property as any).images) ? (property as any).images : []),
+  ].filter(Boolean) as string[];
+
+  const imagesList = Array.from(new Set(rawImages.length > 0 ? rawImages : [fallbackImg]));
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+
+  const hasMultipleImages = imagesList.length > 1;
+  const currentImg = imagesList[currentImageIndex] || fallbackImg;
+
+  const handlePrevImage = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCurrentImageIndex((prev) => (prev === 0 ? imagesList.length - 1 : prev - 1));
+  };
+
+  const handleNextImage = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCurrentImageIndex((prev) => (prev === imagesList.length - 1 ? 0 : prev + 1));
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.touches[0].clientX);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX === null || !hasMultipleImages) return;
+    const diff = touchStartX - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 40) {
+      if (diff > 0) {
+        setCurrentImageIndex((prev) => (prev === imagesList.length - 1 ? 0 : prev + 1));
+      } else {
+        setCurrentImageIndex((prev) => (prev === 0 ? imagesList.length - 1 : prev - 1));
+      }
+    }
+    setTouchStartX(null);
+  };
 
   const formattedTypeLabel = formatPropertyType(property.propertyType);
 
@@ -77,18 +122,25 @@ export default function PropertyCard({ property, onRequestViewing, hidePropertyT
 
   return (
     <div className="glass-card rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col justify-between group h-full border border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300">
-      {/* Property Cover Image */}
-      <div className="relative h-48 sm:h-64 bg-slate-100 overflow-hidden">
-        <img
-          src={imgSrc}
-          alt={property.title}
-          loading="lazy"
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent z-10" />
+      {/* Property Cover Image Carousel Frame */}
+      <div
+        className="relative h-48 sm:h-64 bg-slate-100 overflow-hidden select-none"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        <Link href={`/properties/${property.slug}`} className="block w-full h-full">
+          <img
+            key={currentImg}
+            src={currentImg}
+            alt={`${property.title} - Photo ${currentImageIndex + 1}`}
+            loading="lazy"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+        </Link>
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent z-10 pointer-events-none" />
 
         {/* Status Badges */}
-        <div className="absolute top-3 left-3 sm:top-4 sm:left-4 z-20 flex gap-2">
+        <div className="absolute top-3 left-3 sm:top-4 sm:left-4 z-20 flex gap-2 pointer-events-none">
           <span
             className={`px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider shadow-sm ${
               propType === 'LAND' || !isRent ? 'bg-emerald-600 text-white' : 'bg-emerald-800 text-white'
@@ -102,6 +154,31 @@ export default function PropertyCard({ property, onRequestViewing, hidePropertyT
             </span>
           )}
         </div>
+
+        {/* Left & Right Navigation Arrows */}
+        {hasMultipleImages && (
+          <>
+            <button
+              type="button"
+              onClick={handlePrevImage}
+              className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 z-30 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-950/70 hover:bg-slate-950/95 active:scale-90 text-white border border-white/25 shadow-lg backdrop-blur-md flex items-center justify-center transition-all duration-200 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 hover:scale-110 cursor-pointer"
+              title="Previous photo"
+              aria-label="Previous photo"
+            >
+              <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleNextImage}
+              className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 z-30 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-950/70 hover:bg-slate-950/95 active:scale-90 text-white border border-white/25 shadow-lg backdrop-blur-md flex items-center justify-center transition-all duration-200 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 hover:scale-110 cursor-pointer"
+              title="Next photo"
+              aria-label="Next photo"
+            >
+              <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+            </button>
+          </>
+        )}
 
         <div className="absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4 z-20 flex flex-wrap items-end justify-between gap-2">
           <div className="flex flex-col min-w-0 max-w-full">
