@@ -8,13 +8,16 @@ import ProductCard from '@/components/ProductCard';
 import ProductCardSkeleton from '@/components/ProductCardSkeleton';
 import InquiryModal from '@/components/InquiryModal';
 import CurrencySwitcher from '@/components/CurrencySwitcher';
-import { Search, SlidersHorizontal, Package } from 'lucide-react';
+import { Search, SlidersHorizontal, Package, ChevronDown, Loader2, CheckCircle2 } from 'lucide-react';
 import { INITIAL_CATEGORIES_STORE } from '@/lib/products-constants';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
 
 // Module-level client cache for instant category switching and return navigation
 const clientProductsCache = new Map<string, any[]>();
 let clientCategoriesCache: any[] | null = null;
+
+const INITIAL_PAGE_SIZE = 8;
+const PAGE_INCREMENT = 8;
 
 function ProductsContent() {
   const searchParams = useSearchParams();
@@ -27,6 +30,10 @@ function ProductsContent() {
     const initialKey = `${searchParams.get('category') || 'ALL'}_${searchParams.get('search') || ''}`;
     return !clientProductsCache.has(initialKey);
   });
+
+  // Pagination (Load More)
+  const [visibleCount, setVisibleCount] = useState<number>(INITIAL_PAGE_SIZE);
+  const [loadingMore, setLoadingMore] = useState<boolean>(false);
 
   // Filters
   const [search, setSearch] = useState(searchParams.get('search') || '');
@@ -120,6 +127,23 @@ function ProductsContent() {
     }
   });
 
+  // Reset visible count when category or search changes
+  useEffect(() => {
+    setVisibleCount(INITIAL_PAGE_SIZE);
+  }, [selectedCategory, search]);
+
+  const visibleProducts = products.slice(0, visibleCount);
+  const hasMore = visibleCount < products.length;
+  const remainingCount = Math.max(0, products.length - visibleCount);
+
+  function handleLoadMore() {
+    setLoadingMore(true);
+    setTimeout(() => {
+      setVisibleCount((prev) => prev + PAGE_INCREMENT);
+      setLoadingMore(false);
+    }, 280);
+  }
+
   useEffect(() => {
     fetchProducts();
   }, [selectedCategory, search]);
@@ -185,10 +209,13 @@ function ProductsContent() {
             <SlidersHorizontal className="w-4 h-4 text-slate-400" />
             {loading ? (
               <span className="inline-block w-28 h-4 bg-slate-200 rounded animate-pulse" />
-            ) : (
+            ) : products.length > 0 ? (
               <span>
-                Showing <strong className="text-slate-900 font-extrabold">{products.length}</strong> products
+                Showing <strong className="text-slate-900 font-extrabold">{Math.min(visibleCount, products.length)}</strong> of{' '}
+                <strong className="text-slate-900 font-extrabold">{products.length}</strong> products
               </span>
+            ) : (
+              <span>0 products</span>
             )}
           </div>
         </div>
@@ -209,20 +236,78 @@ function ProductsContent() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-            {products.map((prod) => (
-              <ProductCard
-                key={prod.id}
-                product={prod}
-                onRequestQuote={(id, name) =>
-                  setModalState({
-                    isOpen: true,
-                    productId: id,
-                    itemName: name,
-                  })
-                }
-              />
-            ))}
+          <div className="space-y-8">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+              {visibleProducts.map((prod) => (
+                <ProductCard
+                  key={prod.id}
+                  product={prod}
+                  onRequestQuote={(id, name) =>
+                    setModalState({
+                      isOpen: true,
+                      productId: id,
+                      itemName: name,
+                    })
+                  }
+                />
+              ))}
+            </div>
+
+            {/* Load More Pagination Section (Responsive for Mobile & Desktop) */}
+            {products.length > 0 && (
+              <div className="pt-6 pb-2 flex flex-col items-center justify-center space-y-4">
+                {/* Progress bar */}
+                <div className="w-full max-w-xs space-y-1.5 text-center">
+                  <div className="flex justify-between text-[11px] font-bold text-slate-500">
+                    <span>Showing {Math.min(visibleCount, products.length)} products</span>
+                    <span>{products.length} Total</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-slate-200/80 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-800 transition-all duration-500 ease-out rounded-full"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          (Math.min(visibleCount, products.length) / Math.max(1, products.length)) * 100
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Load More Button or All Caught Up Status */}
+                {hasMore ? (
+                  <button
+                    type="button"
+                    onClick={handleLoadMore}
+                    disabled={loadingMore}
+                    id="store-load-more-btn"
+                    aria-label="Load more products"
+                    className="w-full sm:w-auto min-w-[240px] px-8 py-3.5 bg-emerald-900 hover:bg-emerald-950 active:scale-[0.98] text-white rounded-full text-xs font-extrabold shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 border border-emerald-800 group cursor-pointer disabled:opacity-75"
+                  >
+                    {loadingMore ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+                        <span>Loading more products...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Load More Products</span>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-950/60 text-[10px] text-emerald-200 font-bold">
+                          +{Math.min(PAGE_INCREMENT, remainingCount)}
+                        </span>
+                        <ChevronDown className="w-4 h-4 text-amber-400 group-hover:translate-y-0.5 transition-transform" />
+                      </>
+                    )}
+                  </button>
+                ) : products.length > INITIAL_PAGE_SIZE ? (
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 border border-slate-200 text-xs font-bold text-slate-600">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+                    <span>You have viewed all {products.length} products</span>
+                  </div>
+                ) : null}
+              </div>
+            )}
           </div>
         )}
       </main>
