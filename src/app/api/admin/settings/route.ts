@@ -4,7 +4,7 @@ import { getSystemSetting, setSystemSetting } from '@/lib/system-settings';
 export const dynamic = 'force-dynamic';
 
 const DEFAULT_SETTINGS = {
-  siteName: 'Love Ridge Properties & Hardware Platform',
+  siteName: 'Loveridge Properties & Hardware Platform',
   contactPhone: '+233 24 643 2493',
   whatsappNumber: '+233 24 643 2493',
   contactEmail: 'info@loveridge.com',

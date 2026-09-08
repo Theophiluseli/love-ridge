@@ -1,5 +1,5 @@
 -- =============================================================================
--- Row Level Security (RLS) Migration for Love Ridge Platform
+-- Row Level Security (RLS) Migration for Loveridge Platform
 -- Enables RLS on all 17 public tables and sets up tight security policies.
 -- =============================================================================
 

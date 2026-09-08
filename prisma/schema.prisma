@@ -1,4 +1,4 @@
-// Prisma Schema for Love Ridge Property & Product Catalogue Platform
+// Prisma Schema for Loveridge Property & Product Catalogue Platform
 
 generator client {
   provider = "prisma-client-js"

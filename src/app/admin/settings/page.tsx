@@ -11,7 +11,7 @@ export default function AdminSettingsPage() {
   const [passwordLoading, setPasswordLoading] = useState(false);
 
   const [settings, setSettings] = useState({
-    siteName: 'Love Ridge Properties & Store',
+    siteName: 'Loveridge Properties & Store',
     contactEmail: 'info@loveridgeproperty.com',
     contactPhone: '0246432493',
     whatsappNumber: '233246432493',

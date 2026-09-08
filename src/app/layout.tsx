@@ -10,7 +10,7 @@ import { PwaProvider } from '@/context/PwaContext';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Love Ridge Properties & Building Materials Store',
+  title: 'Loveridge Properties & Building Materials Store',
   description: 'Ghana’s premier dual-purpose platform combining real estate property listings in East Legon and direct imported porcelain tiles, marble, and construction tools.',
   manifest: '/manifest.json',
   themeColor: '#064e3b',
