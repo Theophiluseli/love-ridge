@@ -60,10 +60,10 @@ function getInitialWarmProducts(): ProductItem[] {
   return INITIAL_PRODUCTS_STORE;
 }
 
-// In-memory instant cache for blazing fast API responses (<2ms)
-let cachedProducts: ProductItem[] | null = getInitialWarmProducts();
-let cacheTime = Date.now();
-const CACHE_DURATION = 300000; // 5 minutes cache
+// In-memory instant cache for sub-second burst deduplication only (2 seconds max)
+let cachedProducts: ProductItem[] | null = null;
+let cacheTime = 0;
+const CACHE_DURATION = 2000; // 2 seconds max deduplication
 
 export function invalidateProductsCache() {
   cachedProducts = null;

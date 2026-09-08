@@ -59,10 +59,10 @@ function getInitialWarmProperties(): PropertyItem[] {
   return INITIAL_PROPERTIES_STORE;
 }
 
-// In-memory instant cache for blazing fast API responses (<2ms)
-let cachedProperties: PropertyItem[] | null = getInitialWarmProperties();
-let cacheTime = Date.now();
-const CACHE_DURATION = 300000; // 5 minutes cache
+// In-memory instant cache for sub-second burst deduplication only (2 seconds max)
+let cachedProperties: PropertyItem[] | null = null;
+let cacheTime = 0;
+const CACHE_DURATION = 2000; // 2 seconds max deduplication
 
 export function invalidatePropertiesCache() {
   cachedProperties = null;
@@ -88,24 +88,21 @@ export async function getAllProperties(): Promise<PropertyItem[]> {
     return cachedProperties;
   }
 
-  // 1. Read from system_settings
+  // 1. Read from system_settings (PostgreSQL) - primary persistent store
   let dbCatalog: PropertyItem[] = [];
   try {
     const { data, isDefault } = await getSystemSetting<PropertyItem[]>(
       "properties_catalog",
       INITIAL_PROPERTIES_STORE
     );
-    if (!isDefault && Array.isArray(data) && data.length > 0) {
+    if (Array.isArray(data) && data.length > 0) {
       dbCatalog = data;
     }
   } catch (e) {
     console.warn("Could not read properties from system_settings:", e);
   }
 
-  // 2. Read from local scratch file
-  const fileProperties = readPropertiesFromFile();
-
-  // 3. Read directly from prisma.property to ensure all DB-stored items reflect
+  // 2. Read directly from prisma.property to ensure all DB-stored items reflect
   let prismaProperties: PropertyItem[] = [];
   try {
     const dbPromise = prisma.property.findMany({
@@ -154,7 +151,10 @@ export async function getAllProperties(): Promise<PropertyItem[]> {
     // Database transiently slow or unavailable
   }
 
-  // 4. Merge all unique records across all sources (priority: Prisma > system_settings > file > initial)
+  // 3. Read from local scratch file
+  const fileProperties = readPropertiesFromFile();
+
+  // 4. Merge all unique records across all sources (priority: dbCatalog > prismaProperties > file > initial)
   const map = new Map<string, PropertyItem>();
 
   for (const p of INITIAL_PROPERTIES_STORE) {
@@ -172,13 +172,15 @@ export async function getAllProperties(): Promise<PropertyItem[]> {
       map.set(p.id, {
         ...existing,
         ...p,
-        // Retain rich metadata from existing catalog if prisma lacked it
+        isFavourite: existing.isFavourite ?? (p as any).isFavourite ?? false,
+        featured: p.featured !== undefined ? p.featured : (existing.featured ?? false),
         contactName: existing.contactName || p.contactName || "Desmond Senanu",
         contactPhone: existing.contactPhone || p.contactPhone || "+233 24 643 2493",
         contactEmail: existing.contactEmail || p.contactEmail || "sales@loveridgeproperties.com",
         ownerName: existing.ownerName || "",
         ownerPhone: existing.ownerPhone || "",
         ownerCompany: existing.ownerCompany || "",
+        commission: existing.commission || "",
         amenities: existing.amenities && existing.amenities.length > 0 ? existing.amenities : p.amenities || [],
         imageUrl: p.imageUrl || existing.imageUrl || "/property_villa.png",
         galleryUrls: p.galleryUrls && p.galleryUrls.length > 0 ? p.galleryUrls : existing.galleryUrls || [],
@@ -212,6 +214,7 @@ export async function getAllProperties(): Promise<PropertyItem[]> {
 }
 
 export async function saveProperty(propData: Partial<PropertyItem>): Promise<PropertyItem> {
+  invalidatePropertiesCache();
   const currentProps = await getAllProperties();
   const now = new Date().toISOString();
 
@@ -323,10 +326,12 @@ export async function saveProperty(propData: Partial<PropertyItem>): Promise<Pro
   // Write to local scratch file synchronously
   writePropertiesToFile(updatedList);
 
-  // Write to PostgreSQL system_settings
-  setSystemSetting("properties_catalog", updatedList).catch((err) => {
+  // Write to PostgreSQL system_settings immediately
+  try {
+    await setSystemSetting("properties_catalog", updatedList);
+  } catch (err) {
     console.error("Failed writing properties to system_settings:", err);
-  });
+  }
 
   // Synchronously upsert in Prisma database
   try {
@@ -334,7 +339,8 @@ export async function saveProperty(propData: Partial<PropertyItem>): Promise<Pro
       where: { email: "admin@loveridge.com" },
       select: { id: true },
     });
-    const defaultUserId = adminUser?.id || "1ee92fa7-a3b4-4841-bc10-22e26a3d9fef";
+    const anyUser = await prisma.user.findFirst({ select: { id: true } });
+    const defaultUserId = adminUser?.id || anyUser?.id || "1ee92fa7-a3b4-4841-bc10-22e26a3d9fef";
 
     await prisma.property.upsert({
       where: { id: newProperty.id },
@@ -400,10 +406,14 @@ export async function saveProperty(propData: Partial<PropertyItem>): Promise<Pro
     // Database background sync note
   }
 
+  // Clear memory cache so subsequent calls re-verify
+  invalidatePropertiesCache();
+
   return newProperty;
 }
 
 export async function deleteProperty(id: string): Promise<boolean> {
+  invalidatePropertiesCache();
   const currentProps = await getAllProperties();
   const updated = currentProps.filter((p) => p.id !== id);
 
@@ -411,12 +421,18 @@ export async function deleteProperty(id: string): Promise<boolean> {
   cacheTime = Date.now();
 
   writePropertiesToFile(updated);
-  setSystemSetting("properties_catalog", updated).catch(() => null);
+  try {
+    await setSystemSetting("properties_catalog", updated);
+  } catch (err) {
+    console.error("Failed writing updated catalog to system_settings:", err);
+  }
 
   try {
     await prisma.property.delete({ where: { id } }).catch(() => null);
   } catch (e) {
     // ignore prisma delete error
   }
+
+  invalidatePropertiesCache();
   return true;
 }

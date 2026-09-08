@@ -5,13 +5,25 @@ import { logAuditAction } from '@/lib/auth/audit';
 import { getAllProperties, saveProperty } from '@/lib/properties-store';
 import { broadcastCatalogUpdate } from '@/lib/realtime-broadcast';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(req: NextRequest) {
   const auth = await requireAuthPermission(req, 'property.create');
   if ('response' in auth) return auth.response;
 
   try {
     const properties = await getAllProperties();
-    return NextResponse.json({ properties });
+    return NextResponse.json(
+      { properties },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      }
+    );
   } catch (err) {
     console.error('Failed to load properties:', err);
     return NextResponse.json({ error: 'Failed to fetch properties' }, { status: 500 });
@@ -72,7 +84,7 @@ export async function POST(req: NextRequest) {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '') + '-' + Date.now().toString().slice(-4);
 
-    const initialStatus = body.status || 'DRAFT';
+    const initialStatus = body.status || 'PUBLISHED';
 
     let assignedAgentId = agentId;
     if (body.contactName) {

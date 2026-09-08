@@ -3,6 +3,7 @@ import { getAllProperties, sanitizePropertyForPublic } from '@/lib/properties-st
 import { prisma } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET(
   req: NextRequest,
@@ -18,7 +19,7 @@ export async function GET(
 
     if (matched) {
       const similar = allProps
-        .filter((p) => p.id !== matched.id && p.status === 'PUBLISHED')
+        .filter((p) => p.id !== matched.id && (p.status || 'PUBLISHED').toUpperCase() === 'PUBLISHED')
         .slice(0, 3);
 
       return NextResponse.json(
@@ -28,7 +29,9 @@ export async function GET(
         },
         {
           headers: {
-            'Cache-Control': 'public, max-age=5, stale-while-revalidate=30',
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+            'Pragma': 'no-cache',
+            'Expires': '0',
           },
         }
       );

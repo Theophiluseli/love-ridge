@@ -3,6 +3,7 @@ import { getAllProperties, sanitizePropertyForPublic } from '@/lib/properties-st
 import { isResidentialProperty } from '@/lib/property-categories';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET(req: NextRequest) {
   try {
@@ -18,8 +19,8 @@ export async function GET(req: NextRequest) {
 
     let properties = await getAllProperties();
 
-    // Default to PUBLISHED properties for public route
-    properties = properties.filter((p) => p.status === 'PUBLISHED');
+    // Default to PUBLISHED properties for public route (case-insensitive, fallback to PUBLISHED)
+    properties = properties.filter((p) => (p.status || 'PUBLISHED').toUpperCase() === 'PUBLISHED');
 
     if (search) {
       properties = properties.filter(
@@ -90,13 +91,16 @@ export async function GET(req: NextRequest) {
       { properties: publicProperties, count: publicProperties.length },
       {
         headers: {
-          'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=59',
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0',
         },
       }
     );
   } catch (error) {
     console.error('Error fetching public properties:', error);
     let properties = await getAllProperties();
+    properties = properties.filter((p) => (p.status || 'PUBLISHED').toUpperCase() === 'PUBLISHED');
     properties.sort((a, b) => {
       const aFav = a.isFavourite ? 1 : 0;
       const bFav = b.isFavourite ? 1 : 0;
@@ -108,7 +112,9 @@ export async function GET(req: NextRequest) {
       { properties: publicProperties, count: publicProperties.length },
       {
         headers: {
-          'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=59',
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0',
         },
       }
     );

@@ -1,41 +1,57 @@
 import { createClient } from '@supabase/supabase-js';
+import { getSystemSetting, setSystemSetting } from './system-settings';
+import { invalidatePropertiesCache } from './properties-store';
+import { invalidateProductsCache } from './products-store';
 
 export type CatalogType = 'properties' | 'products' | 'categories';
 export type EventType = 'INSERT' | 'UPDATE' | 'DELETE';
 
-// Global revision registry shared across server modules
-declare global {
-  var __catalogRevision: {
-    version: number;
-    properties: number;
-    products: number;
-    categories: number;
-  } | undefined;
+export interface CatalogRevision {
+  version: number;
+  properties: number;
+  products: number;
+  categories: number;
 }
+
+// Global revision registry shared across current server instance
+declare global {
+  var __catalogRevision: CatalogRevision | undefined;
+}
+
+const DEFAULT_REVISION: CatalogRevision = {
+  version: 1,
+  properties: 1,
+  products: 1,
+  categories: 1,
+};
 
 if (!globalThis.__catalogRevision) {
-  globalThis.__catalogRevision = {
-    version: Date.now(),
-    properties: Date.now(),
-    products: Date.now(),
-    categories: Date.now(),
-  };
+  globalThis.__catalogRevision = { ...DEFAULT_REVISION };
 }
 
-export function getCatalogRevision() {
-  if (!globalThis.__catalogRevision) {
-    globalThis.__catalogRevision = {
-      version: Date.now(),
-      properties: Date.now(),
-      products: Date.now(),
-      categories: Date.now(),
-    };
+export async function getLatestCatalogRevision(): Promise<CatalogRevision> {
+  try {
+    const { data } = await getSystemSetting<CatalogRevision>('catalog_revision', DEFAULT_REVISION);
+    if (data && typeof data.version === 'number') {
+      globalThis.__catalogRevision = { ...data };
+      return { ...data };
+    }
+  } catch (e) {
+    // Fallback to local memory registry
   }
-  return globalThis.__catalogRevision;
+
+  return { ...getCatalogRevision() };
+}
+
+export function getCatalogRevision(): CatalogRevision {
+  if (!globalThis.__catalogRevision) {
+    globalThis.__catalogRevision = { ...DEFAULT_REVISION };
+  }
+  return { ...globalThis.__catalogRevision };
 }
 
 /**
- * Broadcasts a catalog mutation event over Supabase Realtime and advances the server revision.
+ * Broadcasts a catalog mutation event over Supabase Realtime and advances the persistent server revision.
  * All subscribed browser clients receive this and re-fetch fresh data.
  */
 export async function broadcastCatalogUpdate(
@@ -44,12 +60,38 @@ export async function broadcastCatalogUpdate(
   payload?: Record<string, any>
 ) {
   const now = Date.now();
+
+  // 1. Immediately invalidate in-memory server caches so next read gets fresh data
+  if (catalog === 'properties') {
+    invalidatePropertiesCache();
+  } else if (catalog === 'products') {
+    invalidateProductsCache();
+  } else if (catalog === 'categories') {
+    invalidateProductsCache();
+  }
+
+  // 2. Advance local memory revision
   if (!globalThis.__catalogRevision) {
     globalThis.__catalogRevision = { version: now, properties: now, products: now, categories: now };
   }
   globalThis.__catalogRevision[catalog] = now;
   globalThis.__catalogRevision.version = now;
 
+  // 3. Persist revision to PostgreSQL system_settings so all serverless workers see it
+  try {
+    const existing = await getLatestCatalogRevision();
+    const updatedRevision: CatalogRevision = {
+      ...existing,
+      [catalog]: now,
+      version: now,
+    };
+    globalThis.__catalogRevision = updatedRevision;
+    await setSystemSetting('catalog_revision', updatedRevision);
+  } catch (e) {
+    // Ignore setting error
+  }
+
+  // 4. Broadcast via Supabase Realtime WebSocket to all active browser clients
   try {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

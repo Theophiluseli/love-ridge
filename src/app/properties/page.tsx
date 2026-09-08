@@ -50,7 +50,7 @@ function PropertiesContent() {
   const fetchProperties = useCallback(async (showSkeleton = false) => {
     if (showSkeleton) setLoading(true);
     try {
-      const res = await fetch('/api/properties', { cache: 'no-store' });
+      const res = await fetch(`/api/properties?_t=${Date.now()}`, { cache: 'no-store' });
       const data = await res.json();
       if (data.properties && Array.isArray(data.properties)) {
         cachedClientProperties = data.properties;
@@ -69,7 +69,10 @@ function PropertiesContent() {
 
   // Real-time sync: auto-refetch when any admin or device adds/updates/deletes a property
   useRealtimeSync((type) => {
-    if (type === 'properties') fetchProperties(false);
+    if (type === 'properties') {
+      cachedClientProperties = null;
+      fetchProperties(false);
+    }
   });
 
   // Filter properties in-memory instantly (0ms latency, zero screen flicker)

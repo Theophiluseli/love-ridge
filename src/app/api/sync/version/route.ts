@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { getCatalogRevision } from '@/lib/realtime-broadcast';
+import { getLatestCatalogRevision } from '@/lib/realtime-broadcast';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET() {
-  const revision = getCatalogRevision();
+  const revision = await getLatestCatalogRevision();
   return NextResponse.json(
     {
       ...revision,
@@ -12,7 +13,7 @@ export async function GET() {
     },
     {
       headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
         'Pragma': 'no-cache',
         'Expires': '0',
       },

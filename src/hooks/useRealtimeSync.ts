@@ -43,7 +43,7 @@ export function useRealtimeSync(onUpdate: (type: CatalogType) => void) {
     // Helper: fetch version endpoint and trigger updates for any advanced counters
     const checkServerRevision = async () => {
       try {
-        const res = await fetch('/api/sync/version', { cache: 'no-store' });
+        const res = await fetch(`/api/sync/version?_t=${Date.now()}`, { cache: 'no-store' });
         if (!res.ok) return;
         const data: RevisionData = await res.json();
 

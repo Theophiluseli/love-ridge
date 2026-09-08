@@ -173,9 +173,10 @@ export default function HomePage() {
 
   async function fetchData() {
     try {
+      const now = Date.now();
       const [propRes, prodRes] = await Promise.all([
-        fetch('/api/properties?featured=true'),
-        fetch('/api/products?featured=true'),
+        fetch(`/api/properties?featured=true&_t=${now}`, { cache: 'no-store' }),
+        fetch(`/api/products?featured=true&_t=${now}`, { cache: 'no-store' }),
       ]);
       const propData = await propRes.json();
       const prodData = await prodRes.json();

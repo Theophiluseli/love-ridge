@@ -5,6 +5,9 @@ import { logAuditAction } from '@/lib/auth/audit';
 import { saveProperty, deleteProperty, getAllProperties } from '@/lib/properties-store';
 import { broadcastCatalogUpdate } from '@/lib/realtime-broadcast';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
