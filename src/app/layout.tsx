@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import WhatsAppWidget from '@/components/WhatsAppWidget';
@@ -9,11 +9,17 @@ import { PwaProvider } from '@/context/PwaContext';
 
 const inter = Inter({ subsets: ['latin'] });
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: '#064e3b',
+};
+
 export const metadata: Metadata = {
   title: 'Loveridge Properties & Building Materials Store',
   description: 'Ghana’s premier dual-purpose platform combining real estate property listings in East Legon and direct imported porcelain tiles, marble, and construction tools.',
   manifest: '/manifest.json',
-  themeColor: '#064e3b',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',

@@ -61,7 +61,6 @@ export default function Navbar() {
         {/* Mobile menu trigger & controls */}
         <div className="lg:hidden flex items-center gap-1 sm:gap-2 shrink-0">
           <LanguageSwitcher className="shrink-0" />
-          <CurrencySwitcher className="shrink-0" />
           <button
             onClick={() => setMobileMenu(!mobileMenu)}
             className="p-1.5 sm:p-2 rounded-full text-emerald-100 hover:text-white hover:bg-emerald-800/50 shrink-0"

@@ -71,39 +71,39 @@ export default function SocialShare({ title, url, summary }: SocialShareProps) {
   };
 
   return (
-    <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-          <Share2 className="w-3.5 h-3.5 text-emerald-700" /> Share Listing
+    <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-3.5 sm:p-4 space-y-3 w-full min-w-0">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5 shrink-0">
+          <Share2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" /> Share Listing
         </span>
         <button
           onClick={handleCopy}
-          className="text-xs font-bold text-slate-600 hover:text-emerald-800 transition flex items-center gap-1 bg-white border border-slate-200 px-2.5 py-1 rounded-lg shadow-2xs"
+          className="text-xs font-bold text-slate-600 hover:text-emerald-800 transition flex items-center gap-1 bg-white border border-slate-200 px-2.5 py-1 rounded-lg shadow-2xs shrink-0 active:scale-95"
         >
           {copied ? (
             <>
-              <Check className="w-3.5 h-3.5 text-emerald-600" /> Copied!
+              <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Copied!
             </>
           ) : (
             <>
-              <Copy className="w-3.5 h-3.5 text-slate-500" /> Copy Link
+              <Copy className="w-3.5 h-3.5 text-slate-500 shrink-0" /> Copy Link
             </>
           )}
         </button>
       </div>
 
-      <div className="flex items-center gap-2 pt-1 flex-wrap">
+      <div className="grid grid-cols-4 gap-2 pt-1 w-full">
         {shareLinks.map((link) => (
           <a
             key={link.name}
             href={link.href}
             target="_blank"
             rel="noreferrer"
-            className={`p-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-xs ${link.color}`}
+            className={`py-2 px-1.5 sm:px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-xs ${link.color} active:scale-95`}
             title={`Share on ${link.name}`}
           >
             {link.icon}
-            <span className="hidden sm:inline text-[11px] font-bold">{link.name}</span>
+            <span className="hidden sm:inline text-[11px] font-bold truncate">{link.name}</span>
           </a>
         ))}
       </div>
