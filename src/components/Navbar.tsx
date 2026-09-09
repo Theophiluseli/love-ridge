@@ -85,13 +85,6 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
-          <Link
-            href="/admin/login"
-            onClick={() => setMobileMenu(false)}
-            className="block px-4 py-3 rounded-2xl text-sm font-bold text-white bg-emerald-900 border border-emerald-700"
-          >
-            {t('nav.admin', 'Staff Admin Portal')}
-          </Link>
         </div>
       )}
     </div>
