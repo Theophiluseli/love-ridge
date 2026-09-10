@@ -50,11 +50,16 @@ export async function GET(req: NextRequest) {
       return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
     });
 
+    const isBypass = Boolean(searchParams.get('_t'));
+    const cacheHeader = isBypass
+      ? 'no-store, no-cache, must-revalidate, max-age=0'
+      : 'public, s-maxage=15, stale-while-revalidate=59';
+
     return NextResponse.json(
       { products, count: products.length },
       {
         headers: {
-          'Cache-Control': 'public, max-age=30, s-maxage=60, stale-while-revalidate=300',
+          'Cache-Control': cacheHeader,
         },
       }
     );

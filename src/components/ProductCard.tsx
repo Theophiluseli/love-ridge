@@ -31,18 +31,22 @@ export default function ProductCard({ product, onRequestQuote }: ProductProps) {
   const { formatPrice } = useCurrency();
   const isInStock = product.stockStatus === 'IN_STOCK' && product.stockQuantity > 0;
 
-  // Determine product image
+  // Determine product image (optimized WebP default fallbacks)
   let imgSrc = product.imageUrl;
-  if (!imgSrc) {
+  if (!imgSrc || imgSrc === '/product_tiles.png') {
     if (product.slug?.includes('tile') || product.slug?.includes('marble') || product.name?.toLowerCase().includes('tile')) {
-      imgSrc = '/product_tiles.png';
+      imgSrc = '/product_tiles.webp';
     } else if (product.slug?.includes('drill') || product.slug?.includes('tool') || product.name?.toLowerCase().includes('drill')) {
-      imgSrc = '/product_drill.png';
+      imgSrc = '/product_drill.webp';
     } else if (product.slug?.includes('lock') || product.name?.toLowerCase().includes('lock')) {
-      imgSrc = '/product_lock.png';
+      imgSrc = '/product_lock.webp';
     } else {
-      imgSrc = '/product_tiles.png';
+      imgSrc = '/product_tiles.webp';
     }
+  } else if (imgSrc === '/product_drill.png') {
+    imgSrc = '/product_drill.webp';
+  } else if (imgSrc === '/product_lock.png') {
+    imgSrc = '/product_lock.webp';
   }
 
   const formattedPrice = formatPrice(product.price, product.currency || 'GHS');

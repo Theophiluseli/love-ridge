@@ -171,12 +171,15 @@ export default function HomePage() {
     },
   ];
 
-  async function fetchData() {
+  async function fetchData(forceFresh = false) {
     try {
-      const now = Date.now();
+      const urlProp = forceFresh ? `/api/properties?featured=true&_t=${Date.now()}` : '/api/properties?featured=true';
+      const urlProd = forceFresh ? `/api/products?featured=true&_t=${Date.now()}` : '/api/products?featured=true';
+      const options = forceFresh ? { cache: 'no-store' as RequestCache } : {};
+
       const [propRes, prodRes] = await Promise.all([
-        fetch(`/api/properties?featured=true&_t=${now}`, { cache: 'no-store' }),
-        fetch(`/api/products?featured=true&_t=${now}`, { cache: 'no-store' }),
+        fetch(urlProp, options),
+        fetch(urlProd, options),
       ]);
       const propData = await propRes.json();
       const prodData = await prodRes.json();
@@ -196,7 +199,7 @@ export default function HomePage() {
   // Real-time multi-device sync: auto-refresh homepage when properties or products update
   useRealtimeSync((type) => {
     if (type === 'properties' || type === 'products') {
-      fetchData();
+      fetchData(true);
     }
   });
 

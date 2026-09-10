@@ -47,10 +47,12 @@ function PropertiesContent() {
     itemName?: string;
   }>({ isOpen: false });
 
-  const fetchProperties = useCallback(async (showSkeleton = false) => {
+  const fetchProperties = useCallback(async (showSkeleton = false, forceFresh = false) => {
     if (showSkeleton) setLoading(true);
     try {
-      const res = await fetch(`/api/properties?_t=${Date.now()}`, { cache: 'no-store' });
+      const url = forceFresh ? `/api/properties?_t=${Date.now()}` : '/api/properties';
+      const options = forceFresh ? { cache: 'no-store' as RequestCache } : {};
+      const res = await fetch(url, options);
       const data = await res.json();
       if (data.properties && Array.isArray(data.properties)) {
         cachedClientProperties = data.properties;
@@ -64,14 +66,14 @@ function PropertiesContent() {
   }, []);
 
   useEffect(() => {
-    fetchProperties(!cachedClientProperties || cachedClientProperties.length === 0);
+    fetchProperties(!cachedClientProperties || cachedClientProperties.length === 0, false);
   }, [fetchProperties]);
 
   // Real-time sync: auto-refetch when any admin or device adds/updates/deletes a property
   useRealtimeSync((type) => {
     if (type === 'properties') {
       cachedClientProperties = null;
-      fetchProperties(false);
+      fetchProperties(false, true);
     }
   });
 

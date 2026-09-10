@@ -59,10 +59,10 @@ function getInitialWarmProperties(): PropertyItem[] {
   return INITIAL_PROPERTIES_STORE;
 }
 
-// In-memory instant cache for sub-second burst deduplication only (2 seconds max)
+// In-memory instant cache for high-speed page loads (30 seconds, invalidated instantly on mutations)
 let cachedProperties: PropertyItem[] | null = null;
 let cacheTime = 0;
-const CACHE_DURATION = 2000; // 2 seconds max deduplication
+const CACHE_DURATION = 30000; // 30 seconds high-speed cache
 
 export function invalidatePropertiesCache() {
   cachedProperties = null;
@@ -88,28 +88,28 @@ export async function getAllProperties(): Promise<PropertyItem[]> {
     return cachedProperties;
   }
 
-  // 1. Read from system_settings (PostgreSQL) - primary persistent store
+  // 1 & 2: Fetch system_settings and prisma.property in parallel for 2x faster response
   let dbCatalog: PropertyItem[] = [];
-  try {
-    const { data, isDefault } = await getSystemSetting<PropertyItem[]>(
-      "properties_catalog",
-      INITIAL_PROPERTIES_STORE
-    );
-    if (Array.isArray(data) && data.length > 0) {
-      dbCatalog = data;
-    }
-  } catch (e) {
-    console.warn("Could not read properties from system_settings:", e);
-  }
-
-  // 2. Read directly from prisma.property to ensure all DB-stored items reflect
   let prismaProperties: PropertyItem[] = [];
+
   try {
-    const dbPromise = prisma.property.findMany({
-      orderBy: { createdAt: "desc" },
-    });
-    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));
-    const rawDbProps = await Promise.race([dbPromise, timeoutPromise]);
+    const [settingRes, rawDbProps] = await Promise.all([
+      getSystemSetting<PropertyItem[]>("properties_catalog", INITIAL_PROPERTIES_STORE).catch((e) => {
+        console.warn("Could not read properties from system_settings:", e);
+        return { data: [], isDefault: true };
+      }),
+      Promise.race([
+        prisma.property.findMany({ orderBy: { createdAt: "desc" } }),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500)),
+      ]).catch((err) => {
+        console.warn("Could not read properties from prisma:", err);
+        return null;
+      }),
+    ]);
+
+    if (Array.isArray(settingRes.data) && settingRes.data.length > 0) {
+      dbCatalog = settingRes.data;
+    }
 
     if (rawDbProps && Array.isArray(rawDbProps) && rawDbProps.length > 0) {
       prismaProperties = rawDbProps.map((p: any) => ({
@@ -137,7 +137,7 @@ export async function getAllProperties(): Promise<PropertyItem[]> {
         region: p.region,
         country: p.country,
         featured: p.featured,
-        imageUrl: p.imageUrl || "/property_villa.png",
+        imageUrl: p.imageUrl || "/property_villa.webp",
         galleryUrls: p.galleryUrls || [],
         contactName: "Desmond Senanu",
         contactPhone: "+233 24 643 2493",

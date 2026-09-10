@@ -27,21 +27,21 @@ export default function ProductDetailClient({
   const [modalOpen, setModalOpen] = useState(false);
   const [quantity, setQuantity] = useState(1);
 
-  // Determine initial image safely based on the actual product
+  // Determine initial image safely based on the actual product (WebP optimized)
   const getInitialImg = (prod: ProductItem) => {
     if (prod.imageUrl) return prod.imageUrl;
     const lowerName = (prod.name || '').toLowerCase();
     const lowerSlug = (prod.slug || '').toLowerCase();
     if (lowerSlug.includes('drill') || lowerSlug.includes('tool') || lowerName.includes('drill')) {
-      return '/product_drill.png';
+      return '/product_drill.webp';
     }
     if (lowerSlug.includes('lock') || lowerName.includes('lock')) {
-      return '/product_lock.png';
+      return '/product_lock.webp';
     }
     if (lowerSlug.includes('tile') || lowerSlug.includes('marble') || lowerName.includes('tile')) {
-      return '/product_tiles.png';
+      return '/product_tiles.webp';
     }
-    return prod.imageUrl || '/product_tiles.png';
+    return prod.imageUrl || '/product_tiles.webp';
   };
 
   const [selectedImage, setSelectedImage] = useState<string>(getInitialImg(initialProduct));

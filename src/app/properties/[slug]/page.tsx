@@ -242,19 +242,19 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
     );
   }
 
-  // Determine cover image: strictly use uploaded imageUrl first
+  // Determine cover image: strictly use uploaded imageUrl first (WebP optimized)
   let defaultCover = property.imageUrl;
-  if (!defaultCover) {
+  if (!defaultCover || defaultCover === '/property_villa.png' || defaultCover === '/property_apartment.png' || defaultCover === '/property_land.png') {
     if (property.propertyType === 'OFFICE_SPACE' || property.slug?.includes('office')) {
-      defaultCover = '/property_office.png';
+      defaultCover = '/property_office.webp';
     } else if (property.propertyType === 'WAREHOUSE' || property.slug?.includes('warehouse')) {
-      defaultCover = '/property_warehouse.png';
+      defaultCover = '/property_warehouse.webp';
     } else if (property.propertyType === 'LAND' || property.slug?.includes('land')) {
-      defaultCover = '/property_land.png';
+      defaultCover = '/property_land.webp';
     } else if (property.propertyType === 'APARTMENT' || property.slug?.includes('apartment')) {
-      defaultCover = '/property_apartment.png';
+      defaultCover = '/property_apartment.webp';
     } else {
-      defaultCover = '/property_villa.png';
+      defaultCover = '/property_villa.webp';
     }
   }
 

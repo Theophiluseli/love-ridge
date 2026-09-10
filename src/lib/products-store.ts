@@ -60,10 +60,10 @@ function getInitialWarmProducts(): ProductItem[] {
   return INITIAL_PRODUCTS_STORE;
 }
 
-// In-memory instant cache for sub-second burst deduplication only (2 seconds max)
+// In-memory instant cache for high-speed page loads (30 seconds, invalidated instantly on mutations)
 let cachedProducts: ProductItem[] | null = null;
 let cacheTime = 0;
-const CACHE_DURATION = 2000; // 2 seconds max deduplication
+const CACHE_DURATION = 30000; // 30 seconds high-speed cache
 
 export function invalidateProductsCache() {
   cachedProducts = null;
@@ -104,32 +104,31 @@ export async function getAllProducts(): Promise<ProductItem[]> {
     return cachedProducts;
   }
 
-  // 1. Read from system_settings
+  // 1 & 2: Read from system_settings and prisma concurrently for 2x faster performance
   let dbCatalog: ProductItem[] = [];
-  try {
-    const { data, isDefault } = await getSystemSetting<ProductItem[]>(
-      'products_catalog',
-      INITIAL_PRODUCTS_STORE
-    );
-    if (!isDefault && Array.isArray(data) && data.length > 0) {
-      dbCatalog = data;
-    }
-  } catch (e) {
-    console.warn('Could not read products from system_settings:', e);
-  }
-
-  // 2. Read from local scratch file
-  const fileProducts = readProductsFromFile();
-
-  // 3. Read directly from prisma.product
   let prismaProducts: ProductItem[] = [];
+
   try {
-    const dbPromise = prisma.product.findMany({
-      include: { category: true },
-      orderBy: { createdAt: 'desc' },
-    });
-    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));
-    const rawDbProds = await Promise.race([dbPromise, timeoutPromise]);
+    const [settingRes, rawDbProds] = await Promise.all([
+      getSystemSetting<ProductItem[]>('products_catalog', INITIAL_PRODUCTS_STORE).catch((e) => {
+        console.warn('Could not read products from system_settings:', e);
+        return { data: [], isDefault: true };
+      }),
+      Promise.race([
+        prisma.product.findMany({
+          include: { category: true },
+          orderBy: { createdAt: 'desc' },
+        }),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500)),
+      ]).catch((e) => {
+        console.warn('Could not read products from prisma:', e);
+        return null;
+      }),
+    ]);
+
+    if (!settingRes.isDefault && Array.isArray(settingRes.data) && settingRes.data.length > 0) {
+      dbCatalog = settingRes.data;
+    }
 
     if (rawDbProds && Array.isArray(rawDbProds) && rawDbProds.length > 0) {
       prismaProducts = rawDbProds.map((p) => ({
@@ -158,8 +157,11 @@ export async function getAllProducts(): Promise<ProductItem[]> {
       }));
     }
   } catch (err) {
-    // Database slow or unavailable
+    // Database transiently slow or unavailable
   }
+
+  // 3. Read from local scratch file
+  const fileProducts = readProductsFromFile();
 
   // 4. Merge all sources
   const map = new Map<string, ProductItem>();

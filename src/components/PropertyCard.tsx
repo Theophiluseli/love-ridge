@@ -44,27 +44,38 @@ export default function PropertyCard({ property, onRequestViewing, hidePropertyT
   const isRent = property.listingType === 'RENT';
   const propType = (property.propertyType || '').toUpperCase();
 
-  // Determine fallback property picture
+  // Determine fallback property picture (ultra-fast WebP)
   const fallbackImg = (() => {
     if (propType === 'OFFICE_SPACE' || propType === 'OFFICE' || property.slug?.includes('office')) {
-      return '/property_office.png';
+      return '/property_office.webp';
     } else if (propType === 'WAREHOUSE' || property.slug?.includes('warehouse')) {
-      return '/property_warehouse.png';
+      return '/property_warehouse.webp';
     } else if (propType === 'LAND' || property.slug?.includes('land')) {
-      return '/property_land.png';
+      return '/property_land.webp';
     } else if (property.slug?.includes('apartment') || propType === 'APARTMENT') {
-      return '/property_apartment.png';
+      return '/property_apartment.webp';
     } else {
-      return '/property_villa.png';
+      return '/property_villa.webp';
     }
   })();
 
-  // Aggregate all unique property photos
+  // Aggregate all unique property photos (prefer WebP)
   const rawImages = [
     property.imageUrl,
     ...(Array.isArray(property.galleryUrls) ? property.galleryUrls : []),
     ...(Array.isArray((property as any).images) ? (property as any).images : []),
-  ].filter(Boolean) as string[];
+  ]
+    .filter(Boolean)
+    .map((url) => {
+      if (typeof url === 'string') {
+        if (url === '/property_villa.png') return '/property_villa.webp';
+        if (url === '/property_land.png') return '/property_land.webp';
+        if (url === '/property_office.png') return '/property_office.webp';
+        if (url === '/property_warehouse.png') return '/property_warehouse.webp';
+        if (url === '/property_apartment.png') return '/property_apartment.webp';
+      }
+      return url;
+    }) as string[];
 
   const imagesList = Array.from(new Set(rawImages.length > 0 ? rawImages : [fallbackImg]));
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
