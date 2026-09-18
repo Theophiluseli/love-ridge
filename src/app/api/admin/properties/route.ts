@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuthPermission } from '@/lib/auth/rbac';
 import { prisma } from '@/lib/db';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { logAuditAction } from '@/lib/auth/audit';
 import { getAllProperties, saveProperty } from '@/lib/properties-store';
 import { broadcastCatalogUpdate } from '@/lib/realtime-broadcast';
@@ -98,10 +99,12 @@ export async function POST(req: NextRequest) {
     let assignedAgentId = agentId;
     if (body.contactName) {
       try {
-        const agentUser = await prisma.user.findFirst({
-          where: { name: { equals: body.contactName, mode: 'insensitive' } },
-        });
-        if (agentUser) {
+        const { data: agentUser } = await supabaseAdmin
+          .from('users')
+          .select('id')
+          .ilike('name', body.contactName.trim())
+          .maybeSingle();
+        if (agentUser?.id) {
           assignedAgentId = agentUser.id;
         }
       } catch (err) {

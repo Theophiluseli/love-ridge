@@ -1,26 +1,14 @@
-import { prisma } from './db';
+import { supabaseAdmin } from './supabase-admin';
 
-// In-memory cache for blazing fast reads (<2ms)
-const settingsCache = new Map<string, { value: any; timestamp: number }>();
-const CACHE_TTL = 60000; // 60s cache
-
-let tableInitialized = false;
-
-async function ensureSettingsTable() {
-  if (tableInitialized) return;
-  try {
-    await prisma.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS system_settings (
-        key TEXT PRIMARY KEY,
-        value TEXT NOT NULL,
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-      );
-    `);
-    tableInitialized = true;
-  } catch (err) {
-    // Ignore error if table exists or during transient network blips
-  }
+declare global {
+  var __systemSettingsCache: Map<string, { value: any; timestamp: number }> | undefined;
 }
+
+if (!globalThis.__systemSettingsCache) {
+  globalThis.__systemSettingsCache = new Map();
+}
+const settingsCache = globalThis.__systemSettingsCache;
+const CACHE_TTL = 60000; // 60s cache
 
 export async function getSystemSetting<T>(key: string, defaultValue: T): Promise<{ data: T; isDefault: boolean }> {
   const cached = settingsCache.get(key);
@@ -29,28 +17,32 @@ export async function getSystemSetting<T>(key: string, defaultValue: T): Promise
   }
 
   try {
-    await ensureSettingsTable();
+    const queryPromise = supabaseAdmin
+      .from('system_settings')
+      .select('value')
+      .eq('key', key)
+      .maybeSingle();
 
-    const queryPromise = prisma.$queryRawUnsafe<{ key: string; value: string }[]>(
-      'SELECT key, value FROM system_settings WHERE key = $1 LIMIT 1;',
-      key
-    );
+    // 1500ms timeout race to ensure page loads NEVER hang
+    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500));
+    const result: any = await Promise.race([queryPromise, timeoutPromise]);
 
-    // 4000ms timeout race to prevent slow cold starts
-    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000));
-    const result = await Promise.race([queryPromise, timeoutPromise]);
-
-    if (result && Array.isArray(result) && result.length > 0) {
-      const parsed = JSON.parse(result[0].value);
-      settingsCache.set(key, { value: parsed, timestamp: Date.now() });
-      return { data: parsed as T, isDefault: false };
+    if (result && result.data && result.data.value) {
+      try {
+        const parsed = JSON.parse(result.data.value);
+        settingsCache.set(key, { value: parsed, timestamp: Date.now() });
+        return { data: parsed as T, isDefault: false };
+      } catch (parseErr) {
+        settingsCache.set(key, { value: result.data.value, timestamp: Date.now() });
+        return { data: result.data.value as T, isDefault: false };
+      }
     }
   } catch (err) {
-    console.warn(`Failed to read system setting "${key}" from database:`, err);
+    console.warn(`Failed to read system setting "${key}" from Supabase:`, err);
   }
 
   // If query failed or timed out, but we have a previous cached value, return it
-  if (cached && cached.value) {
+  if (cached && cached.value !== undefined) {
     return { data: cached.value as T, isDefault: false };
   }
 
@@ -58,24 +50,23 @@ export async function getSystemSetting<T>(key: string, defaultValue: T): Promise
 }
 
 export async function setSystemSetting<T>(key: string, value: T): Promise<boolean> {
-  const jsonStr = JSON.stringify(value);
+  const jsonStr = typeof value === 'string' ? value : JSON.stringify(value);
   settingsCache.set(key, { value, timestamp: Date.now() });
 
   try {
-    await ensureSettingsTable();
-
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO system_settings (key, value, updated_at) 
-       VALUES ($1, $2, NOW()) 
-       ON CONFLICT (key) 
-       DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();`,
+    const { error } = await supabaseAdmin.from('system_settings').upsert({
       key,
-      jsonStr
-    );
+      value: jsonStr,
+      updated_at: new Date().toISOString(),
+    });
 
+    if (error) {
+      console.error(`Error saving setting "${key}":`, error.message);
+      return false;
+    }
     return true;
   } catch (err) {
-    console.error(`Failed to write system setting "${key}" to database:`, err);
+    console.error(`Failed to write system setting "${key}":`, err);
     return false;
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuthPermission } from '@/lib/auth/rbac';
 import { prisma } from '@/lib/db';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { logAuditAction } from '@/lib/auth/audit';
 import { saveProperty, getAllProperties } from '@/lib/properties-store';
 import { broadcastCatalogUpdate } from '@/lib/realtime-broadcast';
@@ -21,106 +22,105 @@ export async function PATCH(
     const body = await req.json();
     const { status = 'PUBLISHED' } = body;
 
-    // 1. Find existing property across store & database
+    // 1. Find existing property across store & Supabase
     const allProps = await getAllProperties();
-    const storeProp = allProps.find((p) => p.id === id || p.slug === id);
+    let storeProp = allProps.find((p) => p.id === id || p.slug === id);
 
-    let prismaProp: any = null;
-    try {
-      prismaProp = await prisma.property.findFirst({
-        where: { OR: [{ id }, { slug: id }] },
-      });
-    } catch (e) {
-      // transient db error ignored
-    }
-
-    if (!storeProp && !prismaProp) {
-      return NextResponse.json({ error: 'Property listing not found.' }, { status: 404 });
-    }
-
-    const resolvedId = storeProp?.id || prismaProp?.id || id;
-    const currentStatus = storeProp?.status || prismaProp?.status || 'PUBLISHED';
-
-    // 2. Validate approvedById to prevent foreign key violations with fallback admin accounts
-    let validApprovedById: string | null = null;
-    if (status === 'PUBLISHED' && user.userId && user.userId !== 'admin-fallback-id') {
+    if (!storeProp) {
       try {
-        const userCheck = await prisma.user.findUnique({
-          where: { id: user.userId },
-          select: { id: true },
-        });
-        if (userCheck) {
-          validApprovedById = userCheck.id;
+        const { data: sbProp } = await supabaseAdmin
+          .from('properties')
+          .select('*')
+          .or(`id.eq.${id},slug.eq.${id}`)
+          .maybeSingle();
+
+        if (sbProp) {
+          storeProp = {
+            id: sbProp.id,
+            title: sbProp.title,
+            slug: sbProp.slug,
+            description: sbProp.description,
+            listingType: sbProp.listingType,
+            propertyType: sbProp.propertyType,
+            status: sbProp.status,
+            price: sbProp.price,
+            currency: sbProp.currency,
+            pricePeriod: sbProp.pricePeriod,
+            bedrooms: sbProp.bedrooms,
+            bathrooms: sbProp.bathrooms,
+            guestRooms: sbProp.guestRooms || 0,
+            boysQuarters: sbProp.boysQuarters || 0,
+            garage: sbProp.garage || 0,
+            sizeSqft: sbProp.sizeSqft,
+            livingAreaSqft: sbProp.livingAreaSqft,
+            locationAddress: sbProp.locationAddress,
+            city: sbProp.city,
+            region: sbProp.region,
+            country: sbProp.country,
+            featured: sbProp.featured,
+            imageUrl: sbProp.imageUrl,
+            galleryUrls: sbProp.galleryUrls || [],
+            contactName: sbProp.contactName,
+            contactPhone: sbProp.contactPhone,
+            contactEmail: sbProp.contactEmail,
+            amenities: sbProp.amenities || [],
+            createdAt: sbProp.createdAt || new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
         }
-      } catch (e) {}
-    }
-
-    // 3. Update status in Prisma
-    if (prismaProp) {
-      try {
-        await prisma.property.update({
-          where: { id: resolvedId },
-          data: {
-            status,
-            approvedById: validApprovedById,
-            publishedAt: status === 'PUBLISHED' ? new Date() : null,
-          },
-        });
-      } catch (prismaUpdateErr) {
-        console.warn('Prisma status update note:', prismaUpdateErr);
+      } catch (err) {
+        // fallback
       }
     }
 
-    // 4. Update in properties-store, system_settings, and scratch file
-    const baseData = storeProp || {
-      id: resolvedId,
-      title: prismaProp.title,
-      slug: prismaProp.slug,
-      description: prismaProp.description,
-      listingType: prismaProp.listingType,
-      propertyType: prismaProp.propertyType,
-      price: prismaProp.price,
-      currency: prismaProp.currency,
-      bedrooms: prismaProp.bedrooms,
-      bathrooms: prismaProp.bathrooms,
-      locationAddress: prismaProp.locationAddress,
-      city: prismaProp.city,
-      region: prismaProp.region,
-      country: prismaProp.country,
-      featured: prismaProp.featured,
-      imageUrl: prismaProp.imageUrl,
-      galleryUrls: prismaProp.galleryUrls,
-    };
+    if (!storeProp) {
+      return NextResponse.json({ error: 'Property listing not found.' }, { status: 404 });
+    }
 
+    const resolvedId = storeProp.id;
+    const currentStatus = storeProp.status || 'PUBLISHED';
+
+    // 2. Save updated status in store, memory cache, system_settings, and Supabase REST
     const updated = await saveProperty({
-      ...baseData,
+      ...storeProp,
       id: resolvedId,
       status,
     });
 
+    // 3. Non-blocking Prisma background sync
     try {
-      await logAuditAction({
-        userId: user.userId,
-        action: `PROPERTY_${status}`,
-        entityType: 'property',
-        entityId: resolvedId,
-        oldValue: { status: currentStatus },
-        newValue: { status },
-      });
-    } catch (e) {}
+      prisma.property
+        .update({
+          where: { id: resolvedId },
+          data: {
+            status,
+            publishedAt: status === 'PUBLISHED' ? new Date() : null,
+          },
+        })
+        .catch(() => null);
+    } catch (e) {
+      // Non-blocking
+    }
+
+    // 4. Non-blocking audit log
+    logAuditAction({
+      userId: user.userId,
+      action: `PROPERTY_${status}`,
+      entityType: 'property',
+      entityId: resolvedId,
+      oldValue: { status: currentStatus },
+      newValue: { status },
+    }).catch(() => null);
 
     // 5. Broadcast real-time update
     broadcastCatalogUpdate('properties', 'UPDATE').catch(() => null);
 
     return NextResponse.json({
-      message: status === 'DRAFT' ? 'Property unpublished to Draft.' : 'Property published successfully.',
+      message: `Property ${status === 'PUBLISHED' ? 'published' : 'saved as draft'} successfully.`,
       property: updated,
     });
-  } catch (error: any) {
-    console.error('Failed to update property status:', error);
-    return NextResponse.json(
-      { error: error?.message || 'Failed to update property status.' },
-      { status: 500 }
-    );
+  } catch (error) {
+    console.error('Publish property error:', error);
+    return NextResponse.json({ error: 'Failed to update property status.' }, { status: 500 });
   }
 }

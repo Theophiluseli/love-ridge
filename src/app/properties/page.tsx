@@ -278,7 +278,7 @@ function PropertiesContent() {
                   >
                     <option value="ALL">All (Rent & Sale)</option>
                     <option value="SALE">For Sale</option>
-                    <option value="RENT">For Rent / Lease</option>
+                    <option value="RENT">For Rent</option>
                   </select>
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
                     <ChevronDown className="w-4 h-4" />

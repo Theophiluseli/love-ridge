@@ -119,12 +119,12 @@ export function useRealtimeSync(onUpdate: (type: CatalogType) => void) {
     document.addEventListener('visibilitychange', handleVisibilityOrFocus);
     window.addEventListener('focus', handleVisibilityOrFocus);
 
-    // 4. Lightweight 15s Heartbeat Polling (Only runs when document is active)
+    // 4. Lightweight 45s Heartbeat Polling (Only runs when document is active)
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible') {
         checkServerRevision();
       }
-    }, 15000);
+    }, 45000);
 
     return () => {
       supabase.removeChannel(channel);

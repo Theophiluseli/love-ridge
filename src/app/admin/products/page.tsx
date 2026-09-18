@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Package, Globe, Tag, Image as ImageIcon, CheckCircle, Upload, Layers, X, Loader2, Clock, Search, RefreshCw, Link2, ExternalLink, Copy, Check, Zap, AlertTriangle, FolderPlus, ArrowUpRight, Star } from 'lucide-react';
+import { Plus, Edit2, Trash2, Package, Globe, Tag, Image as ImageIcon, CheckCircle, Upload, Layers, X, Loader2, Clock, Search, RefreshCw, Link2, ExternalLink, Copy, Check, Zap, AlertTriangle, FolderPlus, ArrowUpRight, Star, ArrowLeft } from 'lucide-react';
 import { compressImage, watermarkImage, optimizeImageToWebP, ImageOptimizationReport } from '@/lib/utils/imageCompressor';
 import { INITIAL_PRODUCTS_STORE, INITIAL_CATEGORIES_STORE } from '@/lib/products-constants';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
@@ -378,16 +378,29 @@ export default function AdminProductsPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Delete this product from store inventory catalogue?')) return;
+    if (!confirm('Delete this product permanently from store inventory catalogue?')) return;
+
+    // 1. Optimistic instant UI update
+    setProducts((prev) => prev.filter((p) => p.id !== id));
+
     const token = localStorage.getItem('loveridge_token');
     try {
       const res = await fetch(`/api/admin/products/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) fetchProducts();
+      if (res.ok) {
+        setMessage('Product deleted permanently from catalogue.');
+        setTimeout(() => setMessage(''), 4000);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        alert(errData.error || 'Failed to delete product.');
+      }
     } catch (err) {
-      console.error(err);
+      console.error('Delete product error:', err);
+      alert('Error communicating with server during deletion.');
+    } finally {
+      fetchProducts();
     }
   }
 
@@ -616,70 +629,91 @@ export default function AdminProductsPage() {
   return (
     <div className="space-y-6">
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Store Catalogue & Inventory Management</h1>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-slate-200 pb-3 sm:pb-4">
+        <div className="space-y-0.5 sm:space-y-1">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 tracking-tight">
+            Store Catalogue & Inventory Management
+          </h1>
+          <p className="text-[11px] sm:text-xs lg:text-sm text-slate-500 font-medium leading-relaxed">
             Manage store product items, set product cover images, multi-image gallery photos, pricing & stock.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="w-auto">
           {activeTab !== 'LIST' ? (
             <button
+              type="button"
               onClick={() => {
                 resetForm();
                 setActiveTab('LIST');
               }}
-              className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-100 transition text-center"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 text-xs font-semibold shadow-2xs transition active:scale-95 cursor-pointer"
             >
-              ← Back to Inventory Table
+              <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
+              <span>Back to Inventory</span>
             </button>
           ) : (
-            <>
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3 w-full sm:w-auto sm:flex sm:items-center">
               <button
+                type="button"
                 onClick={openAddCategoryModal}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 text-xs font-bold hover:bg-slate-50 transition flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                className="w-full sm:w-auto px-3 py-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl border border-slate-300/90 bg-white text-slate-800 text-[11px] sm:text-xs font-bold hover:bg-slate-50 transition flex items-center justify-center gap-1 sm:gap-1.5 shadow-2xs cursor-pointer active:scale-[0.99]"
               >
-                <FolderPlus className="w-4 h-4 text-emerald-800" /> + Add Category
+                <FolderPlus className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
+                <span className="truncate">+ Add Category</span>
               </button>
               <button
+                type="button"
                 onClick={() => {
                   resetForm();
                   setActiveTab('CREATE');
                 }}
-                className="gradient-btn w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                className="w-full sm:w-auto px-3 py-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl bg-[#064e3b] hover:bg-[#033c2e] text-white text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1 sm:gap-1.5 shadow-sm transition cursor-pointer active:scale-[0.99]"
               >
-                <Plus className="w-4 h-4" /> Add Store Product
+                <Plus className="w-3.5 h-3.5 stroke-[2.5] shrink-0" />
+                <span className="truncate">+ Add Store Product</span>
               </button>
-            </>
+            </div>
           )}
         </div>
       </div>
 
       {activeTab === 'LIST' && (
-        <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 w-full sm:w-auto sm:flex sm:items-center border-b border-slate-200 pb-3 sm:pb-4">
           <button
+            type="button"
             onClick={() => setStoreSection('PRODUCTS')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center justify-center sm:justify-start gap-2 p-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
               storeSection === 'PRODUCTS'
-                ? 'bg-emerald-900 text-white shadow-md shadow-emerald-950/20'
-                : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200'
+                ? 'bg-[#064e3b] text-white shadow-sm'
+                : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200/90 shadow-2xs'
             }`}
           >
-            <Package className="w-4 h-4" />
-            <span>Store Products ({products.length})</span>
+            <Package className="w-4 h-4 shrink-0" />
+            <div className="text-left leading-tight">
+              <span className="block font-bold">Store Products</span>
+              <span className={`block text-[10px] sm:text-[11px] font-semibold ${storeSection === 'PRODUCTS' ? 'text-emerald-100' : 'text-slate-500'}`}>
+                ({products.length})
+              </span>
+            </div>
           </button>
+
           <button
+            type="button"
             onClick={() => setStoreSection('CATEGORIES')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center justify-center sm:justify-start gap-2 p-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
               storeSection === 'CATEGORIES'
-                ? 'bg-emerald-900 text-white shadow-md shadow-emerald-950/20'
-                : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200'
+                ? 'bg-[#064e3b] text-white shadow-sm'
+                : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200/90 shadow-2xs'
             }`}
           >
-            <Layers className="w-4 h-4" />
-            <span>Categories & Collections ({categories.length})</span>
+            <Layers className="w-4 h-4 shrink-0" />
+            <div className="text-left leading-tight">
+              <span className="block font-bold">Categories &</span>
+              <span className={`block text-[10px] sm:text-[11px] font-semibold ${storeSection === 'CATEGORIES' ? 'text-emerald-100' : 'text-slate-500'}`}>
+                Collections ({categories.length})
+              </span>
+            </div>
           </button>
         </div>
       )}
@@ -693,14 +727,14 @@ export default function AdminProductsPage() {
 
       {/* VIEW: STORE ITEM FORM (SPACIOUS CARD LAYOUT MATCHING USER REQUIREMENTS) */}
       {activeTab !== 'LIST' ? (
-        <div className="space-y-8 max-w-5xl mx-auto py-2">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-xl p-4 sm:p-8 lg:p-10 space-y-8">
-            <div className="border-b border-slate-100 pb-6 flex items-center justify-between">
+        <div className="space-y-4 sm:space-y-6 max-w-5xl mx-auto py-1 sm:py-2">
+          <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm p-4 sm:p-6 lg:p-8 space-y-5 sm:space-y-6">
+            <div className="border-b border-slate-100 pb-3 sm:pb-4 flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-black text-slate-900">
+                <h2 className="text-base sm:text-lg lg:text-xl font-black text-slate-900 leading-tight">
                   {editItem ? 'Edit Store Product Details' : 'Store Product Listing Details'}
                 </h2>
-                <p className="text-xs text-slate-500 font-medium mt-1">
+                <p className="text-[11px] sm:text-xs text-slate-500 font-medium mt-0.5 sm:mt-1">
                   Specify product item details, pricing, MOQ, cover image, and multi-photo product gallery.
                 </p>
               </div>
@@ -1152,14 +1186,14 @@ export default function AdminProductsPage() {
               </div>
 
               {/* Submit Buttons: Save Draft vs Publish */}
-              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-100">
+              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-3 pt-3 sm:pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => {
                     resetForm();
                     setActiveTab('LIST');
                   }}
-                  className="py-3.5 px-5 rounded-2xl border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                  className="py-2.5 px-4 rounded-xl border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -1168,7 +1202,7 @@ export default function AdminProductsPage() {
                   type="button"
                   onClick={(e) => handleSave(e, 'DRAFT')}
                   disabled={submitting || uploading}
-                  className="py-3.5 px-6 rounded-2xl border-2 border-amber-600 text-amber-800 hover:bg-amber-50 text-xs font-extrabold disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="py-2.5 px-4 rounded-xl border border-amber-500 bg-amber-50/60 text-amber-800 hover:bg-amber-100 text-xs font-bold disabled:opacity-50 flex items-center justify-center gap-1.5 transition cursor-pointer"
                 >
                   Save as Draft
                 </button>
@@ -1177,16 +1211,16 @@ export default function AdminProductsPage() {
                   type="button"
                   onClick={(e) => handleSave(e, 'PUBLISHED')}
                   disabled={submitting || uploading}
-                  className="gradient-btn flex-1 py-3.5 rounded-2xl text-xs font-bold shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="col-span-2 sm:flex-1 py-2.5 sm:py-3 rounded-xl bg-[#064e3b] hover:bg-[#033c2e] text-white text-xs font-bold shadow-sm disabled:opacity-50 flex items-center justify-center gap-2 transition cursor-pointer"
                 >
                   {submitting ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       Saving Product...
                     </>
                   ) : uploading ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       Optimizing Images...
                     </>
                   ) : editItem ? (
@@ -1202,34 +1236,86 @@ export default function AdminProductsPage() {
       ) : storeSection === 'CATEGORIES' ? (
         /* VIEW: CATEGORY MANAGEMENT TABLE */
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/70">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="Search categories or slug..."
-                  value={categorySearch}
-                  onChange={(e) => setCategorySearch(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:border-emerald-600 w-56 sm:w-72"
-                />
-              </div>
+          <div className="p-3 sm:p-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 bg-slate-50/70">
+            <div className="relative w-full sm:w-72">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search categories or slug..."
+                value={categorySearch}
+                onChange={(e) => setCategorySearch(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-xl text-[11px] sm:text-xs font-medium text-slate-900 focus:outline-none focus:border-emerald-600 shadow-2xs"
+              />
             </div>
 
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-slate-500 font-bold">
+            <div className="flex items-center justify-between sm:justify-end gap-2.5 sm:gap-3 w-full sm:w-auto">
+              <span className="text-[11px] sm:text-xs text-slate-500 font-bold">
                 {filteredCategories.length} Categories ({categories.reduce((acc, c) => acc + (c.productCount || 0), 0)} Total Products)
               </span>
               <button
                 onClick={openAddCategoryModal}
-                className="gradient-btn px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
+                className="gradient-btn px-3 py-1.5 sm:px-3.5 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
               >
                 <Plus className="w-3.5 h-3.5" /> Add Category
               </button>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* MOBILE VIEW FOR CATEGORIES (md:hidden) */}
+          <div className="block md:hidden divide-y divide-slate-100 bg-slate-50/50">
+            {filteredCategories.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 font-medium text-xs">
+                No categories found matching &quot;{categorySearch}&quot;. Click &quot;Add Category&quot; to create one.
+              </div>
+            ) : (
+              filteredCategories.map((cat) => (
+                <div key={cat.id} className="p-3.5 bg-white space-y-2.5 hover:bg-slate-50/60 transition">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-0.5">
+                      <h4 className="font-black text-slate-900 text-xs sm:text-sm">{cat.name}</h4>
+                      <span className="inline-block font-mono text-[9px] sm:text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                        slug: {cat.slug}
+                      </span>
+                    </div>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold shrink-0 ${
+                      (cat.productCount || 0) > 0
+                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                        : 'bg-slate-100 text-slate-500 border border-slate-200'
+                    }`}>
+                      <Package className="w-3 h-3" />
+                      {cat.productCount || 0} {cat.productCount === 1 ? 'Product' : 'Products'}
+                    </span>
+                  </div>
+
+                  {cat.description && (
+                    <p className="text-[11px] sm:text-xs text-slate-600 font-medium leading-relaxed">
+                      {cat.description}
+                    </p>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100">
+                    <button
+                      onClick={() => openEditCategoryModal(cat)}
+                      className="w-full py-1.5 sm:py-2 px-2.5 rounded-xl border border-slate-300/80 bg-white text-slate-800 text-[11px] sm:text-xs font-bold hover:bg-slate-50 transition flex items-center justify-center gap-1 shadow-2xs active:scale-98 cursor-pointer"
+                    >
+                      <Edit2 className="w-3 h-3 text-slate-600" />
+                      <span>Edit</span>
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCategory(cat)}
+                      className="w-full py-1.5 sm:py-2 px-2.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-[11px] sm:text-xs font-bold hover:bg-rose-100 transition flex items-center justify-center gap-1 active:scale-98 cursor-pointer"
+                    >
+                      <Trash2 className="w-3 h-3 text-rose-600" />
+                      <span>Delete</span>
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* DESKTOP VIEW FOR CATEGORIES (md:block) */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-900 text-white uppercase tracking-wider font-extrabold border-b border-slate-200">
                 <tr>
@@ -1301,52 +1387,201 @@ export default function AdminProductsPage() {
       ) : (
         /* VIEW: STORE INVENTORY TABLE */
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/70">
-            <div className="flex items-center gap-3">
-              <div className="relative">
+          <div className="p-3 sm:p-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 bg-slate-50/70">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
+              <div className="relative w-full sm:w-64">
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   placeholder="Search products or SKU..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:border-emerald-600 w-48 sm:w-64"
+                  className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-xl text-[11px] sm:text-xs font-medium text-slate-900 focus:outline-none focus:border-emerald-600 shadow-2xs"
                 />
               </div>
 
-              <div className="flex items-center bg-slate-200/80 p-0.5 rounded-xl text-[11px] font-bold">
+              <div className="grid grid-cols-3 sm:flex items-center bg-slate-200/80 p-0.5 rounded-xl text-[10px] sm:text-[11px] font-bold w-full sm:w-auto text-center">
                 <button
+                  type="button"
                   onClick={() => setStatusFilter('ALL')}
-                  className={`px-3 py-1 rounded-lg transition ${statusFilter === 'ALL' ? 'bg-white text-slate-950 shadow-2xs' : 'text-slate-600 hover:text-slate-950'}`}
+                  className={`px-2 sm:px-3 py-1 sm:py-1 rounded-lg transition ${statusFilter === 'ALL' ? 'bg-white text-slate-950 shadow-2xs' : 'text-slate-600 hover:text-slate-950'}`}
                 >
                   All ({products.length})
                 </button>
                 <button
+                  type="button"
                   onClick={() => setStatusFilter('PUBLISHED')}
-                  className={`px-3 py-1 rounded-lg transition ${statusFilter === 'PUBLISHED' ? 'bg-white text-emerald-800 shadow-2xs' : 'text-slate-600 hover:text-slate-950'}`}
+                  className={`px-2 sm:px-3 py-1 sm:py-1 rounded-lg transition ${statusFilter === 'PUBLISHED' ? 'bg-white text-emerald-800 shadow-2xs' : 'text-slate-600 hover:text-slate-950'}`}
                 >
                   Published
                 </button>
                 <button
+                  type="button"
                   onClick={() => setStatusFilter('DRAFT')}
-                  className={`px-3 py-1 rounded-lg transition ${statusFilter === 'DRAFT' ? 'bg-white text-amber-800 shadow-2xs' : 'text-slate-600 hover:text-slate-950'}`}
+                  className={`px-2 sm:px-3 py-1 sm:py-1 rounded-lg transition ${statusFilter === 'DRAFT' ? 'bg-white text-amber-800 shadow-2xs' : 'text-slate-600 hover:text-slate-950'}`}
                 >
                   Drafts
                 </button>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between sm:justify-end gap-3 text-[11px] sm:text-xs text-slate-500 font-bold px-1 sm:px-0">
               {refreshing && (
-                <span className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1.5 animate-pulse">
+                <span className="text-[10px] sm:text-[11px] text-emerald-700 font-semibold flex items-center gap-1.5 animate-pulse">
                   <RefreshCw className="w-3 h-3 animate-spin" /> Syncing...
                 </span>
               )}
-              <span className="text-xs text-slate-500 font-bold">{filteredProducts.length} Items Listed</span>
+              <span>{filteredProducts.length} Items Listed</span>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* MOBILE PRODUCTS CARDS LIST (md:hidden) */}
+          <div className="block md:hidden divide-y divide-slate-100 bg-slate-50/50">
+            {filteredProducts.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 font-medium text-xs">
+                No products found matching &quot;{searchQuery}&quot;. Click &quot;Add Store Product&quot; to create one.
+              </div>
+            ) : (
+              filteredProducts.map((prod) => (
+                <div key={prod.id} className="p-3.5 bg-white space-y-2.5 hover:bg-slate-50/60 transition">
+                  {/* Top: Image + Details */}
+                  <div className="flex gap-2.5 sm:gap-3">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0 relative">
+                      <img
+                        src={prod.imageUrl || '/product_tiles.png'}
+                        alt={prod.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-start justify-between gap-1.5">
+                        <h4 className="font-bold text-slate-900 text-xs sm:text-sm leading-snug line-clamp-2">
+                          {prod.name}
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => toggleFavourite(prod.id, Boolean(prod.isFavourite))}
+                          className={`p-1 sm:p-1.5 rounded-lg sm:rounded-xl border transition shrink-0 ${
+                            prod.isFavourite
+                              ? 'bg-blue-50 text-blue-600 border-blue-200'
+                              : 'bg-slate-50 text-slate-400 border-slate-200 hover:text-slate-600'
+                          }`}
+                          title={prod.isFavourite ? 'Favourite' : 'Standard'}
+                        >
+                          <Star className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${prod.isFavourite ? 'fill-blue-600 text-blue-600' : 'text-slate-400'}`} />
+                        </button>
+                      </div>
+
+                      {/* Category and SKU */}
+                      <div className="flex flex-wrap items-center gap-1 text-[9px] sm:text-[10px]">
+                        <span className="font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/80">
+                          {prod.category?.name || 'Store Item'}
+                        </span>
+                        <span className="font-mono text-slate-500 bg-slate-100 px-1 py-0.5 rounded border border-slate-200">
+                          {prod.sku}
+                        </span>
+                      </div>
+
+                      {/* Price */}
+                      <div className="flex items-baseline gap-1.5 pt-0.5">
+                        <span className="text-xs sm:text-sm font-black text-slate-950">
+                          GH₵{prod.price?.toLocaleString()}
+                        </span>
+                        <span className="text-[9px] sm:text-[10px] font-bold text-amber-700">
+                          {prod.priceCny ? `¥${prod.priceCny?.toLocaleString()} CNY` : `¥${Math.round((prod.price || 0) * 0.47).toLocaleString()} CNY`}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Middle: Badges (Status + Stock + Supplier Link) */}
+                  <div className="flex flex-wrap items-center justify-between gap-1.5 pt-1 border-t border-slate-100 text-[10px] sm:text-xs">
+                    <div className="flex items-center gap-1.5">
+                      {/* Status Button Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => toggleProductStatus(prod.id, prod.status)}
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold cursor-pointer transition ${
+                          prod.status === 'PUBLISHED'
+                            ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
+                            : 'bg-amber-50 text-amber-800 border border-amber-300'
+                        }`}
+                      >
+                        <span className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full ${prod.status === 'PUBLISHED' ? 'bg-emerald-600' : 'bg-amber-600'}`} />
+                        {prod.status}
+                      </button>
+
+                      {/* Stock Badge */}
+                      <span
+                        className={`inline-block text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
+                          prod.stockStatus === 'OUT_OF_STOCK'
+                            ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                            : 'bg-slate-100 text-slate-700 border border-slate-200'
+                        }`}
+                      >
+                        {prod.stockStatus === 'PRE_ORDER'
+                          ? 'Pre-Order'
+                          : prod.stockStatus === 'OUT_OF_STOCK'
+                            ? 'Out of Stock'
+                            : 'In Stock'}{' '}
+                        <span className="opacity-80">({prod.stockQuantity})</span>
+                      </span>
+                    </div>
+
+                    {/* Supplier Link if available */}
+                    {prod.referenceUrl && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(prod.referenceUrl);
+                            setCopiedRowId(prod.id);
+                            setTimeout(() => setCopiedRowId(null), 2000);
+                          }}
+                          className="text-[9px] sm:text-[10px] font-bold text-slate-600 hover:text-emerald-800 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 flex items-center gap-1 transition active:scale-95 cursor-pointer"
+                        >
+                          {copiedRowId === prod.id ? <Check className="w-2.5 h-2.5 text-emerald-700" /> : <Copy className="w-2.5 h-2.5" />}
+                          <span>{copiedRowId === prod.id ? 'Copied' : 'Supplier Link'}</span>
+                        </button>
+                        <a
+                          href={prod.referenceUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="p-0.5 text-slate-400 hover:text-emerald-800 transition"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Bottom: Action Buttons */}
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => openEdit(prod)}
+                      className="w-full py-1.5 sm:py-2 px-2.5 rounded-xl border border-slate-300/80 bg-white text-slate-800 text-[11px] sm:text-xs font-bold hover:bg-slate-50 transition flex items-center justify-center gap-1 shadow-2xs active:scale-98 cursor-pointer"
+                    >
+                      <Edit2 className="w-3 h-3 text-slate-600" />
+                      <span>Edit Details</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(prod.id)}
+                      className="w-full py-1.5 sm:py-2 px-2.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-[11px] sm:text-xs font-bold hover:bg-rose-100 transition flex items-center justify-center gap-1 active:scale-98 cursor-pointer"
+                    >
+                      <Trash2 className="w-3 h-3 text-rose-600" />
+                      <span>Delete</span>
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* DESKTOP VIEW FOR STORE PRODUCTS (md:block) */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-900 text-white uppercase tracking-wider font-extrabold border-b border-slate-200">
                 <tr>
@@ -1453,11 +1688,14 @@ export default function AdminProductsPage() {
                       </td>
 
                       <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                        <button
+                          type="button"
+                          onClick={() => toggleProductStatus(prod.id, prod.status)}
+                          title={prod.status === 'PUBLISHED' ? 'Click to unpublish to Draft' : 'Click to publish to Store'}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold cursor-pointer hover:opacity-85 transition ${
                             prod.status === 'PUBLISHED'
-                              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                              : 'bg-amber-50 text-amber-800 border border-amber-200'
+                              ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
+                              : 'bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100'
                           }`}
                         >
                           <span
@@ -1466,7 +1704,7 @@ export default function AdminProductsPage() {
                             }`}
                           />
                           {prod.status}
-                        </span>
+                        </button>
                       </td>
 
                       <td className="px-6 py-4">
@@ -1514,22 +1752,22 @@ export default function AdminProductsPage() {
       {/* Manage All Categories Modal */}
       {manageCategoriesOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-2xl w-full p-6 sm:p-8 space-y-6 relative max-h-[85vh] flex flex-col">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-2xl w-full p-4 sm:p-8 space-y-5 sm:space-y-6 relative max-h-[90vh] flex flex-col">
             <button
               type="button"
               onClick={() => setManageCategoriesOpen(false)}
-              className="absolute right-5 top-5 p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+              className="absolute right-4 top-4 sm:right-5 sm:top-5 p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer z-10"
             >
               <X className="w-4 h-4" />
             </button>
 
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4 shrink-0 pr-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 shrink-0 pr-8 gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-900 flex items-center justify-center shrink-0">
                   <Layers className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black text-slate-900">Manage Product Categories</h3>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900">Manage Product Categories</h3>
                   <p className="text-xs text-slate-500 font-medium">
                     Edit names, URL slugs, descriptions, or delete categories.
                   </p>
@@ -1541,7 +1779,7 @@ export default function AdminProductsPage() {
                 onClick={() => {
                   openAddCategoryModal();
                 }}
-                className="gradient-btn px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
+                className="gradient-btn px-3.5 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs cursor-pointer self-start sm:self-auto"
               >
                 <Plus className="w-3.5 h-3.5" /> Add New
               </button>
@@ -1636,21 +1874,21 @@ export default function AdminProductsPage() {
       {/* Category Creation / Edit Modal */}
       {categoryModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 sm:p-8 space-y-6 relative">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-lg w-full p-4 sm:p-8 space-y-5 sm:space-y-6 relative max-h-[90vh] overflow-y-auto">
             <button
               type="button"
               onClick={() => setCategoryModal((prev) => ({ ...prev, isOpen: false }))}
-              className="absolute right-5 top-5 p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+              className="absolute right-4 top-4 sm:right-5 sm:top-5 p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer z-10"
             >
               <X className="w-4 h-4" />
             </button>
 
-            <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+            <div className="flex items-center gap-3 border-b border-slate-100 pb-4 pr-8">
               <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-900 flex items-center justify-center shrink-0">
                 <FolderPlus className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-lg font-black text-slate-900">
+                <h3 className="text-base sm:text-lg font-black text-slate-900">
                   {categoryModal.isEditing ? 'Edit Product Category' : 'Create New Product Category'}
                 </h3>
                 <p className="text-xs text-slate-500 font-medium">

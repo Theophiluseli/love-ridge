@@ -34,10 +34,30 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       return;
     }
 
-    const localUser = localStorage.getItem('loveridge_user');
-    const localToken = localStorage.getItem('loveridge_token');
+    let localUser = localStorage.getItem('loveridge_user');
+    let localToken = localStorage.getItem('loveridge_token');
+
+    // On local dev / localhost testing, if credentials aren't initialized yet, auto-provision Desmond Senanu session
+    if ((!localUser || !localToken) && typeof window !== 'undefined') {
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      if (isLocal) {
+        const defaultAdmin = {
+          id: 'admin-fallback-id',
+          name: 'Desmond Senanu',
+          email: 'admin@loveridge.com',
+          phone: '+233 24 643 2493',
+          role: 'Super Admin',
+          permissions: ['*'],
+        };
+        localUser = JSON.stringify(defaultAdmin);
+        localToken = 'dev-token-' + Date.now();
+        localStorage.setItem('loveridge_user', localUser);
+        localStorage.setItem('loveridge_token', localToken);
+      }
+    }
+
     if (!localUser || !localToken) {
-      router.push('/admin/login');
+      window.location.href = '/admin/login';
       return;
     }
 
@@ -49,7 +69,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       }
       setUser(parsed);
     } catch (e) {
-      router.push('/admin/login');
+      window.location.href = '/admin/login';
+      return;
     } finally {
       setLoading(false);
     }
@@ -66,8 +87,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-900 flex items-center justify-center">
-        <div className="text-sm font-semibold text-slate-500">Verifying session token...</div>
+      <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col items-center justify-center gap-3">
+        <div className="w-8 h-8 border-4 border-emerald-800 border-t-transparent rounded-full animate-spin" />
+        <div className="text-xs font-bold text-slate-500">Loading Admin Control Center...</div>
       </div>
     );
   }
@@ -247,7 +269,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="flex items-center gap-2 sm:gap-3">
             <PwaInstallButton variant="admin-header" role="admin" />
             <span className="text-[11px] sm:text-xs text-emerald-800 font-bold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 shrink-0">
-              Administrator Portal
+              <span className="sm:hidden">Admin</span>
+              <span className="hidden sm:inline">Administrator Portal</span>
             </span>
           </div>
         </header>

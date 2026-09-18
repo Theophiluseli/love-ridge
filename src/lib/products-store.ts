@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { prisma } from './db';
+import { supabaseAdmin } from './supabase-admin';
 import { getSystemSetting, setSystemSetting } from './system-settings';
 import {
   ProductItem,
@@ -52,22 +53,88 @@ export function writeProductsToFile(products: ProductItem[]) {
   }
 }
 
-function getInitialWarmProducts(): ProductItem[] {
-  try {
-    const file = readProductsFromFile();
-    if (Array.isArray(file) && file.length > 0) return file;
-  } catch (e) {}
-  return INITIAL_PRODUCTS_STORE;
+declare global {
+  var __cachedProducts: ProductItem[] | null | undefined;
+  var __cachedProductsTime: number | undefined;
+  var __cachedDeletedProductIds: Set<string> | null | undefined;
+  var __deletedProductIdsCacheTime: number | undefined;
 }
 
-// In-memory instant cache for high-speed page loads (30 seconds, invalidated instantly on mutations)
-let cachedProducts: ProductItem[] | null = null;
-let cacheTime = 0;
-const CACHE_DURATION = 30000; // 30 seconds high-speed cache
+const CACHE_DURATION = 30000; // 30 seconds
+const DELETED_PRODUCTS_SETTING_KEY = 'deleted_product_ids';
+const DELETED_PRODUCTS_FILE = path.join(process.cwd(), 'scratch', 'deleted-products.json');
+
+function readDeletedProductIdsFromFile(): Set<string> {
+  try {
+    if (fs.existsSync(DELETED_PRODUCTS_FILE)) {
+      const data = fs.readFileSync(DELETED_PRODUCTS_FILE, 'utf-8');
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) return new Set(parsed);
+    }
+  } catch (e) {}
+  return new Set();
+}
+
+function writeDeletedProductIdsToFile(ids: Set<string>) {
+  try {
+    const dir = path.dirname(DELETED_PRODUCTS_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(DELETED_PRODUCTS_FILE, JSON.stringify(Array.from(ids), null, 2), 'utf-8');
+  } catch (e) {}
+}
+
+export async function getDeletedProductIds(): Promise<Set<string>> {
+  const now = Date.now();
+  if (globalThis.__cachedDeletedProductIds && now - (globalThis.__deletedProductIdsCacheTime || 0) < CACHE_DURATION) {
+    return globalThis.__cachedDeletedProductIds;
+  }
+  const fileSet = readDeletedProductIdsFromFile();
+  try {
+    const { data } = await getSystemSetting<string[]>(DELETED_PRODUCTS_SETTING_KEY, []);
+    const idSet = new Set<string>([...(Array.isArray(data) ? data : []), ...Array.from(fileSet)]);
+    globalThis.__cachedDeletedProductIds = idSet;
+    globalThis.__deletedProductIdsCacheTime = now;
+    writeDeletedProductIdsToFile(idSet);
+    return idSet;
+  } catch (err) {
+    globalThis.__cachedDeletedProductIds = fileSet;
+    return fileSet;
+  }
+}
+
+export async function addDeletedProductId(id: string): Promise<void> {
+  try {
+    const current = await getDeletedProductIds();
+    current.add(id);
+    globalThis.__cachedDeletedProductIds = current;
+    globalThis.__deletedProductIdsCacheTime = Date.now();
+    writeDeletedProductIdsToFile(current);
+    await setSystemSetting(DELETED_PRODUCTS_SETTING_KEY, Array.from(current)).catch(() => null);
+  } catch (err) {
+    console.error('Failed adding deleted product ID:', err);
+  }
+}
+
+export async function removeDeletedProductId(id: string): Promise<void> {
+  try {
+    const current = await getDeletedProductIds();
+    if (current.has(id)) {
+      current.delete(id);
+      globalThis.__cachedDeletedProductIds = current;
+      globalThis.__deletedProductIdsCacheTime = Date.now();
+      writeDeletedProductIdsToFile(current);
+      await setSystemSetting(DELETED_PRODUCTS_SETTING_KEY, Array.from(current)).catch(() => null);
+    }
+  } catch (err) {
+    console.error('Failed removing deleted product ID:', err);
+  }
+}
 
 export function invalidateProductsCache() {
-  cachedProducts = null;
-  cacheTime = 0;
+  globalThis.__cachedProducts = null;
+  globalThis.__cachedProductsTime = 0;
+  globalThis.__cachedDeletedProductIds = null;
+  globalThis.__deletedProductIdsCacheTime = 0;
 }
 
 export async function getProductBySlug(slug: string): Promise<ProductItem | null> {
@@ -100,95 +167,100 @@ export async function getRelatedProducts(product: ProductItem, limit = 3): Promi
 
 export async function getAllProducts(): Promise<ProductItem[]> {
   const now = Date.now();
-  if (cachedProducts && cachedProducts.length > 0 && now - cacheTime < CACHE_DURATION) {
-    return cachedProducts;
+  if (globalThis.__cachedProducts && globalThis.__cachedProducts.length > 0 && now - (globalThis.__cachedProductsTime || 0) < CACHE_DURATION) {
+    return globalThis.__cachedProducts;
   }
 
-  // 1 & 2: Read from system_settings and prisma concurrently for 2x faster performance
+  const deletedIds = await getDeletedProductIds();
+
   let dbCatalog: ProductItem[] = [];
-  let prismaProducts: ProductItem[] = [];
-
   try {
-    const [settingRes, rawDbProds] = await Promise.all([
-      getSystemSetting<ProductItem[]>('products_catalog', INITIAL_PRODUCTS_STORE).catch((e) => {
-        console.warn('Could not read products from system_settings:', e);
-        return { data: [], isDefault: true };
-      }),
-      Promise.race([
-        prisma.product.findMany({
-          include: { category: true },
-          orderBy: { createdAt: 'desc' },
-        }),
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500)),
-      ]).catch((e) => {
-        console.warn('Could not read products from prisma:', e);
-        return null;
-      }),
-    ]);
-
+    const settingRes = await getSystemSetting<ProductItem[]>('products_catalog', INITIAL_PRODUCTS_STORE);
     if (!settingRes.isDefault && Array.isArray(settingRes.data) && settingRes.data.length > 0) {
       dbCatalog = settingRes.data;
     }
-
-    if (rawDbProds && Array.isArray(rawDbProds) && rawDbProds.length > 0) {
-      prismaProducts = rawDbProds.map((p) => ({
-        id: p.id,
-        name: p.name,
-        slug: p.slug,
-        description: p.description,
-        categoryId: p.categoryId,
-        category: p.category ? { id: p.category.id, name: p.category.name, slug: p.category.slug } : null,
-        sku: p.sku,
-        referenceUrl: (p as any).referenceUrl || '',
-        price: p.price,
-        priceCny: (p as any).priceCny || Math.round(p.price * 0.47),
-        currency: p.currency,
-        unit: p.unit,
-        stockQuantity: p.stockQuantity,
-        stockStatus: p.stockStatus,
-        originCountry: p.originCountry,
-        moq: p.moq,
-        status: p.status,
-        featured: p.featured,
-        imageUrl: p.imageUrl || null,
-        galleryUrls: (p as any).galleryUrls || (p.imageUrl ? [p.imageUrl] : []),
-        createdAt: p.createdAt.toISOString(),
-        updatedAt: p.updatedAt.toISOString(),
-      }));
-    }
   } catch (err) {
-    // Database transiently slow or unavailable
+    // transient
   }
 
-  // 3. Read from local scratch file
+  // Read from local scratch file
   const fileProducts = readProductsFromFile();
 
-  // 4. Merge all sources
+  let sbProducts: ProductItem[] = [];
+  // Only query raw table if both system_settings and file are empty
+  if (dbCatalog.length === 0 && fileProducts.length <= INITIAL_PRODUCTS_STORE.length) {
+    try {
+      const sbProdsRes = await supabaseAdmin.from('products').select('*').limit(50);
+      if (sbProdsRes && sbProdsRes.data && Array.isArray(sbProdsRes.data)) {
+        sbProducts = sbProdsRes.data.map((p: any) => {
+          const cat = INITIAL_CATEGORIES_STORE.find((c) => c.id === p.categoryId) || {
+            id: p.categoryId || 'cat-doors',
+            name: 'Doors & Windows',
+            slug: 'doors-windows',
+          };
+
+          return {
+            id: p.id,
+            name: p.name,
+            slug: p.slug,
+            description: p.description,
+            categoryId: p.categoryId,
+            category: cat,
+            sku: p.sku,
+            referenceUrl: p.referenceUrl || '',
+            price: p.price,
+            priceCny: p.priceCny || Math.round(p.price * 0.47),
+            currency: p.currency || 'GHS',
+            unit: p.unit || 'per piece',
+            stockQuantity: p.stockQuantity || 0,
+            stockStatus: p.stockStatus || 'IN_STOCK',
+            originCountry: p.originCountry || 'China',
+            moq: p.moq || 1,
+            status: p.status || 'PUBLISHED',
+            featured: p.featured,
+            imageUrl: p.imageUrl || null,
+            galleryUrls: p.galleryUrls || (p.imageUrl ? [p.imageUrl] : []),
+            createdAt: p.createdAt || new Date().toISOString(),
+            updatedAt: p.updatedAt || new Date().toISOString(),
+          };
+        });
+      }
+    } catch (e) {
+      // fallback
+    }
+  }
+
+  // Merge all sources, strictly filtering out any deleted IDs
   const map = new Map<string, ProductItem>();
   for (const p of INITIAL_PRODUCTS_STORE) {
-    if (p.id) map.set(p.id, p);
+    if (p.id && !deletedIds.has(p.id)) map.set(p.id, p);
   }
   for (const p of fileProducts) {
-    if (p.id) map.set(p.id, { ...map.get(p.id), ...p });
+    if (p.id && !deletedIds.has(p.id)) map.set(p.id, { ...map.get(p.id), ...p });
   }
   for (const p of dbCatalog) {
-    if (p.id) map.set(p.id, { ...map.get(p.id), ...p });
+    if (p.id && !deletedIds.has(p.id)) map.set(p.id, { ...map.get(p.id), ...p });
   }
-  for (const p of prismaProducts) {
-    if (p.id) {
+  for (const p of sbProducts) {
+    if (p.id && !deletedIds.has(p.id)) {
       const existing = map.get(p.id) || ({} as any);
       map.set(p.id, {
         ...existing,
         ...p,
         category: p.category || existing.category,
-        galleryUrls: (p as any).galleryUrls && (p as any).galleryUrls.length > 0 ? (p as any).galleryUrls : existing.galleryUrls || (p.imageUrl ? [p.imageUrl] : []),
+        galleryUrls: p.galleryUrls && p.galleryUrls.length > 0 ? p.galleryUrls : existing.galleryUrls || (p.imageUrl ? [p.imageUrl] : []),
       });
     }
   }
 
+  // Explicit safety clean of any deleted tombstones
+  for (const id of Array.from(deletedIds)) {
+    map.delete(id);
+  }
+
   const mergedList = Array.from(map.values());
   if (mergedList.length === 0) {
-    return INITIAL_PRODUCTS_STORE;
+    return [];
   }
 
   // Sort: Favourites come first (max 3), then by newest creation date
@@ -199,11 +271,11 @@ export async function getAllProducts(): Promise<ProductItem[]> {
     return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
   });
 
-  cachedProducts = mergedList;
-  cacheTime = now;
+  globalThis.__cachedProducts = mergedList;
+  globalThis.__cachedProductsTime = now;
 
-  // Background sync if sources differed
-  if (mergedList.length > dbCatalog.length || mergedList.length > fileProducts.length) {
+  // Background sync if sources differed, keeping only active non-deleted items
+  if (mergedList.length !== dbCatalog.length || mergedList.length !== fileProducts.length) {
     setSystemSetting('products_catalog', mergedList).catch(() => null);
     writeProductsToFile(mergedList);
   }
@@ -314,42 +386,28 @@ export async function saveProduct(prodData: Partial<ProductItem>): Promise<Produ
     return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
   });
 
-  // 1. In-memory cache update immediately
-  cachedProducts = fileProducts;
-  cacheTime = Date.now();
+  // 1. In-memory cache update immediately (<1ms)
+  globalThis.__cachedProducts = fileProducts;
+  globalThis.__cachedProductsTime = Date.now();
 
   // 2. Local file write synchronously
   writeProductsToFile(fileProducts);
 
-  // 3. Save to PostgreSQL system_settings table
+  // 3. Save to Supabase system_settings table (<30ms)
   setSystemSetting('products_catalog', fileProducts).catch((err) => {
     console.error('Failed writing products to system_settings:', err);
   });
 
-  // 4. Synchronously upsert in Prisma database
+  // 4. Upsert directly to Supabase REST products table (sub-100ms)
   try {
-    const adminUser = await prisma.user.findFirst({
-      where: { email: 'admin@loveridge.com' },
-      select: { id: true },
-    });
-    const defaultUserId = adminUser?.id || '1ee92fa7-a3b4-4841-bc10-22e26a3d9fef';
-
-    // Verify category exists in DB, fallback to cat-doors if needed
-    let dbCategoryId = categoryId;
-    const catCheck = await prisma.productCategory.findUnique({ where: { id: categoryId } }).catch(() => null);
-    if (!catCheck) {
-      dbCategoryId = 'cat-doors';
-    }
-
-    await prisma.product.upsert({
-      where: { id: newProduct.id },
-      create: {
+    await supabaseAdmin
+      .from('products')
+      .upsert({
         id: newProduct.id,
         name: newProduct.name,
         slug: newProduct.slug,
         description: newProduct.description,
-        category: { connect: { id: dbCategoryId } },
-        createdBy: { connect: { id: defaultUserId } },
+        categoryId: newProduct.categoryId,
         sku: newProduct.sku,
         price: newProduct.price,
         currency: newProduct.currency,
@@ -361,48 +419,103 @@ export async function saveProduct(prodData: Partial<ProductItem>): Promise<Produ
         status: newProduct.status,
         featured: newProduct.featured,
         imageUrl: newProduct.imageUrl,
-      },
-      update: {
-        name: newProduct.name,
-        slug: newProduct.slug,
-        description: newProduct.description,
-        category: { connect: { id: dbCategoryId } },
-        sku: newProduct.sku,
-        price: newProduct.price,
-        currency: newProduct.currency,
-        unit: newProduct.unit,
-        stockQuantity: newProduct.stockQuantity,
-        stockStatus: newProduct.stockStatus,
-        originCountry: newProduct.originCountry,
-        moq: newProduct.moq,
-        status: newProduct.status,
-        featured: newProduct.featured,
-        imageUrl: newProduct.imageUrl,
-      },
-    }).catch((prismaErr) => {
-      console.warn('Prisma product upsert note:', prismaErr?.message || prismaErr);
-    });
-  } catch (e) {
-    // Database background sync note
+        galleryUrls: newProduct.galleryUrls,
+        updatedAt: now,
+      });
+  } catch (sbErr) {
+    console.warn('Supabase product upsert notice:', sbErr);
   }
+
+  // 5. Fire non-blocking Prisma background upsert
+  try {
+    (prisma.product as any)
+      .upsert({
+        where: { id: newProduct.id },
+        create: {
+          id: newProduct.id,
+          name: newProduct.name,
+          slug: newProduct.slug,
+          description: newProduct.description,
+          categoryId: newProduct.categoryId,
+          sku: newProduct.sku,
+          price: newProduct.price,
+          currency: newProduct.currency,
+          unit: newProduct.unit,
+          stockQuantity: newProduct.stockQuantity,
+          stockStatus: newProduct.stockStatus,
+          originCountry: newProduct.originCountry,
+          moq: newProduct.moq,
+          status: newProduct.status,
+          featured: newProduct.featured,
+          imageUrl: newProduct.imageUrl,
+        },
+        update: {
+          name: newProduct.name,
+          slug: newProduct.slug,
+          description: newProduct.description,
+          categoryId: newProduct.categoryId,
+          sku: newProduct.sku,
+          price: newProduct.price,
+          currency: newProduct.currency,
+          unit: newProduct.unit,
+          stockQuantity: newProduct.stockQuantity,
+          stockStatus: newProduct.stockStatus,
+          originCountry: newProduct.originCountry,
+          moq: newProduct.moq,
+          status: newProduct.status,
+          featured: newProduct.featured,
+          imageUrl: newProduct.imageUrl,
+        },
+      })
+      .catch(() => {});
+  } catch (e) {
+    // Non-blocking
+  }
+
+  if (newProduct.id) {
+    await removeDeletedProductId(newProduct.id);
+  }
+  invalidateProductsCache();
 
   return newProduct;
 }
 
 export async function deleteProduct(id: string): Promise<boolean> {
+  invalidateProductsCache();
+
+  // 1. Permanently record this ID in deleted products tombstones
+  await addDeletedProductId(id);
+
+  // 2. Remove from active product list
   const currentProducts = await getAllProducts();
   const updated = currentProducts.filter((p) => p.id !== id);
 
-  cachedProducts = updated;
-  cacheTime = Date.now();
+  globalThis.__cachedProducts = updated;
+  globalThis.__cachedProductsTime = Date.now();
 
   writeProductsToFile(updated);
-  setSystemSetting('products_catalog', updated).catch(() => null);
-
   try {
-    await prisma.product.delete({ where: { id } }).catch(() => null);
+    await setSystemSetting('products_catalog', updated);
+  } catch (err) {
+    console.error('Failed writing products to system_settings:', err);
+  }
+
+  // 3. Delete from Supabase REST products table
+  try {
+    await supabaseAdmin.from('products').delete().eq('id', id);
   } catch (e) {
     // Ignore error
   }
+
+  // 4. Background cleanup in Prisma (non-blocking)
+  try {
+    prisma.productMedia.deleteMany({ where: { productId: id } }).catch(() => null);
+    prisma.lead.updateMany({ where: { productId: id }, data: { productId: null } }).catch(() => null);
+    prisma.product.delete({ where: { id } }).catch(() => null);
+  } catch (e) {
+    // Non-blocking
+  }
+
+  invalidateProductsCache();
   return true;
 }

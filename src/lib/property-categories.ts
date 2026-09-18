@@ -19,6 +19,7 @@ export const BUILT_PROPERTY_TYPES: PropertyTypeOption[] = [
   { value: 'SHOP', label: 'Shop', category: 'PROPERTY', isResidential: false },
   { value: 'STUDIO_APARTMENT', label: 'Studio apartment', category: 'PROPERTY', isResidential: true },
   { value: 'TOWNHOUSE', label: 'Townhouse', category: 'PROPERTY', isResidential: true },
+  { value: 'WAREHOUSE', label: 'Warehouse', category: 'PROPERTY', isResidential: false },
 ];
 
 // Land section standing on its own dedicated section
@@ -49,7 +50,7 @@ export function formatPropertyType(type: string): string {
   const upper = type.toUpperCase();
   if (upper === 'LAND') return 'Land / Plot';
   if (upper === 'OFFICE_SPACE') return 'Office';
-  if (upper === 'WAREHOUSE') return 'Warehouse / Logistics';
+  if (upper === 'WAREHOUSE') return 'Warehouse';
   const found = BUILT_PROPERTY_TYPES.find((p) => p.value === upper);
   if (found) return found.label;
   return type.charAt(0).toUpperCase() + type.slice(1).toLowerCase().replace(/_/g, ' ');

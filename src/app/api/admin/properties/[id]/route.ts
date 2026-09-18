@@ -37,7 +37,7 @@ export async function PATCH(
     });
 
     try {
-      await prisma.property.update({
+      prisma.property.update({
         where: { id },
         data: {
           title: body.title,

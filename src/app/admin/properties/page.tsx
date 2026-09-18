@@ -838,8 +838,8 @@ export default function AdminPropertiesPage() {
                     }
                     className="admin-select"
                   >
-                    {form.propertyType !== 'LAND' && <option value="RENT">For Rent / Lease</option>}
-                    <option value="SALE">For Sale (Outright)</option>
+                    {form.propertyType !== 'LAND' && <option value="RENT">For Rent</option>}
+                    <option value="SALE">For Sale</option>
                   </select>
                 </div>
 
@@ -1574,16 +1574,12 @@ export default function AdminPropertiesPage() {
                     </div>
                   </div>
 
-                  {/* Bottom: User Agent / Owner Ref + Status + Action Buttons */}
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
+                  {/* Bottom: User Agent / Staff + Status + Action Buttons */}
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <User className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                      <span className="text-xs font-semibold text-slate-800 truncate max-w-[85px] sm:max-w-[130px]">
+                      <span className="text-xs font-semibold text-slate-800 truncate max-w-[140px] sm:max-w-[200px]">
                         {prop.ownerName || prop.contactName || 'Desmond Senanu'}
-                      </span>
-                      <span className="text-[9px] px-1.5 py-0.5 bg-amber-50 text-amber-900 border border-amber-200/80 rounded-md font-extrabold shrink-0 flex flex-col leading-tight text-center">
-                        <span className="flex items-center gap-0.5">🔒 Owner</span>
-                        <span className="text-[8.5px]">Ref</span>
                       </span>
                     </div>
 
