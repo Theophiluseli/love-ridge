@@ -552,22 +552,22 @@ export default function AdminPropertiesPage() {
   return (
     <div className="space-y-6">
       {/* Top Staff Bar Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Staff Property Listing Portal</h1>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Staff Property Listing Portal</h1>
+          <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed">
             Internal staff workspace to create, upload images, and manage verified property listings.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="w-full sm:w-auto">
           {activeTab !== 'LIST' ? (
             <button
               onClick={() => {
                 resetForm();
                 setActiveTab('LIST');
               }}
-              className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-100 transition text-center"
+              className="w-full sm:w-auto px-5 py-3 rounded-2xl border border-slate-300 text-slate-700 text-xs sm:text-sm font-bold hover:bg-slate-100 transition text-center shadow-xs"
             >
               ← Back to Listings Table
             </button>
@@ -577,9 +577,9 @@ export default function AdminPropertiesPage() {
                 resetForm();
                 setActiveTab('CREATE');
               }}
-              className="gradient-btn w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md"
+              className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-[#064e3b] hover:bg-[#033c2e] text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-sm transition active:scale-[0.99]"
             >
-              <Plus className="w-4 h-4" /> Add Property Listing
+              <Plus className="w-4 h-4 stroke-[2.5]" /> Add Property Listing
             </button>
           )}
         </div>
@@ -1461,23 +1461,23 @@ export default function AdminPropertiesPage() {
         </div>
       ) : (
         /* VIEW: PROPERTY LISTINGS CATALOG (RESPONSIVE TABLE + MOBILE CARDS) */
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden space-y-4 p-4 sm:p-6">
+        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden space-y-4 p-4 sm:p-6">
           {/* Header & Filter Controls Bar */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-4">
             <div>
-              <h3 className="font-extrabold text-base text-slate-900">Verified Property Listings Catalog</h3>
-              <p className="text-xs text-slate-500 font-medium">
+              <h3 className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight">Verified Property Listings Catalog</h3>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
                 {filteredProperties.length} of {properties.length} Total Properties Listed
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
               {/* Status Filter Tabs */}
-              <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold shrink-0">
+              <div className="grid grid-cols-3 sm:flex items-center bg-slate-100/90 p-1 rounded-2xl sm:rounded-xl text-xs font-bold w-full sm:w-auto shrink-0">
                 <button
                   type="button"
                   onClick={() => setStatusFilter('ALL')}
-                  className={`px-3 py-1.5 rounded-lg transition ${statusFilter === 'ALL' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  className={`py-2 px-3 rounded-xl transition text-center ${statusFilter === 'ALL' ? 'bg-white text-slate-900 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900 font-semibold'
                     }`}
                 >
                   All ({properties.length})
@@ -1485,7 +1485,7 @@ export default function AdminPropertiesPage() {
                 <button
                   type="button"
                   onClick={() => setStatusFilter('PUBLISHED')}
-                  className={`px-3 py-1.5 rounded-lg transition ${statusFilter === 'PUBLISHED' ? 'bg-emerald-800 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  className={`py-2 px-3 rounded-xl transition text-center ${statusFilter === 'PUBLISHED' ? 'bg-white text-slate-900 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900 font-semibold'
                     }`}
                 >
                   Published ({properties.filter((p) => p.status === 'PUBLISHED').length})
@@ -1493,7 +1493,7 @@ export default function AdminPropertiesPage() {
                 <button
                   type="button"
                   onClick={() => setStatusFilter('DRAFT')}
-                  className={`px-3 py-1.5 rounded-lg transition ${statusFilter === 'DRAFT' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  className={`py-2 px-3 rounded-xl transition text-center ${statusFilter === 'DRAFT' ? 'bg-white text-slate-900 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900 font-semibold'
                     }`}
                 >
                   Drafts ({properties.filter((p) => p.status === 'DRAFT' || p.status === 'PENDING_REVIEW').length})
@@ -1502,20 +1502,20 @@ export default function AdminPropertiesPage() {
 
               {/* Search Box */}
               <div className="relative flex-1 sm:w-64">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Filter by title, location, type..."
-                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:border-emerald-700 focus:bg-white"
+                  className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50/80 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-emerald-700 focus:bg-white focus:outline-none transition"
                 />
               </div>
             </div>
           </div>
 
-          {/* MOBILE CARDS VIEW (< 768px) */}
-          <div className="block md:hidden space-y-4">
+          {/* MOBILE CARDS VIEW (< 768px - Exact Match to User Screenshot) */}
+          <div className="block md:hidden space-y-3">
             {loading ? (
               <div className="p-8 text-center text-slate-500 text-xs font-semibold">
                 Loading property listings...
@@ -1528,10 +1528,11 @@ export default function AdminPropertiesPage() {
               filteredProperties.map((prop) => (
                 <div
                   key={prop.id}
-                  className="bg-slate-50/80 rounded-2xl border border-slate-200 p-4 space-y-3 shadow-xs"
+                  className="bg-white rounded-2xl border border-slate-200/90 p-3.5 space-y-2.5 shadow-2xs hover:border-slate-300 transition"
                 >
+                  {/* Top: Thumbnail & Property Specs */}
                   <div className="flex items-start gap-3">
-                    <div className="w-20 h-16 rounded-xl bg-white border border-slate-200 overflow-hidden shrink-0">
+                    <div className="w-[84px] h-[72px] rounded-xl bg-slate-100 border border-slate-100 overflow-hidden shrink-0">
                       <img
                         src={
                           prop.imageUrl ||
@@ -1545,22 +1546,27 @@ export default function AdminPropertiesPage() {
                         }
                         alt={prop.title}
                         className="w-full h-full object-cover"
+                        loading="lazy"
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-xs text-slate-900 line-clamp-2">{prop.title}</h4>
-                      <span className="text-[10px] text-emerald-800 font-extrabold uppercase mt-0.5 block">
+                      <h4 className="font-bold text-sm text-slate-900 line-clamp-2 leading-snug">
+                        {prop.title}
+                      </h4>
+                      <div className="text-[10px] text-emerald-700 font-black tracking-wider uppercase mt-1">
                         FOR {prop.listingType} • {formatPropertyType(prop.propertyType)}
-                      </span>
-                      <div className="text-xs font-extrabold text-slate-900 mt-1 flex flex-wrap items-center gap-1.5">
-                        <span>{prop.currency} {prop.price ? prop.price.toLocaleString() : '0'}</span>
-                        {prop.negotiable && (
-                          <span className="text-[9px] bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded font-black flex items-center gap-0.5">
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <span className="font-black text-sm text-slate-900 tracking-tight">
+                          {prop.currency || 'USD'} {prop.price ? Number(prop.price).toLocaleString() : '0'}
+                        </span>
+                        {(prop.negotiable || prop.negotiable === undefined) && (
+                          <span className="text-[10px] bg-blue-50 text-blue-700 border border-blue-200/80 px-1.5 py-0.5 rounded-md font-bold flex items-center gap-0.5">
                             <Check className="w-2.5 h-2.5 stroke-[3]" /> Neg.
                           </span>
                         )}
-                        {prop.isFavourite && (
-                          <span className="text-[9px] bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded font-black flex items-center gap-0.5">
+                        {(prop.isFavourite || (prop as any).favourite || prop.featured) && (
+                          <span className="text-[10px] bg-blue-50 text-blue-700 border border-blue-200/80 px-1.5 py-0.5 rounded-md font-bold flex items-center gap-0.5">
                             <Star className="w-2.5 h-2.5 fill-blue-600 text-blue-600" /> Fav
                           </span>
                         )}
@@ -1568,59 +1574,51 @@ export default function AdminPropertiesPage() {
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t border-slate-200/80 space-y-1.5 text-xs">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-slate-900 font-bold">
-                        <User className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
-                        <span className="truncate max-w-[150px]">
-                          {prop.ownerName || prop.contactName || 'Desmond Senanu'}
-                        </span>
-                        <span className="text-[9px] px-1.5 py-0.5 bg-amber-50 text-amber-900 border border-amber-200 rounded font-black">
-                          🔒 Owner Ref
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`px-2 py-0.5 text-[9px] font-black rounded-full uppercase border ${prop.status === 'PUBLISHED'
-                              ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                              : 'bg-amber-100 text-amber-900 border-amber-300'
-                            }`}
-                        >
-                          {prop.status}
-                        </span>
-
-                        <button
-                          onClick={() => openEdit(prop)}
-                          className="p-1.5 rounded-lg text-slate-700 bg-white border border-slate-200"
-                          title="Edit Property"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(prop.id)}
-                          className="p-1.5 rounded-lg text-rose-600 bg-white border border-rose-200"
-                          title="Delete Property"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                  {/* Bottom: User Agent / Owner Ref + Status + Action Buttons */}
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <User className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                      <span className="text-xs font-semibold text-slate-800 truncate max-w-[85px] sm:max-w-[130px]">
+                        {prop.ownerName || prop.contactName || 'Desmond Senanu'}
+                      </span>
+                      <span className="text-[9px] px-1.5 py-0.5 bg-amber-50 text-amber-900 border border-amber-200/80 rounded-md font-extrabold shrink-0 flex flex-col leading-tight text-center">
+                        <span className="flex items-center gap-0.5">🔒 Owner</span>
+                        <span className="text-[8.5px]">Ref</span>
+                      </span>
                     </div>
 
-                    {(prop.ownerPhone || prop.ownerCompany) && (
-                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 font-medium pl-5">
-                        {prop.ownerPhone && (
-                          <span className="text-emerald-800 font-bold flex items-center gap-1">
-                            <Phone className="w-3 h-3 text-emerald-700" /> {prop.ownerPhone}
-                          </span>
-                        )}
-                        {prop.ownerCompany && (
-                          <span className="truncate max-w-[150px] text-slate-600 font-semibold">
-                            • {prop.ownerCompany}
-                          </span>
-                        )}
-                      </div>
-                    )}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handlePublish(prop.id, prop.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED')}
+                        title={prop.status === 'PUBLISHED' ? 'Click to unpublish to Draft' : 'Click to publish now'}
+                        className={`px-2 py-1 text-[10px] font-black rounded-lg uppercase border transition ${
+                          prop.status === 'PUBLISHED'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                            : 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
+                        }`}
+                      >
+                        {prop.status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT'}
+                      </button>
+
+                      <button
+                        onClick={() => openEdit(prop)}
+                        className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition bg-white"
+                        title="Edit Property"
+                        aria-label="Edit Property"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+
+                      <button
+                        onClick={() => handleDelete(prop.id)}
+                        className="p-1.5 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition bg-white"
+                        title="Delete Property"
+                        aria-label="Delete Property"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))
