@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAllProducts } from '@/lib/products-store';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET(req: NextRequest) {
   try {
@@ -50,16 +51,13 @@ export async function GET(req: NextRequest) {
       return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
     });
 
-    const isBypass = Boolean(searchParams.get('_t'));
-    const cacheHeader = isBypass
-      ? 'no-store, no-cache, must-revalidate, max-age=0'
-      : 'public, s-maxage=15, stale-while-revalidate=59';
-
     return NextResponse.json(
       { products, count: products.length },
       {
         headers: {
-          'Cache-Control': cacheHeader,
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0',
         },
       }
     );

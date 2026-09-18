@@ -23,8 +23,8 @@ export async function getSystemSetting<T>(key: string, defaultValue: T): Promise
       .eq('key', key)
       .maybeSingle();
 
-    // 1500ms timeout race to ensure page loads NEVER hang
-    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500));
+    // 3500ms timeout race to ensure page loads NEVER hang, with sufficient buffer for database queries
+    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3500));
     const result: any = await Promise.race([queryPromise, timeoutPromise]);
 
     if (result && result.data && result.data.value) {
@@ -68,5 +68,13 @@ export async function setSystemSetting<T>(key: string, value: T): Promise<boolea
   } catch (err) {
     console.error(`Failed to write system setting "${key}":`, err);
     return false;
+  }
+}
+
+export function invalidateSystemSetting(key?: string) {
+  if (key) {
+    settingsCache.delete(key);
+  } else {
+    settingsCache.clear();
   }
 }

@@ -69,19 +69,18 @@ export async function DELETE(
     const { id } = params;
     const products = await getAllProducts();
     const existing = products.find((p) => p.id === id);
-    if (!existing) {
-      return NextResponse.json({ error: 'Product not found.' }, { status: 404 });
-    }
 
     await deleteProduct(id);
 
-    await logAuditAction({
-      userId: user.userId,
-      action: 'PRODUCT_DELETE',
-      entityType: 'product',
-      entityId: id,
-      oldValue: existing,
-    });
+    if (existing) {
+      await logAuditAction({
+        userId: user.userId,
+        action: 'PRODUCT_DELETE',
+        entityType: 'product',
+        entityId: id,
+        oldValue: existing,
+      });
+    }
 
     // Broadcast real-time update to all connected clients
     broadcastCatalogUpdate('products', 'DELETE').catch(() => null);

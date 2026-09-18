@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { prisma } from './db';
 import { supabaseAdmin } from './supabase-admin';
-import { getSystemSetting, setSystemSetting } from './system-settings';
+import { getSystemSetting, setSystemSetting, invalidateSystemSetting } from './system-settings';
 import {
   ProductItem,
   ProductCategoryItem,
@@ -135,6 +135,8 @@ export function invalidateProductsCache() {
   globalThis.__cachedProductsTime = 0;
   globalThis.__cachedDeletedProductIds = null;
   globalThis.__deletedProductIdsCacheTime = 0;
+  invalidateSystemSetting('products_catalog');
+  invalidateSystemSetting('deleted_product_ids');
 }
 
 export async function getProductBySlug(slug: string): Promise<ProductItem | null> {
@@ -175,7 +177,7 @@ export async function getAllProducts(): Promise<ProductItem[]> {
 
   let dbCatalog: ProductItem[] = [];
   try {
-    const settingRes = await getSystemSetting<ProductItem[]>('products_catalog', INITIAL_PRODUCTS_STORE);
+    const settingRes = await getSystemSetting<ProductItem[]>('products_catalog', []);
     if (!settingRes.isDefault && Array.isArray(settingRes.data) && settingRes.data.length > 0) {
       dbCatalog = settingRes.data;
     }
@@ -186,70 +188,26 @@ export async function getAllProducts(): Promise<ProductItem[]> {
   // Read from local scratch file
   const fileProducts = readProductsFromFile();
 
-  let sbProducts: ProductItem[] = [];
-  // Only query raw table if both system_settings and file are empty
-  if (dbCatalog.length === 0 && fileProducts.length <= INITIAL_PRODUCTS_STORE.length) {
-    try {
-      const sbProdsRes = await supabaseAdmin.from('products').select('*').limit(50);
-      if (sbProdsRes && sbProdsRes.data && Array.isArray(sbProdsRes.data)) {
-        sbProducts = sbProdsRes.data.map((p: any) => {
-          const cat = INITIAL_CATEGORIES_STORE.find((c) => c.id === p.categoryId) || {
-            id: p.categoryId || 'cat-doors',
-            name: 'Doors & Windows',
-            slug: 'doors-windows',
-          };
-
-          return {
-            id: p.id,
-            name: p.name,
-            slug: p.slug,
-            description: p.description,
-            categoryId: p.categoryId,
-            category: cat,
-            sku: p.sku,
-            referenceUrl: p.referenceUrl || '',
-            price: p.price,
-            priceCny: p.priceCny || Math.round(p.price * 0.47),
-            currency: p.currency || 'GHS',
-            unit: p.unit || 'per piece',
-            stockQuantity: p.stockQuantity || 0,
-            stockStatus: p.stockStatus || 'IN_STOCK',
-            originCountry: p.originCountry || 'China',
-            moq: p.moq || 1,
-            status: p.status || 'PUBLISHED',
-            featured: p.featured,
-            imageUrl: p.imageUrl || null,
-            galleryUrls: p.galleryUrls || (p.imageUrl ? [p.imageUrl] : []),
-            createdAt: p.createdAt || new Date().toISOString(),
-            updatedAt: p.updatedAt || new Date().toISOString(),
-          };
-        });
-      }
-    } catch (e) {
-      // fallback
-    }
-  }
-
-  // Merge all sources, strictly filtering out any deleted IDs
   const map = new Map<string, ProductItem>();
-  for (const p of INITIAL_PRODUCTS_STORE) {
-    if (p.id && !deletedIds.has(p.id)) map.set(p.id, p);
-  }
-  for (const p of fileProducts) {
-    if (p.id && !deletedIds.has(p.id)) map.set(p.id, { ...map.get(p.id), ...p });
-  }
-  for (const p of dbCatalog) {
-    if (p.id && !deletedIds.has(p.id)) map.set(p.id, { ...map.get(p.id), ...p });
-  }
-  for (const p of sbProducts) {
-    if (p.id && !deletedIds.has(p.id)) {
-      const existing = map.get(p.id) || ({} as any);
-      map.set(p.id, {
-        ...existing,
-        ...p,
-        category: p.category || existing.category,
-        galleryUrls: p.galleryUrls && p.galleryUrls.length > 0 ? p.galleryUrls : existing.galleryUrls || (p.imageUrl ? [p.imageUrl] : []),
-      });
+
+  // If neither dbCatalog nor fileProducts has any items, seed once with INITIAL_PRODUCTS_STORE
+  if (dbCatalog.length === 0 && fileProducts.length === 0) {
+    for (const p of INITIAL_PRODUCTS_STORE) {
+      if (p.id && !deletedIds.has(p.id)) map.set(p.id, p);
+    }
+    const seeded = Array.from(map.values());
+    setSystemSetting('products_catalog', seeded).catch(() => null);
+    writeProductsToFile(seeded);
+  } else {
+    // 1. Authoritative DB catalog from system_settings
+    for (const p of dbCatalog) {
+      if (p.id && !deletedIds.has(p.id)) map.set(p.id, p);
+    }
+    // 2. Overlay file products if any exist
+    for (const p of fileProducts) {
+      if (p.id && !deletedIds.has(p.id)) {
+        map.set(p.id, { ...map.get(p.id), ...p });
+      }
     }
   }
 
@@ -259,9 +217,6 @@ export async function getAllProducts(): Promise<ProductItem[]> {
   }
 
   const mergedList = Array.from(map.values());
-  if (mergedList.length === 0) {
-    return [];
-  }
 
   // Sort: Favourites come first (max 3), then by newest creation date
   mergedList.sort((a, b) => {
@@ -273,12 +228,6 @@ export async function getAllProducts(): Promise<ProductItem[]> {
 
   globalThis.__cachedProducts = mergedList;
   globalThis.__cachedProductsTime = now;
-
-  // Background sync if sources differed, keeping only active non-deleted items
-  if (mergedList.length !== dbCatalog.length || mergedList.length !== fileProducts.length) {
-    setSystemSetting('products_catalog', mergedList).catch(() => null);
-    writeProductsToFile(mergedList);
-  }
 
   return mergedList;
 }
@@ -517,5 +466,7 @@ export async function deleteProduct(id: string): Promise<boolean> {
   }
 
   invalidateProductsCache();
+  invalidateSystemSetting('products_catalog');
+  invalidateSystemSetting('deleted_product_ids');
   return true;
 }

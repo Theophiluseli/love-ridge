@@ -4,13 +4,25 @@ import { getAllProducts, saveProduct } from '@/lib/products-store';
 import { logAuditAction } from '@/lib/auth/audit';
 import { broadcastCatalogUpdate } from '@/lib/realtime-broadcast';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(req: NextRequest) {
   const auth = await requireAuthPermission(req, 'product.create');
   if ('response' in auth) return auth.response;
 
   try {
     const products = await getAllProducts();
-    return NextResponse.json({ products });
+    return NextResponse.json(
+      { products },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      }
+    );
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch admin products.' }, { status: 500 });
   }

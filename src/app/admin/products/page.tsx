@@ -17,9 +17,9 @@ function slugify(text: string): string {
 }
 
 export default function AdminProductsPage() {
-  const [products, setProducts] = useState<any[]>(INITIAL_PRODUCTS_STORE);
-  const [categories, setCategories] = useState<any[]>(INITIAL_CATEGORIES_STORE);
-  const [loading, setLoading] = useState(false);
+  const [products, setProducts] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PUBLISHED' | 'DRAFT'>('ALL');
@@ -98,8 +98,11 @@ export default function AdminProductsPage() {
     try {
       const token = localStorage.getItem('loveridge_token');
       const [prodRes, catRes] = await Promise.all([
-        fetch('/api/admin/products', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/categories', { cache: 'no-store' }),
+        fetch(`/api/admin/products?_t=${Date.now()}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store',
+        }),
+        fetch(`/api/categories?_t=${Date.now()}`, { cache: 'no-store' }),
       ]);
       if (prodRes.status === 401) {
         window.location.href = '/admin/login';
@@ -107,7 +110,7 @@ export default function AdminProductsPage() {
       }
       const prodData = await prodRes.json();
       const catData = await catRes.json();
-      if (prodData.products && Array.isArray(prodData.products) && prodData.products.length > 0) {
+      if (prodData.products && Array.isArray(prodData.products)) {
         setProducts(prodData.products);
       }
 

@@ -97,7 +97,7 @@ function ProductsContent() {
       if (selectedCategory !== 'ALL') params.append('category', selectedCategory);
       if (forceFresh) params.append('_t', Date.now().toString());
 
-      const res = await fetch(`/api/products?${params.toString()}`, forceFresh ? { cache: 'no-store' as RequestCache } : {});
+      const res = await fetch(`/api/products?${params.toString()}`, { cache: 'no-store' });
       const data = await res.json();
       if (data.products && Array.isArray(data.products)) {
         clientProductsCache.set(cacheKey, data.products);
