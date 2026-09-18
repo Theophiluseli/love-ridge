@@ -227,6 +227,11 @@ export default function AdminPropertiesPage() {
 
   async function handlePublish(id: string, status: string) {
     const token = localStorage.getItem('loveridge_token');
+    // Optimistic UI state update
+    setProperties((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, status } : p))
+    );
+
     try {
       const res = await fetch(`/api/admin/properties/${id}/publish`, {
         method: 'PATCH',
@@ -240,15 +245,28 @@ export default function AdminPropertiesPage() {
         window.location.href = '/admin/login';
         return;
       }
-      if (res.ok) fetchProperties();
-    } catch (err) {
-      console.error(err);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.error || 'Failed to update property status.');
+        fetchProperties();
+        return;
+      }
+      setMessage(status === 'DRAFT' ? 'Property unpublished to Draft.' : 'Property published successfully!');
+      setTimeout(() => setMessage(''), 4000);
+      fetchProperties();
+    } catch (err: any) {
+      console.error('Error updating status:', err);
+      alert(err.message || 'Error updating property status.');
+      fetchProperties();
     }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Are you sure you want to delete this property listing?')) return;
+    if (!confirm('Are you sure you want to permanently delete this property listing?')) return;
     const token = localStorage.getItem('loveridge_token');
+    // Optimistic removal
+    setProperties((prev) => prev.filter((p) => p.id !== id));
+
     try {
       const res = await fetch(`/api/admin/properties/${id}`, {
         method: 'DELETE',
@@ -258,9 +276,19 @@ export default function AdminPropertiesPage() {
         window.location.href = '/admin/login';
         return;
       }
-      if (res.ok) fetchProperties();
-    } catch (err) {
-      console.error(err);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.error || 'Failed to delete property.');
+        fetchProperties();
+        return;
+      }
+      setMessage('Property listing deleted permanently.');
+      setTimeout(() => setMessage(''), 4000);
+      fetchProperties();
+    } catch (err: any) {
+      console.error('Error deleting property:', err);
+      alert(err.message || 'Error deleting property.');
+      fetchProperties();
     }
   }
 

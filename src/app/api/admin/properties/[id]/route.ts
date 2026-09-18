@@ -58,6 +58,7 @@ export async function PATCH(
           featured: body.featured !== undefined ? Boolean(body.featured) : undefined,
           imageUrl: body.imageUrl,
           galleryUrls: body.galleryUrls,
+          publishedAt: body.status === 'PUBLISHED' ? new Date() : body.status === 'DRAFT' ? null : undefined,
         },
       }).catch(() => null);
     } catch (e) {

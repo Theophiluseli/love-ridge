@@ -64,9 +64,57 @@ let cachedProperties: PropertyItem[] | null = null;
 let cacheTime = 0;
 const CACHE_DURATION = 30000; // 30 seconds high-speed cache
 
+const DELETED_PROPERTIES_SETTING_KEY = "deleted_property_ids";
+let cachedDeletedPropertyIds: Set<string> | null = null;
+let deletedIdsCacheTime = 0;
+
+export async function getDeletedPropertyIds(): Promise<Set<string>> {
+  const now = Date.now();
+  if (cachedDeletedPropertyIds && now - deletedIdsCacheTime < CACHE_DURATION) {
+    return cachedDeletedPropertyIds;
+  }
+  try {
+    const { data } = await getSystemSetting<string[]>(DELETED_PROPERTIES_SETTING_KEY, []);
+    const idSet = new Set<string>(Array.isArray(data) ? data : []);
+    cachedDeletedPropertyIds = idSet;
+    deletedIdsCacheTime = now;
+    return idSet;
+  } catch (err) {
+    return cachedDeletedPropertyIds || new Set<string>();
+  }
+}
+
+export async function addDeletedPropertyId(id: string): Promise<void> {
+  try {
+    const current = await getDeletedPropertyIds();
+    current.add(id);
+    cachedDeletedPropertyIds = current;
+    deletedIdsCacheTime = Date.now();
+    await setSystemSetting(DELETED_PROPERTIES_SETTING_KEY, Array.from(current));
+  } catch (err) {
+    console.error("Failed adding deleted property ID:", err);
+  }
+}
+
+export async function removeDeletedPropertyId(id: string): Promise<void> {
+  try {
+    const current = await getDeletedPropertyIds();
+    if (current.has(id)) {
+      current.delete(id);
+      cachedDeletedPropertyIds = current;
+      deletedIdsCacheTime = Date.now();
+      await setSystemSetting(DELETED_PROPERTIES_SETTING_KEY, Array.from(current));
+    }
+  } catch (err) {
+    console.error("Failed removing deleted property ID:", err);
+  }
+}
+
 export function invalidatePropertiesCache() {
   cachedProperties = null;
   cacheTime = 0;
+  cachedDeletedPropertyIds = null;
+  deletedIdsCacheTime = 0;
 }
 
 export async function getPropertyBySlug(slug: string): Promise<PropertyItem | null> {
@@ -88,6 +136,9 @@ export async function getAllProperties(): Promise<PropertyItem[]> {
     return cachedProperties;
   }
 
+  // Retrieve permanent deleted tombstones
+  const deletedIds = await getDeletedPropertyIds();
+
   // 1 & 2: Fetch system_settings and prisma.property in parallel for 2x faster response
   let dbCatalog: PropertyItem[] = [];
   let prismaProperties: PropertyItem[] = [];
@@ -100,7 +151,7 @@ export async function getAllProperties(): Promise<PropertyItem[]> {
       }),
       Promise.race([
         prisma.property.findMany({ orderBy: { createdAt: "desc" } }),
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500)),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
       ]).catch((err) => {
         console.warn("Could not read properties from prisma:", err);
         return null;
@@ -119,7 +170,7 @@ export async function getAllProperties(): Promise<PropertyItem[]> {
         description: p.description,
         listingType: p.listingType,
         propertyType: p.propertyType,
-        status: p.status,
+        status: p.status || "DRAFT",
         price: p.price,
         currency: p.currency,
         pricePeriod: p.pricePeriod || (p.listingType === "RENT" ? "per month" : "outright purchase"),
@@ -155,23 +206,25 @@ export async function getAllProperties(): Promise<PropertyItem[]> {
   const fileProperties = readPropertiesFromFile();
 
   // 4. Merge all unique records across all sources (priority: dbCatalog > prismaProperties > file > initial)
+  // Strictly filter out any deleted property IDs so deleted properties NEVER resurrect
   const map = new Map<string, PropertyItem>();
 
   for (const p of INITIAL_PROPERTIES_STORE) {
-    if (p.id) map.set(p.id, p);
+    if (p.id && !deletedIds.has(p.id)) map.set(p.id, p);
   }
   for (const p of fileProperties) {
-    if (p.id) map.set(p.id, { ...map.get(p.id), ...p });
+    if (p.id && !deletedIds.has(p.id)) map.set(p.id, { ...map.get(p.id), ...p });
   }
   for (const p of dbCatalog) {
-    if (p.id) map.set(p.id, { ...map.get(p.id), ...p });
+    if (p.id && !deletedIds.has(p.id)) map.set(p.id, { ...map.get(p.id), ...p });
   }
   for (const p of prismaProperties) {
-    if (p.id) {
+    if (p.id && !deletedIds.has(p.id)) {
       const existing = map.get(p.id) || ({} as any);
       map.set(p.id, {
         ...existing,
         ...p,
+        status: p.status || existing.status || "PUBLISHED",
         isFavourite: existing.isFavourite ?? (p as any).isFavourite ?? false,
         featured: p.featured !== undefined ? p.featured : (existing.featured ?? false),
         contactName: existing.contactName || p.contactName || "Desmond Senanu",
@@ -188,9 +241,14 @@ export async function getAllProperties(): Promise<PropertyItem[]> {
     }
   }
 
+  // Explicit safety clean of any deleted tombstones
+  for (const id of Array.from(deletedIds)) {
+    map.delete(id);
+  }
+
   const mergedList = Array.from(map.values());
   if (mergedList.length === 0) {
-    return INITIAL_PROPERTIES_STORE;
+    return [];
   }
 
   // Sort: Favourites come first (positions 1, 2, 3), then by newest creation date
@@ -204,9 +262,8 @@ export async function getAllProperties(): Promise<PropertyItem[]> {
   cachedProperties = mergedList;
   cacheTime = now;
 
-  // Background sync if sources differed
-  if (mergedList.length > dbCatalog.length || mergedList.length > fileProperties.length) {
-    setSystemSetting("properties_catalog", mergedList).catch(() => null);
+  // Background sync if sources differed and not just deleted items
+  if (mergedList.length > fileProperties.length) {
     writePropertiesToFile(mergedList);
   }
 
@@ -215,6 +272,12 @@ export async function getAllProperties(): Promise<PropertyItem[]> {
 
 export async function saveProperty(propData: Partial<PropertyItem>): Promise<PropertyItem> {
   invalidatePropertiesCache();
+
+  // If re-saving or creating a property that had this ID, remove from deleted tombstones
+  if (propData.id) {
+    await removeDeletedPropertyId(propData.id);
+  }
+
   const currentProps = await getAllProperties();
   const now = new Date().toISOString();
 
@@ -245,6 +308,8 @@ export async function saveProperty(propData: Partial<PropertyItem>): Promise<Pro
     }
   }
 
+  const determinedStatus = propData.status ? propData.status : (existing?.status || "PUBLISHED");
+
   const newProperty: PropertyItem = {
     id: propData.id || existing?.id || `prop-${Date.now()}`,
     title: propData.title || existing?.title || "Untitled Property",
@@ -252,7 +317,7 @@ export async function saveProperty(propData: Partial<PropertyItem>): Promise<Pro
     description: propData.description !== undefined ? propData.description : (existing?.description || "Property listing description."),
     listingType: propData.listingType || existing?.listingType || "SALE",
     propertyType: propData.propertyType || existing?.propertyType || "HOUSE",
-    status: propData.status || existing?.status || "PUBLISHED",
+    status: determinedStatus,
     price: propData.price !== undefined
       ? (typeof propData.price === "number" ? propData.price : parseFloat(propData.price as any) || 0)
       : (existing?.price ?? 0),
@@ -414,6 +479,11 @@ export async function saveProperty(propData: Partial<PropertyItem>): Promise<Pro
 
 export async function deleteProperty(id: string): Promise<boolean> {
   invalidatePropertiesCache();
+
+  // 1. Permanently register this ID in deleted property tombstones
+  await addDeletedPropertyId(id);
+
+  // 2. Remove from active property list
   const currentProps = await getAllProperties();
   const updated = currentProps.filter((p) => p.id !== id);
 
@@ -427,10 +497,14 @@ export async function deleteProperty(id: string): Promise<boolean> {
     console.error("Failed writing updated catalog to system_settings:", err);
   }
 
+  // 3. Clean up relations in Prisma before deleting the property record
   try {
+    await prisma.propertyMedia.deleteMany({ where: { propertyId: id } }).catch(() => null);
+    await prisma.propertyAmenity.deleteMany({ where: { propertyId: id } }).catch(() => null);
+    await prisma.lead.updateMany({ where: { propertyId: id }, data: { propertyId: null } }).catch(() => null);
     await prisma.property.delete({ where: { id } }).catch(() => null);
   } catch (e) {
-    // ignore prisma delete error
+    console.warn("Prisma deleteProperty notice:", e);
   }
 
   invalidatePropertiesCache();

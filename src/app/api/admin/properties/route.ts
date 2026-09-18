@@ -61,11 +61,22 @@ export async function POST(req: NextRequest) {
       galleryUrls = [],
     } = body;
 
-    if (!title || !description || !listingType || !propertyType || !price || !locationAddress || !city) {
-      return NextResponse.json(
-        { error: 'Missing required fields (title, description, listingType, propertyType, price, address, city).' },
-        { status: 400 }
-      );
+    const initialStatus = body.status || 'PUBLISHED';
+
+    if (initialStatus === 'PUBLISHED') {
+      if (!title || !listingType || !propertyType || price === undefined || price === null || !locationAddress || !city) {
+        return NextResponse.json(
+          { error: 'Missing required fields for publishing (title, listingType, propertyType, price, address, city).' },
+          { status: 400 }
+        );
+      }
+    } else {
+      if (!title) {
+        return NextResponse.json(
+          { error: 'Please provide a title to save a property draft.' },
+          { status: 400 }
+        );
+      }
     }
 
     if (body.isFavourite === true || body.favourite === true) {
@@ -83,8 +94,6 @@ export async function POST(req: NextRequest) {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '') + '-' + Date.now().toString().slice(-4);
-
-    const initialStatus = body.status || 'PUBLISHED';
 
     let assignedAgentId = agentId;
     if (body.contactName) {
@@ -115,9 +124,9 @@ export async function POST(req: NextRequest) {
     const propertyPayload = {
       title,
       slug,
-      description,
-      listingType,
-      propertyType,
+      description: description || 'Property listing description.',
+      listingType: listingType || 'SALE',
+      propertyType: propertyType || 'HOUSE',
       status: initialStatus,
       price: parseNumberOrNull(price, 0) || 0,
       currency,
@@ -129,8 +138,8 @@ export async function POST(req: NextRequest) {
       garage: parseIntOrFallback(garage, 0),
       sizeSqft: parseNumberOrNull(sizeSqft, null),
       livingAreaSqft: parseNumberOrNull(livingAreaSqft, null),
-      locationAddress,
-      city,
+      locationAddress: locationAddress || 'Accra',
+      city: city || 'Accra',
       region: region || 'Greater Accra',
       country: 'Ghana',
       featured: Boolean(featured),
@@ -146,46 +155,8 @@ export async function POST(req: NextRequest) {
       amenities: Array.isArray(body.amenities) ? body.amenities : [],
     };
 
-    // Save to persistent file store
+    // Save to persistent file store, PostgreSQL system_settings and Prisma
     const savedProperty = await saveProperty(propertyPayload);
-
-    // Attempt Prisma save as well
-    try {
-      await prisma.property.create({
-        data: {
-          id: savedProperty.id,
-          title,
-          slug,
-          description,
-          listingType,
-          propertyType,
-          status: initialStatus,
-          price: parseNumberOrNull(price, 0) || 0,
-          currency,
-          pricePeriod,
-          bedrooms: parseIntOrFallback(bedrooms, 0),
-          bathrooms: parseIntOrFallback(bathrooms, 0),
-          guestRooms: parseIntOrFallback(guestRooms, 0),
-          boysQuarters: parseIntOrFallback(boysQuarters, 0),
-          garage: parseIntOrFallback(garage, 0),
-          sizeSqft: parseNumberOrNull(sizeSqft, null),
-          livingAreaSqft: parseNumberOrNull(livingAreaSqft, null),
-          locationAddress,
-          city,
-          region: region || 'Greater Accra',
-          country: 'Ghana',
-          featured: Boolean(featured),
-          imageUrl: imageUrl || null,
-          galleryUrls: Array.isArray(galleryUrls) ? galleryUrls : [],
-          agentId: assignedAgentId || user.userId,
-          createdById: user.userId,
-          approvedById: initialStatus === 'PUBLISHED' ? user.userId : null,
-          publishedAt: initialStatus === 'PUBLISHED' ? new Date() : null,
-        },
-      }).catch(() => null);
-    } catch (e) {
-      // Prisma error ignored
-    }
 
     try {
       await logAuditAction({
