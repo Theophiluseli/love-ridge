@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import PageHeroCarousel from '@/components/PageHeroCarousel';
 import { MapPin, Phone, Mail, Clock, Send, CheckCircle2, MessageSquare, PhoneCall, Globe, Calendar } from 'lucide-react';
 
 export default function ContactPage() {
@@ -65,21 +66,17 @@ export default function ContactPage() {
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between bg-grid-pattern relative">
       <Navbar />
 
-      <main className="flex-1 space-y-12 pt-6">
-        {/* Header */}
-        <section className="relative py-16 px-4 sm:px-6 lg:px-8 text-center max-w-4xl mx-auto space-y-6">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 text-xs font-bold uppercase tracking-widest shadow-sm">
-            <MessageSquare className="w-3.5 h-3.5 text-emerald-800" /> We Are Here to Assist You
-          </div>
-
-          <h1 className="text-4xl sm:text-6xl font-black text-slate-900 tracking-tight leading-tight">
-            Contact <span className="gradient-text">Loveridge Consult</span>
-          </h1>
-
-          <p className="text-slate-600 text-base sm:text-lg max-w-2xl mx-auto font-medium leading-relaxed">
-            Have a question about a property viewing, land title search, or wholesale building material import? Reach out to our East Legon office team.
-          </p>
-        </section>
+      <main className="flex-1 space-y-12">
+        {/* HERO CAROUSEL SECTION */}
+        <PageHeroCarousel
+          pageKey="contact"
+          title={
+            <>
+              Contact <span className="text-emerald-400">Loveridge Consult</span>
+            </>
+          }
+          subtitle="Have a question about a property viewing, land title search, or wholesale building material import? Reach out to our East Legon office team."
+        />
 
         {/* Contact Layout: Form + Info Cards */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">

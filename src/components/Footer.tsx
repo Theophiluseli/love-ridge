@@ -60,6 +60,11 @@ export default function Footer() {
                 <ArrowRight className="w-3 h-3 text-emerald-700 shrink-0" /> All Properties
               </Link>
             </li>
+            <li>
+              <Link href="/gallery" className="hover:text-emerald-800 transition flex items-center justify-center sm:justify-start gap-1.5">
+                <ArrowRight className="w-3 h-3 text-emerald-700 shrink-0" /> Field Gallery &amp; Expos
+              </Link>
+            </li>
           </ul>
         </div>
 
@@ -126,6 +131,13 @@ export default function Footer() {
             © {new Date().getFullYear()} LOVERIDGE Properties & Consult. All rights reserved.
           </p>
           <div className="flex items-center gap-4 sm:gap-6">
+            <Link
+              href="/gallery"
+              className="text-emerald-300 hover:text-white transition-colors underline-offset-4 hover:underline text-xs font-medium"
+            >
+              Gallery &amp; Expos
+            </Link>
+            <span className="text-emerald-800 text-xs">•</span>
             <Link
               href="/privacy-policy"
               className="text-emerald-300 hover:text-white transition-colors underline-offset-4 hover:underline text-xs font-medium"

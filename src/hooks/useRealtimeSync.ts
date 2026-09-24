@@ -3,13 +3,14 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 
-type CatalogType = 'properties' | 'products' | 'categories';
+type CatalogType = 'properties' | 'products' | 'categories' | 'hero';
 
 interface RevisionData {
   version: number;
   properties: number;
   products: number;
   categories: number;
+  hero?: number;
 }
 
 /**
@@ -31,6 +32,7 @@ export function useRealtimeSync(onUpdate: (type: CatalogType) => void) {
     properties: 0,
     products: 0,
     categories: 0,
+    hero: 0,
   });
 
   useEffect(() => {
@@ -64,6 +66,10 @@ export function useRealtimeSync(onUpdate: (type: CatalogType) => void) {
         if (data.categories > lastSeenRef.current.categories) {
           lastSeenRef.current.categories = data.categories;
           callbackRef.current('categories');
+        }
+        if (data.hero && data.hero > (lastSeenRef.current.hero || 0)) {
+          lastSeenRef.current.hero = data.hero;
+          callbackRef.current('hero');
         }
         lastSeenRef.current.version = data.version;
       } catch {

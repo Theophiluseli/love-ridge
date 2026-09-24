@@ -154,20 +154,54 @@ export default function HomePage() {
 
   const faqs = [
     {
-      question: 'How do you verify property land titles before listing?',
-      answer: 'Every residential property, villa, and land plot listed on Loveridge undergoes rigorous title searches at the Lands Commission and site plan verification. We ensure 100% legal title clearance before any property is presented to clients.',
+      question: 'How does Loveridge Properties & Consult verify property owners before clients make payments?',
+      answer:
+        'Loveridge Properties & Consult conducts due diligence before transactions. We verify ownership documents, confirm the legal right to sell, and conduct title verification where required to help protect clients from property fraud.',
     },
     {
-      question: 'Can I order building materials in wholesale bulk directly from China & Italy?',
-      answer: 'Yes! We facilitate direct factory procurement for porcelain floor tiles, marble slabs, power tools, and smart lock hardware. We manage FOB/CIF shipping, customs clearance, and delivery directly to your site.',
+      question: 'Do you handle private or off-market property sales and rentals?',
+      answer:
+        'Yes. We provide discreet off-market property services by connecting verified property owners with qualified buyers and tenants who value privacy.',
     },
     {
-      question: 'How can I schedule a physical property viewing in Accra?',
-      answer: 'You can click "Book Viewing" on any property card or contact our East Legon office. Our sales staff will coordinate a guided walkthrough Monday through Saturday at your convenience.',
+      question: 'Can I source building materials and construction equipment from China and Italy?',
+      answer:
+        'Yes. We help clients source building materials, smart tools, equipment, and machinery from trusted manufacturers while supporting procurement, shipping coordination, customs processes, and delivery to Ghana.',
     },
     {
-      question: 'Do you assist diaspora clients buying property from abroad?',
-      answer: 'Absolutely. Over 40% of our clients are based in the UK, USA, and Europe. We provide live video walkthroughs, digital legal documents, and secure escrow advisory for international transactions.',
+      question: 'How can I schedule a property viewing in Ghana?',
+      answer:
+        'Contact us through WhatsApp, email, or our website contact form and request a property viewing. Our team will arrange suitable properties and viewing schedules.',
+    },
+    {
+      question: 'Do you assist diaspora clients buying property in Ghana?',
+      answer:
+        'Yes. We support diaspora buyers with property searches, virtual viewings, document coordination, ownership verification, and local inspections.',
+    },
+    {
+      question: 'Can foreign investors invest in Ghana real estate?',
+      answer:
+        'Yes. We assist international investors with property opportunities in Ghana through verification support, documentation assistance, and communication coordination.',
+    },
+    {
+      question: 'How do you support China to Ghana imports?',
+      answer:
+        'We provide sourcing and import support including supplier identification, factory coordination, shipping arrangements, customs support, and delivery coordination.',
+    },
+    {
+      question: 'Do you offer property management and valuation services?',
+      answer:
+        'Yes. Our services include tenant sourcing, rent support, property inspections, maintenance coordination, valuation assistance, and property advisory services.',
+    },
+    {
+      question: 'Is there a property viewing fee?',
+      answer:
+        'Yes. A viewing fee covers transportation, coordination, and professional property tour services. Applicable commission fees apply after successful sales or rental agreements.',
+    },
+    {
+      question: 'Why Choose Loveridge Properties & Consult?',
+      answer:
+        '• Verified property opportunities in Ghana\n• Support for local and international investors\n• Diaspora property solutions\n• China–Ghana sourcing and procurement services\n• Professional guidance throughout your property journey',
     },
   ];
 
@@ -196,10 +230,13 @@ export default function HomePage() {
     fetchData();
   }, []);
 
-  // Real-time multi-device sync: auto-refresh homepage when properties or products update
+  // Real-time multi-device sync: auto-refresh homepage when properties, products, or hero slides update
   useRealtimeSync((type) => {
     if (type === 'properties' || type === 'products') {
       fetchData(true);
+    }
+    if (type === 'hero') {
+      window.dispatchEvent(new Event('hero-slides-updated'));
     }
   });
 
@@ -238,7 +275,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between relative bg-emerald-soft-mesh">
       <Navbar />
 
-      <main className="flex-1 space-y-20 -mt-20 pb-20">
+      <main className="flex-1 space-y-20 -mt-20 pb-0">
         {/* HERO SECTION WITH DARK BRAND OVERLAY & CAROUSEL */}
         <section className="relative bg-slate-950 pt-36 sm:pt-44 lg:pt-52 pb-20 sm:pb-28 px-4 sm:px-6 lg:px-8 overflow-hidden min-h-[650px] sm:min-h-[720px] flex flex-col justify-start border-b border-slate-800">
           {/* Background Carousel Layer */}
@@ -450,35 +487,35 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* FEATURED PROPERTIES SECTION */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 pt-10 sm:pt-16 lg:pt-20 relative">
-          <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-full max-w-5xl h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        {/* FEATURED PROPERTIES SECTION - FULL WIDE CONTAINER */}
+        <section className="w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 space-y-8 pt-10 sm:pt-16 lg:pt-20 relative">
+          <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-full max-w-6xl h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-200 pb-4">
             <div>
               <span className="text-emerald-800 font-bold text-xs uppercase tracking-widest block mb-1">
                 VERIFIED LISTINGS
               </span>
-              <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+              <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
                 Featured Verified Properties
               </h2>
             </div>
             <Link
               href="/properties"
-              className="text-xs font-bold text-emerald-800 hover:text-emerald-950 flex items-center gap-1 group"
+              className="text-xs sm:text-sm font-bold text-emerald-800 hover:text-emerald-950 flex items-center gap-1.5 group"
             >
-              Explore All Properties <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+              Explore All Properties <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10">
               {Array.from({ length: 3 }).map((_, i) => (
                 <PropertyCardSkeleton key={i} />
               ))}
             </div>
           ) : (
-            <div className="space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="space-y-10">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10">
                 {properties.map((prop) => (
                   <PropertyCard
                     key={prop.id}
@@ -501,7 +538,7 @@ export default function HomePage() {
               <div className="flex justify-center pt-2">
                 <Link
                   href="/properties"
-                  className="px-8 py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-xs font-extrabold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 group border border-slate-800"
+                  className="px-8 py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-xs sm:text-sm font-extrabold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 group border border-slate-800"
                 >
                   View More Properties <ArrowRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 transition-transform" />
                 </Link>
@@ -510,35 +547,35 @@ export default function HomePage() {
           )}
         </section>
 
-        {/* 2. STORE PRODUCTS HIGHLIGHT SECTION */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* 2. STORE PRODUCTS HIGHLIGHT SECTION - FULL WIDE CONTAINER */}
+        <section className="w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
           <div className="bg-gradient-to-br from-emerald-100/70 via-emerald-50/60 to-teal-50/50 p-8 sm:p-12 rounded-3xl border border-emerald-200/80 shadow-sm space-y-8 relative overflow-hidden">
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-emerald-200/60 pb-4">
               <div>
                 <span className="text-emerald-800 font-extrabold text-xs uppercase tracking-widest block mb-1">
                   DIRECT IMPORTS & HARDWARE
                 </span>
-                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
                   Featured Products
                 </h2>
               </div>
               <Link
                 href="/products"
-                className="text-xs font-bold text-emerald-800 hover:text-emerald-950 flex items-center gap-1 group"
+                className="text-xs sm:text-sm font-bold text-emerald-800 hover:text-emerald-950 flex items-center gap-1.5 group"
               >
-                Explore Full Store <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                Explore Full Store <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Link>
             </div>
 
             {loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10">
                 {Array.from({ length: 3 }).map((_, i) => (
                   <ProductCardSkeleton key={i} />
                 ))}
               </div>
             ) : (
               <div className="space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10">
                   {products.map((prod) => (
                     <ProductCard
                       key={prod.id}
@@ -571,78 +608,94 @@ export default function HomePage() {
         </section>
 
         {/* 3. CLIENT EXPERIENCES / TESTIMONIALS SECTION */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-gradient-to-br from-emerald-50/90 via-white to-emerald-50/70 backdrop-blur-md rounded-3xl p-8 sm:p-12 border border-emerald-200/80 shadow-xl grid grid-cols-1 lg:grid-cols-5 gap-8 items-center relative overflow-hidden">
-            {/* Left Header Column */}
-            <div className="lg:col-span-2 space-y-4">
-              <h2 className="text-xl sm:text-2xl font-bold text-slate-900 leading-tight tracking-tight">
-                What Our Clients Say
-              </h2>
-              <p className="text-slate-600 text-xs sm:text-sm font-medium leading-relaxed">
-                Read feedback from property buyers, owners, investors, diaspora clients, developers and businesses we have supported with real estate, property valuation, renovation, maintenance and management, as well as international sourcing and shipping across Ghana and Africa.
-              </p>
-              <p className="text-emerald-800 font-bold text-xs uppercase tracking-widest">
-                Real Estate • Valuation • Renovation • Management • Sourcing
-              </p>
+        <section className="relative bg-slate-950 py-16 sm:py-20 px-4 sm:px-6 lg:px-8 overflow-hidden border-y border-slate-800">
+          {/* Background Consultation Photo Layer - Styled identically to Hero Section */}
+          <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+            <div
+              className="absolute inset-0 bg-cover bg-[center_28%] bg-no-repeat"
+              style={{ backgroundImage: "url('/loveridge-consultation-bg.jpg')" }}
+            />
+            {/* Dark Sophisticated Backdrop & Brand Gradient Overlay (Identical to Hero Section) */}
+            <div className="absolute inset-0 bg-slate-950/65 backdrop-blur-[1px]" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/50 to-emerald-950/70" />
+          </div>
 
-              <div className="pt-2 space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center text-amber-400">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-amber-400" />
-                    ))}
-                  </div>
-                  <span className="text-xs font-bold text-slate-900">4.9 / 5.0 Rating</span>
-                </div>
-                <p className="text-[11px] text-slate-500 font-bold">100+ Verified Transactions</p>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-bold border border-emerald-200">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" /> VERIFIED REVIEWS
-                </div>
-              </div>
-            </div>
-
-            {/* Right Dynamic Testimonial Card */}
-            <div className="lg:col-span-3 bg-slate-50/90 rounded-3xl p-6 sm:p-8 border border-slate-200 space-y-6 relative">
-              <div className="flex items-center justify-between">
-                <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-950 text-[11px] font-extrabold">
-                  {testimonials[currentTestimonial].type}
+          <div className="max-w-7xl mx-auto relative z-10">
+            <div className="relative rounded-3xl p-8 sm:p-12 border border-emerald-500/20 bg-slate-900/40 backdrop-blur-md shadow-2xl grid grid-cols-1 lg:grid-cols-5 gap-8 items-center">
+              {/* Left Header Column */}
+              <div className="lg:col-span-2 space-y-4 relative z-10">
+                <span className="text-emerald-400 font-extrabold text-xs uppercase tracking-widest block">
+                  TESTIMONIALS
                 </span>
-              </div>
+                <h2 className="text-2xl sm:text-3xl font-black text-white leading-tight tracking-tight">
+                  What Our Clients Say
+                </h2>
+                <p className="text-slate-300 text-xs sm:text-sm font-medium leading-relaxed">
+                  Read feedback from property buyers, owners, investors, diaspora clients, developers and businesses we have supported with real estate, property valuation, renovation, maintenance and management, as well as international sourcing and shipping across Ghana and Africa.
+                </p>
+                <p className="text-emerald-300 font-extrabold text-xs uppercase tracking-widest">
+                  Real Estate • Valuation • Renovation • Management • Sourcing
+                </p>
 
-              <p className="text-slate-800 text-sm sm:text-base italic font-semibold leading-relaxed">
-                "{testimonials[currentTestimonial].comment}"
-              </p>
-
-              <div className="flex items-center justify-between border-t border-slate-200 pt-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-emerald-900 text-white font-bold flex items-center justify-center text-xs shadow-xs">
-                    {testimonials[currentTestimonial].avatar}
+                <div className="pt-2 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center text-amber-400">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className="w-4 h-4 fill-amber-400" />
+                      ))}
+                    </div>
+                    <span className="text-xs font-bold text-white">4.9 / 5.0 Rating</span>
                   </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-900">{testimonials[currentTestimonial].name}</h4>
-                    <p className="text-[11px] text-slate-500 font-medium">
-                      {testimonials[currentTestimonial].role} • {testimonials[currentTestimonial].location}
-                    </p>
+                  <p className="text-[11px] text-slate-400 font-bold">100+ Verified Transactions</p>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/80 text-emerald-300 text-[11px] font-extrabold border border-emerald-500/30">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> VERIFIED REVIEWS
                   </div>
                 </div>
+              </div>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() =>
-                      setCurrentTestimonial((prev) => (prev === 0 ? testimonials.length - 1 : prev - 1))
-                    }
-                    className="w-8 h-8 rounded-full border border-slate-300 bg-white hover:bg-slate-100 flex items-center justify-center text-slate-700 transition"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() =>
-                      setCurrentTestimonial((prev) => (prev === testimonials.length - 1 ? 0 : prev + 1))
-                    }
-                    className="w-8 h-8 rounded-full border border-slate-300 bg-white hover:bg-slate-100 flex items-center justify-center text-slate-700 transition"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
+              {/* Right Dynamic Testimonial Card */}
+              <div className="lg:col-span-3 bg-white/95 backdrop-blur-2xl rounded-3xl p-6 sm:p-8 border border-emerald-100/90 shadow-2xl shadow-slate-950/40 space-y-6 relative z-10">
+                <div className="flex items-center justify-between">
+                  <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-950 text-[11px] font-extrabold">
+                    {testimonials[currentTestimonial].type}
+                  </span>
+                </div>
+
+                <p className="text-slate-800 text-sm sm:text-base italic font-semibold leading-relaxed">
+                  "{testimonials[currentTestimonial].comment}"
+                </p>
+
+                <div className="flex items-center justify-between border-t border-slate-200 pt-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-emerald-900 text-white font-bold flex items-center justify-center text-xs shadow-xs">
+                      {testimonials[currentTestimonial].avatar}
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900">{testimonials[currentTestimonial].name}</h4>
+                      <p className="text-[11px] text-slate-500 font-medium">
+                        {testimonials[currentTestimonial].role} • {testimonials[currentTestimonial].location}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() =>
+                        setCurrentTestimonial((prev) => (prev === 0 ? testimonials.length - 1 : prev - 1))
+                      }
+                      className="w-8 h-8 rounded-full border border-slate-300 bg-white hover:bg-slate-100 flex items-center justify-center text-slate-700 transition"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() =>
+                        setCurrentTestimonial((prev) => (prev === testimonials.length - 1 ? 0 : prev + 1))
+                      }
+                      className="w-8 h-8 rounded-full border border-slate-300 bg-white hover:bg-slate-100 flex items-center justify-center text-slate-700 transition"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -809,33 +862,68 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* FAQ SECTION */}
-        <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-          <div className="text-center space-y-2">
-            <span className="text-emerald-800 font-extrabold text-xs uppercase tracking-widest">GOT QUESTIONS?</span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Frequently Asked Questions</h2>
+        {/* FAQ SECTION WITH LUXURY COVER BACKGROUND (MATCHING TESTIMONIALS STYLE) */}
+        <section className="relative bg-slate-950 py-16 sm:py-24 px-4 sm:px-6 lg:px-8 overflow-hidden border-t border-slate-800">
+          {/* Background Consultation Photo Layer - Styled identically to Hero & Testimonials Sections */}
+          <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+            <div
+              className="absolute inset-0 bg-cover bg-[center_28%] bg-no-repeat"
+              style={{ backgroundImage: "url('/loveridge-consultation-bg.jpg')" }}
+            />
+            {/* Dark Sophisticated Backdrop & Brand Gradient Overlay */}
+            <div className="absolute inset-0 bg-slate-950/65 backdrop-blur-[1px]" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/50 to-emerald-950/70" />
           </div>
 
-          <div className="space-y-4">
-            {faqs.map((faq, idx) => {
-              const isOpen = openFaq === idx;
-              return (
-                <div key={idx} className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-                  <button
-                    onClick={() => setOpenFaq(isOpen ? null : idx)}
-                    className="w-full p-5 text-left flex items-center justify-between font-bold text-slate-900 text-sm sm:text-base hover:bg-slate-50 transition"
-                  >
-                    <span>{faq.question}</span>
-                    <ChevronRight className={`w-4 h-4 text-emerald-800 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
-                  </button>
-                  {isOpen && (
-                    <div className="p-5 pt-0 text-slate-600 text-xs sm:text-sm font-medium border-t border-slate-100 leading-relaxed">
-                      {faq.answer}
+          <div className="max-w-5xl mx-auto relative z-10">
+            <div className="relative rounded-3xl p-6 sm:p-10 lg:p-12 border border-emerald-500/20 bg-slate-900/40 backdrop-blur-md shadow-2xl space-y-8 sm:space-y-10">
+              <div className="text-center space-y-3 max-w-2xl mx-auto">
+                <span className="text-emerald-400 font-extrabold text-xs uppercase tracking-widest block">
+                  GOT QUESTIONS?
+                </span>
+                <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight leading-tight">
+                  Frequently Asked Questions
+                </h2>
+                <p className="text-slate-300 text-xs sm:text-sm font-medium leading-relaxed">
+                  Clear answers about property verification, off-market opportunities, China & Italy sourcing, viewings, and diaspora solutions.
+                </p>
+              </div>
+
+              <div className="space-y-3.5 max-w-4xl mx-auto">
+                {faqs.map((faq, idx) => {
+                  const isOpen = openFaq === idx;
+                  return (
+                    <div
+                      key={idx}
+                      className="bg-white/95 backdrop-blur-xl rounded-2xl border border-white/40 shadow-md hover:shadow-xl transition-all duration-200 overflow-hidden group"
+                    >
+                      <button
+                        onClick={() => setOpenFaq(isOpen ? null : idx)}
+                        className="w-full p-4.5 sm:p-5 text-left flex items-center justify-between font-bold text-slate-900 text-sm sm:text-base hover:text-emerald-800 transition gap-4 cursor-pointer"
+                      >
+                        <span className="leading-snug">{faq.question}</span>
+                        <div
+                          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${
+                            isOpen
+                              ? 'bg-emerald-100 text-emerald-900'
+                              : 'bg-slate-100 text-slate-500 group-hover:bg-emerald-50 group-hover:text-emerald-800'
+                          }`}
+                        >
+                          <ChevronRight
+                            className={`w-4 h-4 transition-transform duration-300 ${isOpen ? 'rotate-90' : ''}`}
+                          />
+                        </div>
+                      </button>
+                      {isOpen && (
+                        <div className="p-5 pt-1 text-slate-600 text-xs sm:text-sm font-medium border-t border-slate-100 leading-relaxed whitespace-pre-line">
+                          {faq.answer}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </section>
       </main>

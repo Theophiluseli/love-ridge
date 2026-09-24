@@ -8,10 +8,11 @@ import PropertyCard from '@/components/PropertyCard';
 import PropertyCardSkeleton from '@/components/PropertyCardSkeleton';
 import InquiryModal from '@/components/InquiryModal';
 import CurrencySwitcher from '@/components/CurrencySwitcher';
-import { Search, SlidersHorizontal, Building2, RotateCcw, ChevronDown, Trees, Warehouse, Building, Briefcase } from 'lucide-react';
+import { Search, SlidersHorizontal, Building2, RotateCcw, ChevronDown, ChevronLeft, ChevronRight, Trees, Warehouse, Building, Briefcase } from 'lucide-react';
 import Link from 'next/link';
 import { BUILT_PROPERTY_TYPES, isResidentialProperty } from '@/lib/property-categories';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
+import PageHeroCarousel from '@/components/PageHeroCarousel';
 
 // Client-side module cache for instant sub-millisecond loads
 let cachedClientProperties: any[] | null = null;
@@ -119,7 +120,7 @@ function PropertiesContent() {
 
       // 4. City
       if (city !== 'ALL') {
-        if (p.city?.toLowerCase() !== city.toLowerCase()) {
+        if ((p.city || '').toLowerCase() !== city.toLowerCase()) {
           return false;
         }
       }
@@ -143,235 +144,185 @@ function PropertiesContent() {
     setSearch('');
   }
 
+  const handleSearchClick = () => {
+    const el = document.getElementById('property-results');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between">
       <Navbar />
 
-      {/* Main Container */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-12 sm:pt-16 pb-12 space-y-8">
-        
-        {/* PAGE HEADER */}
-        <div className="max-w-5xl mx-auto text-center space-y-2">
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
-            Properties & <span className="text-emerald-800">Commercial Listings</span>
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-600 max-w-2xl mx-auto">
-            Browse verified luxury villas, residential homes, prime commercial offices, logistics warehouses, and titled lands across Ghana.
-          </p>
+      {/* HERO CAROUSEL SECTION WITH SEARCH FILTER CARD ON TOP */}
+      <PageHeroCarousel
+        pageKey="properties"
+        className="pt-24 sm:pt-28 lg:pt-32 pb-10 sm:pb-14"
+        title={
+          <>
+            Properties & <span className="text-emerald-400">Commercial Listings</span>
+          </>
+        }
+        subtitle="Browse verified luxury villas, residential homes, prime commercial offices, logistics warehouses, and titled lands across Ghana."
+      >
 
-          {/* QUICK CATEGORY PILLS */}
-          <div className="flex flex-wrap items-center justify-center gap-2 pt-3">
-            <button
-              onClick={() => { setPropertyType('ALL'); setListingType('ALL'); }}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
-                propertyType === 'ALL' && listingType === 'ALL'
-                  ? 'bg-emerald-800 text-white shadow-md'
-                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
-              }`}
-            >
-              All Listings ({allProperties.length})
-            </button>
-            <button
-              onClick={() => setPropertyType('COMMERCIAL')}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all ${
-                propertyType === 'COMMERCIAL'
-                  ? 'bg-emerald-800 text-white shadow-md'
-                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
-              }`}
-            >
-              <Briefcase className="w-3.5 h-3.5" />
-              Commercial & Offices
-            </button>
-            <button
-              onClick={() => setPropertyType('HOUSE')}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
-                propertyType === 'HOUSE'
-                  ? 'bg-emerald-800 text-white shadow-md'
-                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
-              }`}
-            >
-              Houses & Villas
-            </button>
-            <button
-              onClick={() => setPropertyType('APARTMENT')}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
-                propertyType === 'APARTMENT'
-                  ? 'bg-emerald-800 text-white shadow-md'
-                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
-              }`}
-            >
-              Apartments
-            </button>
-            <button
-              onClick={() => setPropertyType('LAND')}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
-                propertyType === 'LAND'
-                  ? 'bg-emerald-800 text-white shadow-md'
-                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
-              }`}
-            >
-              Land & Plots
-            </button>
-            <button
-              onClick={() => { setListingType('RENT'); }}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
-                listingType === 'RENT'
-                  ? 'bg-emerald-800 text-white shadow-md'
-                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
-              }`}
-            >
-              For Rent
-            </button>
-            <button
-              onClick={() => { setListingType('SALE'); }}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
-                listingType === 'SALE'
-                  ? 'bg-emerald-800 text-white shadow-md'
-                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
-              }`}
-            >
-              For Sale
-            </button>
-          </div>
-        </div>
-
-        {/* CENTERED FILTER & SEARCH BAR SECTION */}
-        <div className="max-w-5xl mx-auto w-full space-y-6">
-          <div className="bg-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-xl space-y-4 sm:space-y-5">
-            <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-slate-800 shrink-0">
-                <SlidersHorizontal className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-700" />
-                <span className="hidden xs:inline">Property</span> Search Filter
-              </div>
-
-              <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-                {/* Currency Switcher */}
-                <div className="flex items-center gap-1">
-                  <span className="hidden sm:inline text-[11px] font-bold text-slate-400">Currency:</span>
-                  <CurrencySwitcher />
+          {/* COMPACT SLEEK SEARCH FILTER BOX */}
+          <div className="max-w-5xl mx-auto w-full text-left">
+            <div className="bg-white/95 backdrop-blur-xl p-3 sm:p-4 rounded-2xl border border-white/80 shadow-xl shadow-slate-950/40 relative group">
+              {/* Top Meta / Utilities Row */}
+              <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2 mb-2.5 relative z-10">
+                <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-slate-800 shrink-0">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Search Filter</span>
+                  <span className="text-slate-300">•</span>
+                  <span className="text-slate-500 font-semibold normal-case text-xs">
+                    <strong className="text-slate-900 font-bold">{filteredProperties.length}</strong> listings
+                  </span>
                 </div>
 
-                <div className="h-3.5 w-px bg-slate-200 hidden sm:block" />
+                <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                  <div className="flex items-center gap-1">
+                    <span className="hidden sm:inline text-[11px] font-bold text-slate-500">Currency:</span>
+                    <CurrencySwitcher />
+                  </div>
 
-                <button
-                  onClick={resetFilters}
-                  className="text-[11px] sm:text-xs text-emerald-800 font-bold hover:underline flex items-center gap-1 shrink-0 ml-1 cursor-pointer"
-                  title="Reset Filters"
-                >
-                  <RotateCcw className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                  <span className="hidden sm:inline">Reset Filters</span>
-                  <span className="sm:hidden">Reset</span>
-                </button>
-              </div>
-            </div>
+                  <div className="h-3 w-px bg-slate-200 hidden sm:block" />
 
-            {/* 4-Column Search Filter Inputs */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              {/* 1. Listing Status */}
-              <div>
-                <label className="block text-xs font-extrabold text-slate-800 mb-2">Listing Status</label>
-                <div className="relative">
-                  <select
-                    value={listingType}
-                    onChange={(e) => setListingType(e.target.value)}
-                    className="w-full bg-slate-50/90 border border-slate-200 rounded-2xl px-4 py-3 text-xs text-slate-900 font-semibold appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-800/20 focus:border-emerald-700 focus:bg-white shadow-2xs pr-10 transition-all cursor-pointer"
+                  <button
+                    onClick={resetFilters}
+                    className="text-[11px] text-emerald-800 font-bold hover:underline flex items-center gap-1 shrink-0 cursor-pointer"
+                    title="Reset Filters"
                   >
-                    <option value="ALL">All (Rent & Sale)</option>
-                    <option value="SALE">For Sale</option>
-                    <option value="RENT">For Rent</option>
-                  </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                    <ChevronDown className="w-4 h-4" />
+                    <RotateCcw className="w-3 h-3" />
+                    <span>Reset</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Single cohesive row on desktop: 4 Inputs + Search Button */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2 sm:gap-2.5 items-end relative z-10">
+                {/* 1. Listing Status */}
+                <div className="lg:col-span-3">
+                  <label className="block text-[11px] font-extrabold text-slate-700 mb-1">Listing Status</label>
+                  <div className="relative">
+                    <select
+                      value={listingType}
+                      onChange={(e) => setListingType(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-semibold appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-800/20 focus:border-emerald-700 focus:bg-white shadow-xs pr-8 transition-all cursor-pointer"
+                    >
+                      <option value="ALL">All (Rent & Sale)</option>
+                      <option value="SALE">For Sale</option>
+                      <option value="RENT">For Rent</option>
+                    </select>
+                    <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* 2. Property Type */}
-              <div>
-                <label className="block text-xs font-extrabold text-slate-800 mb-2">Property Type</label>
-                <div className="relative">
-                  <select
-                    value={propertyType}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setPropertyType(val);
-                      if (val === 'LAND') {
-                        setListingType('SALE');
-                      }
-                    }}
-                    className="w-full bg-slate-50/90 border border-slate-200 rounded-2xl px-4 py-3 text-xs text-slate-900 font-semibold appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-800/20 focus:border-emerald-700 focus:bg-white shadow-2xs pr-10 transition-all cursor-pointer"
-                  >
-                    <option value="ALL">All Categories</option>
-                    <option value="COMMERCIAL">Commercial & Offices (All)</option>
-                    <optgroup label="Dedicated Land Section">
-                      <option value="LAND">Land & Plots</option>
-                    </optgroup>
-                    <optgroup label="Property & Building Units">
-                      {BUILT_PROPERTY_TYPES.map((t) => (
-                        <option key={t.value} value={t.value}>
-                          {t.label}
-                        </option>
-                      ))}
-                    </optgroup>
-                  </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                    <ChevronDown className="w-4 h-4" />
+                {/* 2. Property Type */}
+                <div className="lg:col-span-3">
+                  <label className="block text-[11px] font-extrabold text-slate-700 mb-1">Property Type</label>
+                  <div className="relative">
+                    <select
+                      value={propertyType}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setPropertyType(val);
+                        if (val === 'LAND') {
+                          setListingType('SALE');
+                        }
+                      }}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-semibold appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-800/20 focus:border-emerald-700 focus:bg-white shadow-xs pr-8 transition-all cursor-pointer"
+                    >
+                      <option value="ALL">All Categories</option>
+                      <option value="COMMERCIAL">Commercial & Offices</option>
+                      <optgroup label="Dedicated Land Section">
+                        <option value="LAND">Land & Plots</option>
+                      </optgroup>
+                      <optgroup label="Property & Building Units">
+                        {BUILT_PROPERTY_TYPES.map((t) => (
+                          <option key={t.value} value={t.value}>
+                            {t.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    </select>
+                    <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* 3. Location */}
-              <div>
-                <label className="block text-xs font-extrabold text-slate-800 mb-2">Location</label>
-                <div className="relative">
-                  <select
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    className="w-full bg-slate-50/90 border border-slate-200 rounded-2xl px-4 py-3 text-xs text-slate-900 font-semibold appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-800/20 focus:border-emerald-700 focus:bg-white shadow-2xs pr-10 transition-all cursor-pointer"
-                  >
-                    <option value="ALL">All Cities</option>
-                    <option value="Accra">Accra</option>
-                    <option value="Tema">Tema</option>
-                    <option value="Kumasi">Kumasi</option>
-                    <option value="Takoradi">Takoradi</option>
-                  </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                    <ChevronDown className="w-4 h-4" />
+                {/* 3. Location */}
+                <div className="lg:col-span-2">
+                  <label className="block text-[11px] font-extrabold text-slate-700 mb-1">Location</label>
+                  <div className="relative">
+                    <select
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-semibold appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-800/20 focus:border-emerald-700 focus:bg-white shadow-xs pr-8 transition-all cursor-pointer"
+                    >
+                      <option value="ALL">All Cities</option>
+                      <option value="Accra">Accra</option>
+                      <option value="Tema">Tema</option>
+                      <option value="Kumasi">Kumasi</option>
+                      <option value="Takoradi">Takoradi</option>
+                    </select>
+                    <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* 4. Search Keywords */}
-              <div>
-                <label className="block text-xs font-extrabold text-slate-800 mb-2">Search Keywords</label>
-                <div className="relative">
+                {/* 4. Search Keywords */}
+                <div className="lg:col-span-2 sm:col-span-2">
+                  <label className="block text-[11px] font-extrabold text-slate-700 mb-1">Keywords</label>
                   <input
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="e.g. Ridge, Spintex, Tema..."
-                    className="w-full bg-slate-50/90 border border-slate-200 rounded-2xl px-4 py-3 text-xs text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-800/20 focus:border-emerald-700 focus:bg-white shadow-2xs transition-all pr-11"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleSearchClick();
+                      }
+                    }}
+                    placeholder="e.g. Ridge, Spintex..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-800/20 focus:border-emerald-700 focus:bg-white shadow-xs transition-all"
                   />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                    <Search className="w-4 h-4" />
-                  </div>
+                </div>
+
+                {/* 5. Search Button */}
+                <div className="lg:col-span-2 sm:col-span-2">
+                  <button
+                    type="button"
+                    onClick={handleSearchClick}
+                    className="w-full h-[37px] px-4 bg-emerald-900 hover:bg-emerald-950 active:scale-[0.98] text-white rounded-xl text-xs font-black shadow-md shadow-emerald-950/20 hover:shadow-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-emerald-800"
+                  >
+                    <Search className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Search</span>
+                  </button>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
+      </PageHeroCarousel>
+
+      {/* Main Results Container */}
+      <main id="property-results" className="flex-1 w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-10 space-y-10">
         {/* Results Header Counter */}
-        <div className="flex items-center justify-between text-xs text-slate-500 max-w-5xl mx-auto px-1">
+        <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500 max-w-6xl mx-auto px-1">
           <span>
-            Showing <strong className="text-slate-900">{filteredProperties.length}</strong> matching{' '}
+            Showing <strong className="text-slate-900 font-extrabold">{filteredProperties.length}</strong> matching{' '}
             {propertyType === 'COMMERCIAL' ? 'commercial ' : ''}listings
           </span>
         </div>
 
         {/* Property Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10">
             {Array.from({ length: 6 }).map((_, i) => (
               <PropertyCardSkeleton key={i} />
             ))}
@@ -393,7 +344,7 @@ function PropertiesContent() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10">
             {filteredProperties.map((prop) => (
               <PropertyCard
                 key={prop.id}

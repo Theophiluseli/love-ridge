@@ -44,7 +44,7 @@ export function sanitizePropertyForPublic(property: PropertyItem): PropertyItem 
     ...publicData,
     contactName: "Desmond Senanu",
     contactPhone: "+233 24 643 2493",
-    contactEmail: "sales@loveridgeproperties.com",
+    contactEmail: "info@loveridgeproperty.com",
   };
 }
 
@@ -88,7 +88,7 @@ export const INITIAL_PROPERTIES_STORE: PropertyItem[] = [
     ],
     "contactName": "Desmond Senanu",
     "contactPhone": "+233 24 643 2493",
-    "contactEmail": "sales@loveridgeproperties.com",
+    "contactEmail": "info@loveridgeproperty.com",
     "amenities": [
       "Air conditioning",
       "Swimming Pool",
@@ -143,7 +143,7 @@ export const INITIAL_PROPERTIES_STORE: PropertyItem[] = [
     ],
     "contactName": "Desmond Senanu",
     "contactPhone": "+233 24 643 2493",
-    "contactEmail": "sales@loveridgeproperties.com",
+    "contactEmail": "info@loveridgeproperty.com",
     "amenities": [
       "Air conditioning",
       "Modern Kitchen",

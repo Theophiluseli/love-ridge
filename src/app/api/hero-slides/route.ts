@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSystemSetting, setSystemSetting } from '@/lib/system-settings';
+import { broadcastCatalogUpdate } from '@/lib/realtime-broadcast';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,6 +45,9 @@ export async function POST(req: NextRequest) {
 
     const inputSlides: HeroSlide[] = body.slides;
     await setSystemSetting('hero_slides', inputSlides);
+
+    // Broadcast change to all devices & clients via Supabase Realtime WebSocket
+    await broadcastCatalogUpdate('hero', 'UPDATE', { count: inputSlides.length });
 
     return NextResponse.json(
       {

@@ -20,6 +20,7 @@ export default function Navbar() {
     { href: '/products', label: t('nav.store', 'Our Store') },
     { href: '/services', label: t('nav.services', 'Services') },
     { href: '/about', label: t('nav.about', 'About Us') },
+    { href: '/gallery', label: t('nav.gallery', 'Gallery') },
     { href: '/contact', label: t('nav.contact', 'Contact') },
   ];
 
@@ -33,14 +34,14 @@ export default function Navbar() {
         </Link>
 
         {/* Centered Navigation Menu */}
-        <nav className="hidden lg:flex items-center space-x-1 bg-emerald-900/60 p-1 rounded-full border border-emerald-500/30 absolute left-1/2 -translate-x-1/2">
+        <nav className="hidden lg:flex items-center space-x-0.5 xl:space-x-1 bg-emerald-900/60 p-1 rounded-full border border-emerald-500/30 absolute left-1/2 -translate-x-1/2">
           {navLinks.map((link) => {
             const isActive = pathname === link.href;
             return (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
+                className={`px-2.5 xl:px-3.5 py-1.5 xl:py-2 rounded-full text-[11px] xl:text-xs font-bold transition-all whitespace-nowrap ${
                   isActive
                     ? 'bg-emerald-400 text-slate-950 shadow-md shadow-emerald-400/30'
                     : 'text-emerald-100 hover:text-white hover:bg-emerald-800/50'

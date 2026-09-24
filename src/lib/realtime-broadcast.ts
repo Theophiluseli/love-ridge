@@ -3,7 +3,7 @@ import { getSystemSetting, setSystemSetting } from './system-settings';
 import { invalidatePropertiesCache } from './properties-store';
 import { invalidateProductsCache } from './products-store';
 
-export type CatalogType = 'properties' | 'products' | 'categories';
+export type CatalogType = 'properties' | 'products' | 'categories' | 'hero';
 export type EventType = 'INSERT' | 'UPDATE' | 'DELETE';
 
 export interface CatalogRevision {
@@ -11,6 +11,7 @@ export interface CatalogRevision {
   properties: number;
   products: number;
   categories: number;
+  hero: number;
 }
 
 // Global revision registry shared across current server instance
@@ -23,6 +24,7 @@ const DEFAULT_REVISION: CatalogRevision = {
   properties: 1,
   products: 1,
   categories: 1,
+  hero: 1,
 };
 
 if (!globalThis.__catalogRevision) {
@@ -72,7 +74,7 @@ export async function broadcastCatalogUpdate(
 
   // 2. Advance local memory revision
   if (!globalThis.__catalogRevision) {
-    globalThis.__catalogRevision = { version: now, properties: now, products: now, categories: now };
+    globalThis.__catalogRevision = { version: now, properties: now, products: now, categories: now, hero: now };
   }
   globalThis.__catalogRevision[catalog] = now;
   globalThis.__catalogRevision.version = now;

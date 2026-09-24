@@ -283,7 +283,7 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
   const formattedPrice = formatPrice(property.price, property.currency || 'GHS');
   const agentName = property.contactName || property.agent?.name || 'Kwame Appiah';
   const agentPhone = property.contactPhone || property.agent?.phone || '0246432493';
-  const agentEmail = property.contactEmail || property.agent?.email || 'sales@loveridgeproperty.com';
+  const agentEmail = property.contactEmail || property.agent?.email || 'info@loveridgeproperty.com';
   const agentTitle = property.agent?.title || 'Lead Real Estate Broker';
 
   const updatedDate = property.updatedAt || property.createdAt;
@@ -819,11 +819,11 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
                   </a>
 
                   <a
-                    href={`mailto:sales@loveridgeproperty.com?subject=Inquiry%20Regarding%20${encodeURIComponent(property.title)}`}
+                    href={`mailto:info@loveridgeproperty.com?subject=Inquiry%20Regarding%20${encodeURIComponent(property.title)}`}
                     className="flex items-center gap-2 p-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 transition truncate"
                   >
                     <Mail className="w-4 h-4 text-emerald-700 shrink-0" />
-                    <span className="truncate">sales@loveridgeproperty.com</span>
+                    <span className="truncate">info@loveridgeproperty.com</span>
                   </a>
                 </div>
 

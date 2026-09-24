@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   Upload,
   Plus,
@@ -18,9 +19,18 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
-  Link as LinkIcon
+  ExternalLink,
+  Sliders,
+  Type,
+  Sparkles,
+  Building2,
+  Package,
+  Info,
+  Briefcase,
+  PhoneCall
 } from 'lucide-react';
-import { compressImage, watermarkImage } from '@/lib/utils/imageCompressor';
+import { compressImage } from '@/lib/utils/imageCompressor';
+import { PageHeroConfig, PageHeroConfigs, DEFAULT_PAGE_HEROES } from '@/lib/page-heroes-constants';
 
 interface HeroSlideItem {
   id: string;
@@ -35,10 +45,21 @@ const DEFAULT_SLIDES: HeroSlideItem[] = [
   { id: 'slide-1', imageUrl: '/hero_carousel_1.jpg', title: 'Luxury Smart Villa Showcase', active: true, order: 1 },
   { id: 'slide-2', imageUrl: '/hero_carousel_2.jpg', title: 'Modern Estate Residence', active: true, order: 2 },
   { id: 'slide-4', imageUrl: '/hero_carousel_4.jpg', title: 'Executive Living Spaces', active: true, order: 3 },
+  { id: 'slide-5', imageUrl: '/signature_apartment_accra.webp', title: 'Signature Residential Complex', active: true, order: 4 },
 ];
 
+const PAGE_KEYS = [
+  { key: 'properties', label: 'Properties & Commercial Listings', path: '/properties', icon: Building2, tag: 'Property Listings' },
+  { key: 'products', label: 'Building Materials & Tools Store', path: '/products', icon: Package, tag: 'Online Store' },
+  { key: 'about', label: 'About Us Page', path: '/about', icon: Info, tag: 'Company Profile' },
+  { key: 'services', label: 'Services Page', path: '/services', icon: Briefcase, tag: 'Consultancy' },
+  { key: 'contact', label: 'Contact Us Page', path: '/contact', icon: PhoneCall, tag: 'Inquiries & Desk' },
+] as const;
+
 export default function AdminHeroPage() {
+  const [activeTab, setActiveTab] = useState<'slides' | 'content'>('slides');
   const [slides, setSlides] = useState<HeroSlideItem[]>([]);
+  const [pageHeroes, setPageHeroes] = useState<PageHeroConfigs>(DEFAULT_PAGE_HEROES);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -55,7 +76,7 @@ export default function AdminHeroPage() {
   const [showAddForm, setShowAddForm] = useState(false);
 
   useEffect(() => {
-    fetchSlides();
+    fetchInitialData();
   }, []);
 
   function isDefaultSlides(items: HeroSlideItem[]) {
@@ -63,50 +84,63 @@ export default function AdminHeroPage() {
     return items.every((item, idx) => item.imageUrl === DEFAULT_SLIDES[idx]?.imageUrl);
   }
 
-  async function fetchSlides() {
+  async function fetchInitialData() {
     // 1. Immediately read from localStorage so it never flashes to default
     let localSlides: HeroSlideItem[] | null = null;
-    const localSaved = localStorage.getItem('loveridge_hero_slides');
-    if (localSaved) {
-      try {
+    try {
+      const localSaved = localStorage.getItem('loveridge_hero_slides');
+      if (localSaved) {
         const parsed = JSON.parse(localSaved);
         if (Array.isArray(parsed) && parsed.length > 0) {
           localSlides = parsed;
           setSlides(parsed);
           setLoading(false);
         }
-      } catch (e) {}
-    }
+      }
+      const localHeroes = localStorage.getItem('loveridge_page_heroes');
+      if (localHeroes) {
+        const parsedHeroes = JSON.parse(localHeroes);
+        if (parsedHeroes && typeof parsedHeroes === 'object') {
+          setPageHeroes({ ...DEFAULT_PAGE_HEROES, ...parsedHeroes });
+        }
+      }
+    } catch (e) {}
 
     try {
-      const res = await fetch('/api/hero-slides', { cache: 'no-store' });
-      const data = await res.json();
+      const [resSlides, resHeroes] = await Promise.all([
+        fetch('/api/hero-slides', { cache: 'no-store' }),
+        fetch('/api/page-heroes', { cache: 'no-store' }),
+      ]);
 
-      if (data.slides && Array.isArray(data.slides) && data.slides.length > 0) {
-        if (!data.isDefault) {
-          // Server returned custom slides saved in DB
-          setSlides(data.slides);
-          localStorage.setItem('loveridge_hero_slides', JSON.stringify(data.slides));
+      const dataSlides = await resSlides.json();
+      const dataHeroes = await resHeroes.json();
+
+      // Handle Hero Slides
+      if (dataSlides.slides && Array.isArray(dataSlides.slides) && dataSlides.slides.length > 0) {
+        if (!dataSlides.isDefault) {
+          setSlides(dataSlides.slides);
+          localStorage.setItem('loveridge_hero_slides', JSON.stringify(dataSlides.slides));
         } else if (localSlides && localSlides.length > 0 && !isDefaultSlides(localSlides)) {
-          // Client has custom slides! Preserve them and sync to server DB:
           setSlides(localSlides);
           persistSlides(localSlides);
         } else {
-          setSlides(data.slides);
-          localStorage.setItem('loveridge_hero_slides', JSON.stringify(data.slides));
+          setSlides(dataSlides.slides);
+          localStorage.setItem('loveridge_hero_slides', JSON.stringify(dataSlides.slides));
         }
       } else if (localSlides && localSlides.length > 0) {
         setSlides(localSlides);
       } else {
         setSlides(DEFAULT_SLIDES);
       }
-    } catch (err) {
-      console.error('Error fetching hero slides:', err);
-      if (localSlides && localSlides.length > 0) {
-        setSlides(localSlides);
-      } else {
-        setSlides(DEFAULT_SLIDES);
+
+      // Handle Page Heroes
+      if (dataHeroes.heroes && typeof dataHeroes.heroes === 'object') {
+        const merged = { ...DEFAULT_PAGE_HEROES, ...dataHeroes.heroes };
+        setPageHeroes(merged);
+        localStorage.setItem('loveridge_page_heroes', JSON.stringify(merged));
       }
+    } catch (err) {
+      console.error('Error fetching hero data:', err);
     } finally {
       setLoading(false);
     }
@@ -131,11 +165,18 @@ export default function AdminHeroPage() {
   };
 
   async function persistSlides(updatedSlides: HeroSlideItem[]) {
-    // 1. Save immediately to local storage and state for instant response
     localStorage.setItem('loveridge_hero_slides', JSON.stringify(updatedSlides));
     setSlides(updatedSlides);
     window.dispatchEvent(new Event('hero-slides-updated'));
     window.dispatchEvent(new Event('storage'));
+
+    try {
+      if ('BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('loveridge_hero_sync');
+        bc.postMessage({ type: 'hero-slides-updated', timestamp: Date.now() });
+        bc.close();
+      }
+    } catch (_) {}
 
     try {
       const res = await fetch('/api/hero-slides', {
@@ -157,16 +198,52 @@ export default function AdminHeroPage() {
     }
   }
 
+  async function persistPageHeroes(updatedHeroes: PageHeroConfigs) {
+    localStorage.setItem('loveridge_page_heroes', JSON.stringify(updatedHeroes));
+    setPageHeroes(updatedHeroes);
+    window.dispatchEvent(new Event('page-heroes-updated'));
+    window.dispatchEvent(new Event('storage'));
+
+    try {
+      if ('BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('loveridge_hero_sync');
+        bc.postMessage({ type: 'page-heroes-updated', timestamp: Date.now() });
+        bc.close();
+      }
+    } catch (_) {}
+
+    try {
+      const res = await fetch('/api/page-heroes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ heroes: updatedHeroes }),
+      });
+      const data = await res.json();
+      const finalHeroes = (data && data.heroes) ? data.heroes : updatedHeroes;
+      localStorage.setItem('loveridge_page_heroes', JSON.stringify(finalHeroes));
+      setPageHeroes(finalHeroes);
+      window.dispatchEvent(new Event('page-heroes-updated'));
+      window.dispatchEvent(new Event('storage'));
+      return finalHeroes;
+    } catch (err) {
+      console.warn('Background sync page heroes error:', err);
+      return updatedHeroes;
+    }
+  }
+
   async function handleSaveAll() {
     setSaving(true);
     setMessage('');
     setErrorMessage('');
     try {
-      await persistSlides(slides);
-      setMessage('Hero background carousel updated & saved successfully! Homepage background is now live and persistent across refreshes.');
-      setTimeout(() => setMessage(''), 4000);
+      await Promise.all([
+        persistSlides(slides),
+        persistPageHeroes(pageHeroes),
+      ]);
+      setMessage('Hero section updated & saved successfully! Live changes are now active across Homepage, Properties, Store, About, Services, and Contact pages in real-time.');
+      setTimeout(() => setMessage(''), 5000);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Error saving hero background slides.');
+      setErrorMessage(err.message || 'Error saving hero settings.');
     } finally {
       setSaving(false);
     }
@@ -181,108 +258,119 @@ export default function AdminHeroPage() {
       const newItems: HeroSlideItem[] = [];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        // Automatically compress and stamp Loveridge logo watermark
-        const imageUrl = await compressImage(file, 1600, 900, 0.75);
+        const compressedBase64 = await compressImage(file, 1920, 1080, 0.85, false);
+
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fileData: compressedBase64, fileName: `hero_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}` }),
+        });
+        const uploadData = await uploadRes.json();
+        const finalUrl = uploadData.url || compressedBase64;
 
         newItems.push({
           id: `hero-${Date.now()}-${i}`,
-          imageUrl,
-          title: file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
+          imageUrl: finalUrl,
+          title: file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ') || 'New Luxury Slide',
           active: true,
           order: slides.length + i + 1,
         });
       }
 
-      const nextSlides = [...slides, ...newItems];
-      await persistSlides(nextSlides);
-      setShowAddForm(false);
-      setMessage(`Successfully uploaded and saved ${newItems.length} new hero background slide(s)!`);
+      const merged = [...slides, ...newItems];
+      await persistSlides(merged);
+      setMessage(`Successfully uploaded and saved ${newItems.length} new hero background slide(s)! Live across all pages.`);
       setTimeout(() => setMessage(''), 4000);
     } catch (err: any) {
-      alert('Failed to process image file: ' + err.message);
+      setErrorMessage('Upload error: ' + err.message);
     } finally {
       setUploading(false);
+      e.target.value = '';
     }
   }
 
-  async function handleReplaceSingleImage(index: number, e: React.ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  async function handleReplaceSingleImage(slideIndex: number, e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
     setUploading(true);
 
     try {
-      const file = files[0];
-      // Automatically compress and stamp Loveridge logo watermark
-      const imageUrl = await compressImage(file, 1600, 900, 0.75);
+      const compressedBase64 = await compressImage(file, 1920, 1080, 0.85, false);
+
+      const uploadRes = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileData: compressedBase64, fileName: `hero_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}` }),
+      });
+      const uploadData = await uploadRes.json();
+      const finalUrl = uploadData.url || compressedBase64;
 
       const updated = [...slides];
-      updated[index].imageUrl = imageUrl;
+      updated[slideIndex].imageUrl = finalUrl;
       await persistSlides(updated);
-      setMessage(`Image for Slide #${index + 1} updated and saved successfully!`);
+      setMessage(`Slide image replaced successfully!`);
       setTimeout(() => setMessage(''), 4000);
     } catch (err: any) {
-      alert('Failed to update slide image: ' + err.message);
+      setErrorMessage('Replacement error: ' + err.message);
     } finally {
       setUploading(false);
+      e.target.value = '';
     }
   }
 
-
-  function updateSlideUrl(index: number, url: string) {
-    const updated = [...slides];
-    updated[index].imageUrl = url;
-    setSlides(updated);
-    persistSlides(updated);
-  }
-
-  async function handleAddByUrl(e: React.FormEvent) {
+  function handleAddSlideByUrl(e: React.FormEvent) {
     e.preventDefault();
     if (!newSlideUrl.trim()) return;
-    const url = newSlideUrl.trim();
-    let finalUrl = url;
-    try {
-      finalUrl = await watermarkImage(url, 1600, 900, 0.75);
-    } catch {}
 
     const newItem: HeroSlideItem = {
       id: `hero-${Date.now()}`,
-      imageUrl: finalUrl,
+      imageUrl: newSlideUrl.trim(),
       title: newSlideTitle.trim() || 'Custom Hero Slide',
       active: true,
       order: slides.length + 1,
     };
 
-    const nextSlides = [...slides, newItem];
-    setSlides(nextSlides);
-    persistSlides(nextSlides);
+    const merged = [...slides, newItem];
+    persistSlides(merged);
     setNewSlideUrl('');
     setNewSlideTitle('');
     setShowAddForm(false);
-    setMessage('Custom URL slide added and saved successfully!');
-    setTimeout(() => setMessage(''), 4000);
-  }
-
-  function moveSlide(index: number, direction: 'UP' | 'DOWN') {
-    const newSlides = [...slides];
-    const targetIndex = direction === 'UP' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= newSlides.length) return;
-
-    const temp = newSlides[index];
-    newSlides[index] = newSlides[targetIndex];
-    newSlides[targetIndex] = temp;
-
-    newSlides.forEach((item, idx) => {
-      item.order = idx + 1;
-    });
-
-    setSlides(newSlides);
-    persistSlides(newSlides);
+    setMessage('New hero slide added successfully!');
+    setTimeout(() => setMessage(''), 3000);
   }
 
   function toggleSlideActive(index: number) {
     const updated = [...slides];
     updated[index].active = !updated[index].active;
+    persistSlides(updated);
+  }
+
+  function updateSlideTitle(index: number, newTitle: string) {
+    const updated = [...slides];
+    updated[index].title = newTitle;
     setSlides(updated);
+  }
+
+  function updateSlideUrl(index: number, newUrl: string) {
+    const updated = [...slides];
+    updated[index].imageUrl = newUrl;
+    setSlides(updated);
+  }
+
+  function moveSlide(index: number, direction: 'up' | 'down') {
+    if (direction === 'up' && index === 0) return;
+    if (direction === 'down' && index === slides.length - 1) return;
+
+    const updated = [...slides];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    const temp = updated[index];
+    updated[index] = updated[targetIndex];
+    updated[targetIndex] = temp;
+
+    updated.forEach((s, idx) => {
+      s.order = idx + 1;
+    });
+
     persistSlides(updated);
   }
 
@@ -292,53 +380,88 @@ export default function AdminHeroPage() {
       return;
     }
     if (confirm('Are you sure you want to remove this background slide from the hero carousel?')) {
-      const remaining = slides.filter((s) => s.id !== id);
-      setSlides(remaining);
-      persistSlides(remaining);
+      const updated = slides.filter((s) => s.id !== id);
+      updated.forEach((s, idx) => {
+        s.order = idx + 1;
+      });
+      persistSlides(updated);
+      setMessage('Slide removed.');
+      setTimeout(() => setMessage(''), 3000);
     }
-  }
-
-  function updateSlideTitle(index: number, title: string) {
-    const updated = [...slides];
-    updated[index].title = title;
-    setSlides(updated);
-    persistSlides(updated);
   }
 
   function resetToDefault() {
-    if (confirm('Reset hero slides back to original 4 default luxury villa images?')) {
-      setSlides(DEFAULT_SLIDES);
+    if (confirm('Reset hero slides and page hero headers back to initial defaults?')) {
       persistSlides(DEFAULT_SLIDES);
+      persistPageHeroes(DEFAULT_PAGE_HEROES);
+      setMessage('Hero carousel slides & page headers have been reset to factory defaults.');
+      setTimeout(() => setMessage(''), 4000);
     }
   }
 
+  function updatePageHero(pageKey: string, field: keyof PageHeroConfig, value: string) {
+    setPageHeroes((prev) => ({
+      ...prev,
+      [pageKey]: {
+        ...prev[pageKey],
+        [field]: value,
+      },
+    }));
+  }
+
+  function resetSinglePageHero(pageKey: string) {
+    if (DEFAULT_PAGE_HEROES[pageKey]) {
+      setPageHeroes((prev) => ({
+        ...prev,
+        [pageKey]: { ...DEFAULT_PAGE_HEROES[pageKey] },
+      }));
+      setMessage(`Reset ${pageKey} hero title & subtitle to default.`);
+      setTimeout(() => setMessage(''), 3000);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 min-h-[400px] space-y-3">
+        <Loader2 className="w-8 h-8 text-emerald-800 animate-spin" />
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+          Loading Hero Management Engine...
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-8 max-w-6xl">
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
+    <div className="space-y-8 max-w-7xl mx-auto pb-16">
+      {/* Top Header & Actions Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-              Hero Section Background Carousel Manager
+              Hero Section Multi-Page Manager
             </h1>
-          <p className="text-xs text-slate-500 font-medium mt-1">
-            Manage background images cycling on the main homepage hero section. Add, reorder, or upload custom images.
+            <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-[10px] font-black uppercase tracking-wider border border-emerald-300">
+              Live Real-Time Sync
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 font-medium">
+            Manage cycling hero backgrounds and custom titles/subtitles across <strong>Homepage, Properties, Store, About, Services, and Contact</strong> pages.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             onClick={resetToDefault}
-            className="px-3.5 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-bold transition flex items-center gap-1.5"
-            title="Reset to initial default slides"
+            className="px-3.5 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+            title="Reset to initial default slides & headers"
           >
-            <RotateCcw className="w-3.5 h-3.5" /> Reset Default
+            <RotateCcw className="w-3.5 h-3.5" /> Reset Defaults
           </button>
 
           <button
             onClick={handleSaveAll}
             disabled={saving || uploading}
-            className="gradient-btn px-6 py-2.5 rounded-xl text-xs font-bold shadow-lg flex items-center gap-2 disabled:opacity-50"
+            className="gradient-btn px-6 py-2.5 rounded-xl text-xs font-bold shadow-lg flex items-center gap-2 disabled:opacity-50 cursor-pointer"
           >
             {saving ? (
               <>
@@ -351,6 +474,39 @@ export default function AdminHeroPage() {
             )}
           </button>
         </div>
+      </div>
+
+      {/* Navigation Tabs */}
+      <div className="flex items-center gap-2 border-b border-slate-200">
+        <button
+          onClick={() => setActiveTab('slides')}
+          className={`flex items-center gap-2 px-5 py-3 text-xs font-black uppercase tracking-wider border-b-2 transition cursor-pointer ${
+            activeTab === 'slides'
+              ? 'border-emerald-800 text-emerald-900 bg-emerald-50/50'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <Layers className="w-4 h-4" />
+          <span>Background Slides ({slides.length})</span>
+          <span className="ml-1 px-2 py-0.5 text-[10px] rounded-full bg-emerald-100 text-emerald-900 font-bold">
+            All 6 Pages
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('content')}
+          className={`flex items-center gap-2 px-5 py-3 text-xs font-black uppercase tracking-wider border-b-2 transition cursor-pointer ${
+            activeTab === 'content'
+              ? 'border-emerald-800 text-emerald-900 bg-emerald-50/50'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <Type className="w-4 h-4" />
+          <span>Page Hero Titles & Subtitles</span>
+          <span className="ml-1 px-2 py-0.5 text-[10px] rounded-full bg-amber-100 text-amber-900 font-bold">
+            5 Key Pages
+          </span>
+        </button>
       </div>
 
       {/* Alert Banners */}
@@ -367,347 +523,414 @@ export default function AdminHeroPage() {
         </div>
       )}
 
-      {/* TOP: LIVE HOMEPAGE SIMULATED PREVIEW BOX */}
-      <div className="bg-slate-900 rounded-3xl border border-slate-800 p-4 sm:p-6 shadow-2xl space-y-4 text-white overflow-hidden">
-        <div className="flex items-center justify-between border-b border-white/10 pb-3">
-          <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase tracking-wider">
-            <Eye className="w-4 h-4" /> Live Hero Background Simulator ({activeSlides.length} Active Slides)
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPreviewAutoplay(!previewAutoplay)}
-              className="px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 text-xs font-bold text-white flex items-center gap-1.5 transition"
-            >
-              {previewAutoplay ? <Pause className="w-3 h-3 text-amber-400" /> : <Play className="w-3 h-3 text-emerald-400" />}
-              {previewAutoplay ? 'Pause Auto-Play' : 'Play Auto-Play'}
-            </button>
-          </div>
-        </div>
-
-        {/* Hero Canvas Simulation Box */}
-        <div className="relative h-64 sm:h-96 rounded-2xl overflow-hidden shadow-2xl border border-white/10 flex items-center justify-center p-6 text-center group">
-          {currentPreviewSlide ? (
-            <img
-              src={currentPreviewSlide.imageUrl}
-              alt="Hero Preview"
-              className="absolute inset-0 w-full h-full object-cover transition-all duration-1000 scale-100 group-hover:scale-105"
-            />
-          ) : (
-            <div className="absolute inset-0 bg-slate-800 flex items-center justify-center text-xs text-slate-400 font-bold">
-              No Active Background Slide Selected
-            </div>
-          )}
-
-          {/* Dark Overlay matching homepage */}
-          <div className="absolute inset-0 bg-slate-950/65 backdrop-blur-[1px] z-10" />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/50 to-emerald-950/70 z-10" />
-
-          {/* Foreground Hero Content Mockup */}
-          <div className="relative z-20 max-w-2xl mx-auto space-y-3 pointer-events-none">
-            <span className="inline-block px-3 py-1 bg-emerald-950/90 border border-emerald-500/40 text-emerald-300 text-[10px] sm:text-xs font-extrabold uppercase rounded-full shadow-md">
-              {currentPreviewSlide.title || 'Loveridge Properties & Consultancy'}
-            </span>
-
-            <h2 className="text-xl sm:text-3xl font-black text-white leading-tight drop-shadow-md">
-              Find Premium Titled Lands, Office Suites & Building Materials
-            </h2>
-
-            <div className="bg-white/95 p-2 rounded-2xl border border-slate-200 shadow-xl max-w-md mx-auto flex items-center justify-between text-xs text-slate-500 px-4">
-              <span>Search Cantonments, East Legon, Ridge...</span>
-              <span className="bg-emerald-800 text-white font-bold px-3 py-1 rounded-xl text-[10px]">
-                Search
-              </span>
-            </div>
-          </div>
-
-          {/* Previous / Next Arrows in Simulator */}
-          {activeSlides.length > 1 && (
-            <>
-              <button
-                onClick={() =>
-                  setPreviewIndex((prev) => (prev === 0 ? activeSlides.length - 1 : prev - 1))
-                }
-                className="absolute left-3 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-full bg-slate-950/70 text-white hover:bg-emerald-800 flex items-center justify-center transition border border-white/20"
-                title="Previous Slide"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-
-              <button
-                onClick={() => setPreviewIndex((prev) => (prev + 1) % activeSlides.length)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-full bg-slate-950/70 text-white hover:bg-emerald-800 flex items-center justify-center transition border border-white/20"
-                title="Next Slide"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </>
-          )}
-
-          {/* Carousel Dots */}
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 bg-slate-950/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
-            {activeSlides.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => setPreviewIndex(idx)}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  idx === previewIndex % (activeSlides.length || 1)
-                    ? 'w-6 bg-emerald-400'
-                    : 'bg-white/40 hover:bg-white/80'
-                }`}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ACTION BAR: ADD NEW SLIDE TRIGGER */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xl space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div>
-            <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-              <Layers className="w-4 h-4 text-emerald-800" /> Active Hero Slides Catalog ({slides.length} Total)
-            </h3>
-            <p className="text-xs text-slate-500 font-medium">
-              Upload image files or paste image URLs to include them in the cycling hero carousel.
-            </p>
-          </div>
-
-          <button
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="bg-emerald-800 hover:bg-emerald-950 text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md"
-          >
-            <Plus className="w-4 h-4" /> Add Background Image
-          </button>
-        </div>
-
-        {/* ADD SLIDE PANEL (DRAWER / FORM) */}
-        {showAddForm && (
-          <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4 animate-fade-in">
-            <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-800">
-              Add New Hero Background Image
-            </h4>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Option A: File Upload Dropzone */}
-              <div className="p-5 bg-white rounded-2xl border-2 border-dashed border-emerald-300 text-center space-y-3 flex flex-col justify-center items-center">
-                <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center">
-                  <Upload className="w-6 h-6" />
-                </div>
-                <div>
-                  <span className="text-xs font-bold text-slate-900 block">Upload Local Image Files</span>
-                  <span className="text-[11px] text-slate-500 font-medium block mt-0.5">
-                    Select PNG, JPG, or WebP images from your computer
-                  </span>
-                </div>
-
-                <label className="bg-emerald-800 hover:bg-emerald-900 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer inline-flex items-center gap-1.5 shadow-sm">
-                  {uploading ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Processing...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="w-3.5 h-3.5" /> Choose Image Files
-                    </>
-                  )}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    disabled={uploading}
-                  />
-                </label>
+      {/* TAB 1: BACKGROUND CAROUSEL SLIDES */}
+      {activeTab === 'slides' && (
+        <div className="space-y-8">
+          {/* Live Simulator Preview Box */}
+          <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-xl space-y-4 relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4 relative z-10">
+              <div className="flex items-center gap-2.5">
+                <span className="text-xs font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                  <Eye className="w-4 h-4" /> Live Hero Background Simulator ({activeSlides.length} Active Slides)
+                </span>
+                <span className="text-slate-500 text-xs">•</span>
+                <span className="text-xs text-slate-300 font-medium">Cycles every 4 seconds across all pages</span>
               </div>
 
-              {/* Option B: Direct Image URL Form */}
-              <form onSubmit={handleAddByUrl} className="bg-white p-5 rounded-2xl border border-slate-200 space-y-3">
-                <span className="text-xs font-bold text-slate-900 block">Or Add Image by Direct URL</span>
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Image URL *</label>
-                  <div className="relative">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPreviewAutoplay(!previewAutoplay)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition flex items-center gap-1 cursor-pointer ${
+                    previewAutoplay
+                      ? 'bg-emerald-950 text-emerald-300 border-emerald-700'
+                      : 'bg-slate-800 text-slate-300 border-slate-700'
+                  }`}
+                >
+                  {previewAutoplay ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                  {previewAutoplay ? 'Pause Cycle' : 'Play Cycle'}
+                </button>
+
+                <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1 border border-slate-700">
+                  <button
+                    onClick={() =>
+                      setPreviewIndex((prev) => (prev === 0 ? activeSlides.length - 1 : prev - 1))
+                    }
+                    className="p-1 hover:bg-slate-700 rounded text-slate-300 hover:text-white cursor-pointer"
+                    title="Previous Slide"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="text-xs font-mono font-bold px-2 text-slate-300">
+                    {activeSlides.length > 0 ? (previewIndex % activeSlides.length) + 1 : 0} / {activeSlides.length}
+                  </span>
+                  <button
+                    onClick={() => setPreviewIndex((prev) => (prev + 1) % activeSlides.length)}
+                    className="p-1 hover:bg-slate-700 rounded text-slate-300 hover:text-white cursor-pointer"
+                    title="Next Slide"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Canvas Simulation Box */}
+            <div className="relative h-64 sm:h-80 rounded-2xl overflow-hidden border border-slate-800 bg-slate-950">
+              <img
+                src={currentPreviewSlide.imageUrl}
+                alt="Hero Preview"
+                className="w-full h-full object-cover transition-all duration-700"
+              />
+              <div className="absolute inset-0 bg-slate-950/65 backdrop-blur-[1px]" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 to-emerald-950/70" />
+
+              {/* Foreground Content Mockup */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 space-y-3 z-10 pointer-events-none">
+                <span className="px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-[10px] font-black uppercase tracking-wider backdrop-blur-md">
+                  Active Slide #{previewIndex + 1}: {currentPreviewSlide.title || 'Executive Showcase'}
+                </span>
+                <h2 className="text-xl sm:text-3xl font-black text-white tracking-tight drop-shadow-md">
+                  Loveridge Properties & Building Materials
+                </h2>
+                <p className="text-xs text-slate-300 max-w-lg mx-auto font-medium drop-shadow-sm">
+                  This background photo cycles continuously across Homepage, Properties, Store, About, Services, and Contact.
+                </p>
+              </div>
+
+              {/* Slide Indicator Bar */}
+              <div className="absolute bottom-4 inset-x-0 flex items-center justify-center gap-1.5 z-20">
+                {activeSlides.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setPreviewIndex(idx)}
+                    className={`h-1.5 rounded-full transition-all cursor-pointer ${
+                      idx === previewIndex % (activeSlides.length || 1)
+                        ? 'w-6 bg-emerald-400'
+                        : 'w-1.5 bg-white/40 hover:bg-white/80'
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Catalog & Upload Section */}
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+              <div>
+                <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                  <Layers className="w-5 h-5 text-emerald-800" /> Active Hero Slides Catalog ({slides.length} Total)
+                </h3>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  Upload images or paste URLs. Changes are instantly pushed to all visitor screens.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label className="gradient-btn px-4 py-2.5 rounded-xl text-xs font-bold shadow-md cursor-pointer flex items-center gap-1.5">
+                  <Upload className="w-4 h-4" />
+                  <span>{uploading ? 'Processing & Optimizing...' : 'Upload Image Files'}</span>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    disabled={uploading}
+                    className="hidden"
+                  />
+                </label>
+
+                <button
+                  onClick={() => setShowAddForm(!showAddForm)}
+                  className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" /> Add via URL
+                </button>
+              </div>
+            </div>
+
+            {/* URL Add Modal/Dropdown */}
+            {showAddForm && (
+              <form onSubmit={handleAddSlideByUrl} className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Add New Hero Background Image URL</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Image URL</label>
                     <input
-                      type="text"
+                      type="url"
                       required
+                      placeholder="https://... or /image.webp"
                       value={newSlideUrl}
                       onChange={(e) => setNewSlideUrl(e.target.value)}
-                      placeholder="https://images.unsplash.com/photo-..."
-                      className="admin-input pr-8 text-xs"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium focus:border-emerald-700"
                     />
-                    <LinkIcon className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Slide Title / Tag</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Luxury Apartment Living Room"
+                      value={newSlideTitle}
+                      onChange={(e) => setNewSlideTitle(e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium focus:border-emerald-700"
+                    />
                   </div>
                 </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Slide Title / Tagline</label>
-                  <input
-                    type="text"
-                    value={newSlideTitle}
-                    onChange={(e) => setNewSlideTitle(e.target.value)}
-                    placeholder="e.g. Modern Commercial Complex"
-                    className="admin-input text-xs"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2 pt-1">
+                <div className="flex justify-end gap-2">
                   <button
                     type="button"
                     onClick={() => setShowAddForm(false)}
-                    className="px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-100"
+                    className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-600 hover:bg-white cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-bold"
+                    className="gradient-btn px-5 py-2 rounded-xl text-xs font-bold shadow cursor-pointer"
                   >
-                    Add Slide
+                    Add Slide to Carousel
                   </button>
                 </div>
               </form>
-            </div>
-          </div>
-        )}
+            )}
 
-        {/* SLIDE CARDS LIST (RESPONSIVE GRID) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {slides.map((slide, idx) => (
-            <div
-              key={slide.id || idx}
-              className={`bg-white rounded-2xl p-4 border transition-all shadow-sm space-y-3 ${
-                slide.active ? 'border-slate-200/90' : 'border-slate-200 opacity-60 bg-slate-50'
-              }`}
-            >
-              {/* Image Preview Box */}
-              <div className="relative h-48 rounded-xl bg-slate-900 overflow-hidden border border-slate-100 group">
-                <img
-                  src={slide.imageUrl}
-                  alt={slide.title || `Hero Slide ${idx + 1}`}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent z-10" />
-
-                {/* Status Badges */}
-                <div className="absolute top-2.5 left-2.5 z-20 flex items-center gap-1.5">
-                  <span className="bg-slate-950/80 text-white text-[10px] font-black px-2.5 py-1 rounded-full backdrop-blur-md border border-white/10">
-                    Slide #{idx + 1}
-                  </span>
-                  <span
-                    className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase shadow-xs ${
-                      slide.active
-                        ? 'bg-emerald-600 text-white'
-                        : 'bg-slate-600 text-slate-200'
-                    }`}
-                  >
-                    {slide.active ? 'ACTIVE' : 'INACTIVE'}
-                  </span>
-                </div>
-
-                {/* Move Up/Down Controls inside preview overlay */}
-                <div className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1.5">
-                  <button
-                    onClick={() => moveSlide(idx, 'UP')}
-                    disabled={idx === 0}
-                    className="w-7 h-7 rounded-full bg-slate-950/80 hover:bg-emerald-800 text-white flex items-center justify-center transition border border-white/20 disabled:opacity-30 disabled:hover:bg-slate-950"
-                    title="Move Up in sequence"
-                  >
-                    <ArrowUp className="w-3.5 h-3.5" />
-                  </button>
-
-                  <button
-                    onClick={() => moveSlide(idx, 'DOWN')}
-                    disabled={idx === slides.length - 1}
-                    className="w-7 h-7 rounded-full bg-slate-950/80 hover:bg-emerald-800 text-white flex items-center justify-center transition border border-white/20 disabled:opacity-30 disabled:hover:bg-slate-950"
-                    title="Move Down in sequence"
-                  >
-                    <ArrowDown className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                {/* Direct "Change Image" Button overlay on image */}
-                <div className="absolute bottom-2.5 left-2.5 right-2.5 z-20 flex justify-center">
-                  <label className="bg-slate-950/90 hover:bg-emerald-800 text-white px-4 py-1.5 rounded-xl text-xs font-extrabold backdrop-blur-md border border-white/20 cursor-pointer shadow-lg transition flex items-center gap-1.5">
-                    <Upload className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Change Image File</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleReplaceSingleImage(idx, e)}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-              </div>
-
-              {/* Slide Details Input & Actions */}
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                    Slide Title / Label
-                  </label>
-                  <input
-                    type="text"
-                    value={slide.title || ''}
-                    onChange={(e) => updateSlideTitle(idx, e.target.value)}
-                    placeholder="e.g. Executive Smart Villa"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:border-emerald-700"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                    Image URL / File Source
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={slide.imageUrl}
-                      onChange={(e) => updateSlideUrl(idx, e.target.value)}
-                      placeholder="Image URL..."
-                      className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[11px] font-semibold text-slate-700 focus:border-emerald-700 font-mono truncate"
-                    />
-                    <label className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 rounded-xl text-[11px] font-bold cursor-pointer transition shrink-0 flex items-center gap-1">
-                      <ImageIcon className="w-3.5 h-3.5 text-emerald-700" /> Replace
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handleReplaceSingleImage(idx, e)}
-                        className="hidden"
+            {/* Slides Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {slides.map((slide, idx) => (
+                <div
+                  key={slide.id || idx}
+                  className={`rounded-2xl border transition-all p-4 flex flex-col justify-between space-y-4 ${
+                    slide.active
+                      ? 'border-slate-200 bg-white hover:border-emerald-500 shadow-sm hover:shadow-md'
+                      : 'border-slate-200/60 bg-slate-50 opacity-60'
+                  }`}
+                >
+                  <div className="flex items-start gap-4">
+                    {/* Thumbnail */}
+                    <div className="w-28 h-20 sm:w-36 sm:h-24 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shrink-0 relative group">
+                      <img
+                        src={slide.imageUrl}
+                        alt={slide.title || `Hero Slide ${idx + 1}`}
+                        className="w-full h-full object-cover"
                       />
-                    </label>
+                      <div className="absolute top-1.5 left-1.5 bg-slate-950/80 text-white text-[10px] font-mono font-bold px-1.5 py-0.5 rounded">
+                        #{idx + 1}
+                      </div>
+                    </div>
+
+                    {/* Meta info & controls */}
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-[10px] font-black uppercase text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+                          Slide #{idx + 1}
+                        </span>
+
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => moveSlide(idx, 'up')}
+                            disabled={idx === 0}
+                            className="p-1 rounded hover:bg-slate-100 disabled:opacity-30 text-slate-600 cursor-pointer"
+                            title="Move Up in Order"
+                          >
+                            <ArrowUp className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => moveSlide(idx, 'down')}
+                            disabled={idx === slides.length - 1}
+                            className="p-1 rounded hover:bg-slate-100 disabled:opacity-30 text-slate-600 cursor-pointer"
+                            title="Move Down in Order"
+                          >
+                            <ArrowDown className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase">Slide Title</label>
+                        <input
+                          type="text"
+                          value={slide.title || ''}
+                          onChange={(e) => updateSlideTitle(idx, e.target.value)}
+                          placeholder="Slide Title..."
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-900 focus:border-emerald-700"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={slide.imageUrl}
+                        onChange={(e) => updateSlideUrl(idx, e.target.value)}
+                        placeholder="Image URL..."
+                        className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-[10px] font-mono text-slate-700 truncate"
+                      />
+                      <label className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 rounded-lg text-[10px] font-bold cursor-pointer transition shrink-0 flex items-center gap-1">
+                        <ImageIcon className="w-3 h-3" /> Replace
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleReplaceSingleImage(idx, e)}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={slide.active}
+                          onChange={() => toggleSlideActive(idx)}
+                          className="w-4 h-4 text-emerald-800 rounded border-slate-300"
+                        />
+                        <span className="text-xs font-bold text-slate-700">
+                          {slide.active ? 'Active on All Pages' : 'Disabled'}
+                        </span>
+                      </label>
+
+                      <button
+                        onClick={() => deleteSlide(slide.id)}
+                        className="p-1 rounded text-rose-600 hover:bg-rose-50 border border-rose-200 text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                        title="Delete Slide"
+                      >
+                        <Trash2 className="w-3 h-3" /> Delete
+                      </button>
+                    </div>
                   </div>
                 </div>
-
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                  {/* Active Toggle */}
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={slide.active}
-                      onChange={() => toggleSlideActive(idx)}
-                      className="w-4 h-4 text-emerald-800 rounded border-slate-300 focus:ring-emerald-800"
-                    />
-                    <span className="text-xs font-bold text-slate-700">
-                      {slide.active ? 'Enabled on Homepage' : 'Disabled'}
-                    </span>
-                  </label>
-
-                  {/* Remove Button */}
-                  <button
-                    onClick={() => deleteSlide(slide.id)}
-                    className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 border border-rose-200 transition text-xs font-semibold flex items-center gap-1"
-                    title="Delete Slide"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" /> Delete
-                  </button>
-                </div>
-              </div>
+              ))}
             </div>
-          ))}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* TAB 2: PAGE HERO TITLES & SUBTITLES */}
+      {activeTab === 'content' && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
+            <div className="border-b border-slate-100 pb-4">
+              <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                <Type className="w-5 h-5 text-emerald-800" /> Per-Page Hero Header Customization
+              </h3>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                Customize the headline title, emerald highlight accent, and descriptive subtitle for each specific page. When saved, all client browsers update immediately.
+              </p>
+            </div>
+
+            <div className="space-y-6">
+              {PAGE_KEYS.map((page) => {
+                const Icon = page.icon;
+                const heroData = pageHeroes[page.key] || DEFAULT_PAGE_HEROES[page.key];
+
+                return (
+                  <div
+                    key={page.key}
+                    className="p-5 sm:p-6 bg-slate-50/70 border border-slate-200 rounded-2xl hover:border-emerald-500 transition-all space-y-4"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/80 pb-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-900 border border-emerald-300 flex items-center justify-center shrink-0">
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-black text-slate-900">{page.label}</h4>
+                          <span className="text-[11px] font-mono text-slate-500">{page.path}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => resetSinglePageHero(page.key)}
+                          className="px-2.5 py-1 text-[11px] font-bold text-slate-600 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg flex items-center gap-1 cursor-pointer"
+                          title="Reset to default text for this page"
+                        >
+                          <RotateCcw className="w-3 h-3" /> Reset
+                        </button>
+
+                        <Link
+                          href={page.path}
+                          target="_blank"
+                          className="px-3 py-1 text-[11px] font-bold text-emerald-900 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 rounded-lg flex items-center gap-1"
+                        >
+                          View Page <ExternalLink className="w-3 h-3" />
+                        </Link>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                      {/* Main Title */}
+                      <div className="lg:col-span-2 space-y-1">
+                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                          Headline Title
+                        </label>
+                        <input
+                          type="text"
+                          value={heroData.title || ''}
+                          onChange={(e) => updatePageHero(page.key, 'title', e.target.value)}
+                          placeholder="e.g. Properties & Commercial Listings"
+                          className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 focus:border-emerald-700 shadow-2xs"
+                        />
+                      </div>
+
+                      {/* Highlighted Accent Text */}
+                      <div className="space-y-1">
+                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
+                          <Sparkles className="w-3 h-3 text-emerald-600" />
+                          <span>Green Highlight Words</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={heroData.highlightText || ''}
+                          onChange={(e) => updatePageHero(page.key, 'highlightText', e.target.value)}
+                          placeholder="e.g. Commercial Listings"
+                          className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-bold text-emerald-800 focus:border-emerald-700 shadow-2xs"
+                        />
+                      </div>
+
+                      {/* Subtitle Paragraph */}
+                      <div className="lg:col-span-3 space-y-1">
+                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                          Subtitle Paragraph
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={heroData.subtitle || ''}
+                          onChange={(e) => updatePageHero(page.key, 'subtitle', e.target.value)}
+                          placeholder="Brief descriptive paragraph shown beneath headline..."
+                          className="w-full bg-white border border-slate-300 rounded-xl p-3 text-xs font-medium text-slate-700 focus:border-emerald-700 shadow-2xs leading-relaxed"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Bottom Save Action */}
+            <div className="pt-4 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={handleSaveAll}
+                disabled={saving}
+                className="gradient-btn px-7 py-3 rounded-xl text-xs font-bold shadow-lg flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Saving All Hero Changes...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" /> Save Page Hero Changes
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

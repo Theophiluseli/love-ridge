@@ -2,6 +2,7 @@
 
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import PageHeroCarousel from '@/components/PageHeroCarousel';
 import { ShieldCheck, Award, Globe, Users, TrendingUp, Building2, CheckCircle2, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
@@ -28,21 +29,17 @@ export default function AboutPage() {
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between bg-grid-pattern relative">
       <Navbar />
 
-      <main className="flex-1 space-y-16 pt-6">
-        {/* Hero Section */}
-        <section className="relative py-16 px-4 sm:px-6 lg:px-8 text-center max-w-5xl mx-auto space-y-6">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 text-xs font-bold uppercase tracking-widest shadow-sm">
-            <Award className="w-3.5 h-3.5 text-emerald-800" /> Excellence in Real Estate & Global Sourcing
-          </div>
-
-          <h1 className="text-4xl sm:text-6xl font-black text-slate-900 tracking-tight leading-tight">
-            Transforming Real Estate with <span className="gradient-text">Excellence & Practicality</span>
-          </h1>
-
-          <p className="text-slate-600 text-base sm:text-lg max-w-3xl mx-auto font-medium leading-relaxed">
-            Loveridge Properties and Consult bridges luxury real estate brokerage in Ghana with direct factory procurement of high-grade building materials, porcelain tiles, and construction tools globally.
-          </p>
-        </section>
+      <main className="flex-1 space-y-16">
+        {/* HERO CAROUSEL SECTION */}
+        <PageHeroCarousel
+          pageKey="about"
+          title={
+            <>
+              Transforming Real Estate with <span className="text-emerald-400">Excellence & Practicality</span>
+            </>
+          }
+          subtitle="Loveridge Properties and Consult bridges luxury real estate brokerage in Ghana with direct factory procurement of high-grade building materials, porcelain tiles, and construction tools globally."
+        />
 
 
 

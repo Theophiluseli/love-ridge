@@ -8,6 +8,7 @@ import ProductCard from '@/components/ProductCard';
 import ProductCardSkeleton from '@/components/ProductCardSkeleton';
 import InquiryModal from '@/components/InquiryModal';
 import CurrencySwitcher from '@/components/CurrencySwitcher';
+import PageHeroCarousel from '@/components/PageHeroCarousel';
 import { Search, Package, ChevronDown, Loader2, CheckCircle2 } from 'lucide-react';
 import { INITIAL_CATEGORIES_STORE } from '@/lib/products-constants';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
@@ -152,7 +153,18 @@ function ProductsContent() {
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between">
       <Navbar />
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10 space-y-6">
+      {/* HERO CAROUSEL SECTION */}
+      <PageHeroCarousel
+        pageKey="products"
+        title={
+          <>
+            Loveridge <span className="text-emerald-400">Building Materials Store</span>
+          </>
+        }
+        subtitle="We help developers, investors, home builders, artisans, and diaspora clients across Ghana and Africa source quality building materials, smart tools, and machinery from China. Check our store now."
+      />
+
+      <main className="flex-1 w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-10 space-y-8">
         {/* Top Category Pills & Search Header */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b border-slate-200">
           {/* Category Horizontal Pills */}
@@ -205,7 +217,7 @@ function ProductsContent() {
 
         {/* Product Grid */}
         {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
             {Array.from({ length: 8 }).map((_, i) => (
               <ProductCardSkeleton key={i} />
             ))}
@@ -220,7 +232,7 @@ function ProductsContent() {
           </div>
         ) : (
           <div className="space-y-8">
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
               {visibleProducts.map((prod) => (
                 <ProductCard
                   key={prod.id}
