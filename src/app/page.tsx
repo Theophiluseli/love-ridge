@@ -863,7 +863,7 @@ export default function HomePage() {
         </section>
 
         {/* FAQ SECTION WITH LUXURY COVER BACKGROUND (MATCHING TESTIMONIALS STYLE) */}
-        <section className="relative bg-slate-950 py-16 sm:py-24 px-4 sm:px-6 lg:px-8 overflow-hidden border-t border-slate-800">
+        <section className="relative bg-slate-950 py-12 sm:py-20 px-3 sm:px-6 lg:px-8 overflow-hidden border-t border-slate-800">
           {/* Background Consultation Photo Layer - Styled identically to Hero & Testimonials Sections */}
           <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
             <div
@@ -876,8 +876,8 @@ export default function HomePage() {
           </div>
 
           <div className="max-w-5xl mx-auto relative z-10">
-            <div className="relative rounded-3xl p-6 sm:p-10 lg:p-12 border border-emerald-500/20 bg-slate-900/40 backdrop-blur-md shadow-2xl space-y-8 sm:space-y-10">
-              <div className="text-center space-y-3 max-w-2xl mx-auto">
+            <div className="relative rounded-2xl sm:rounded-3xl p-4 sm:p-8 lg:p-12 border border-emerald-500/20 bg-slate-900/50 backdrop-blur-md shadow-2xl space-y-6 sm:space-y-10">
+              <div className="text-center space-y-3 max-w-2xl mx-auto px-2 sm:px-0">
                 <span className="text-emerald-400 font-extrabold text-xs uppercase tracking-widest block">
                   GOT QUESTIONS?
                 </span>
@@ -889,19 +889,21 @@ export default function HomePage() {
                 </p>
               </div>
 
-              <div className="space-y-3.5 max-w-4xl mx-auto">
+              <div className="space-y-3 sm:space-y-3.5 max-w-4xl mx-auto">
                 {faqs.map((faq, idx) => {
                   const isOpen = openFaq === idx;
                   return (
                     <div
                       key={idx}
-                      className="bg-white/95 backdrop-blur-xl rounded-2xl border border-white/40 shadow-md hover:shadow-xl transition-all duration-200 overflow-hidden group"
+                      className="bg-white/95 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-white/50 shadow-md hover:shadow-xl transition-all duration-200 overflow-hidden group"
                     >
                       <button
                         onClick={() => setOpenFaq(isOpen ? null : idx)}
-                        className="w-full p-4.5 sm:p-5 text-left flex items-center justify-between font-bold text-slate-900 text-sm sm:text-base hover:text-emerald-800 transition gap-4 cursor-pointer"
+                        className="w-full px-5 py-4 sm:px-6 sm:py-5 text-left flex items-center justify-between font-bold text-slate-900 text-sm sm:text-base hover:text-emerald-800 transition gap-3 sm:gap-4 cursor-pointer select-none"
                       >
-                        <span className="leading-snug">{faq.question}</span>
+                        <span className="leading-snug text-left text-slate-900 text-sm sm:text-base font-bold pr-1">
+                          {faq.question}
+                        </span>
                         <div
                           className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${
                             isOpen
@@ -915,7 +917,7 @@ export default function HomePage() {
                         </div>
                       </button>
                       {isOpen && (
-                        <div className="p-5 pt-1 text-slate-600 text-xs sm:text-sm font-medium border-t border-slate-100 leading-relaxed whitespace-pre-line">
+                        <div className="px-5 pb-5 sm:px-6 sm:pb-6 pt-1 sm:pt-2 text-slate-600 text-xs sm:text-sm font-medium border-t border-slate-100 leading-relaxed whitespace-pre-line">
                           {faq.answer}
                         </div>
                       )}
