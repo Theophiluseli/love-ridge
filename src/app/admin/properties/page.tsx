@@ -76,12 +76,18 @@ export default function AdminPropertiesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PUBLISHED' | 'DRAFT'>('ALL');
 
+  // Batch Selection & Deletion State
+  const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([]);
+  const [batchDeleting, setBatchDeleting] = useState(false);
+  const [batchDeleteModalOpen, setBatchDeleteModalOpen] = useState(false);
+
   async function fetchProperties() {
     setLoading(true);
     try {
       const token = localStorage.getItem('loveridge_token');
-      const res = await fetch('/api/admin/properties', {
+      const res = await fetch(`/api/admin/properties?_t=${Date.now()}`, {
         headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
       });
       if (res.status === 401) {
         window.location.href = '/admin/login';
@@ -288,6 +294,61 @@ export default function AdminPropertiesPage() {
     } catch (err: any) {
       console.error('Error deleting property:', err);
       alert(err.message || 'Error deleting property.');
+      fetchProperties();
+    }
+  }
+
+  function toggleSelectProperty(id: string) {
+    setSelectedPropertyIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  }
+
+  function toggleSelectAllProperties() {
+    if (filteredProperties.length === 0) return;
+    const allFilteredIds = filteredProperties.map((p) => p.id);
+    const isAllSelected = allFilteredIds.every((id) => selectedPropertyIds.includes(id));
+    if (isAllSelected) {
+      setSelectedPropertyIds((prev) => prev.filter((id) => !allFilteredIds.includes(id)));
+    } else {
+      setSelectedPropertyIds((prev) => Array.from(new Set([...prev, ...allFilteredIds])));
+    }
+  }
+
+  async function handleConfirmBatchDelete() {
+    if (selectedPropertyIds.length === 0) return;
+    setBatchDeleting(true);
+    const token = localStorage.getItem('loveridge_token');
+    const idsToDelete = [...selectedPropertyIds];
+    const count = idsToDelete.length;
+
+    // Optimistic removal
+    setProperties((prev) => prev.filter((p) => !idsToDelete.includes(p.id)));
+    setSelectedPropertyIds([]);
+    setBatchDeleteModalOpen(false);
+
+    try {
+      const res = await fetch('/api/admin/properties/batch-delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ ids: idsToDelete }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Failed to delete selected properties.');
+      } else {
+        setMessage(`Successfully deleted ${count} properties.`);
+        setTimeout(() => setMessage(''), 4000);
+      }
+    } catch (err: any) {
+      console.error('Batch delete error:', err);
+      alert('Network error while deleting properties.');
+    } finally {
+      setBatchDeleting(false);
       fetchProperties();
     }
   }
@@ -1515,6 +1576,28 @@ export default function AdminPropertiesPage() {
           </div>
 
           {/* MOBILE CARDS VIEW (< 768px - Exact Match to User Screenshot) */}
+          {filteredProperties.length > 0 && (
+            <div className="md:hidden flex items-center justify-between px-3.5 py-2.5 bg-slate-100/90 rounded-2xl border border-slate-200 text-xs font-semibold text-slate-700 mb-3">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={
+                    filteredProperties.length > 0 &&
+                    filteredProperties.every((p) => selectedPropertyIds.includes(p.id))
+                  }
+                  onChange={toggleSelectAllProperties}
+                  className="w-4 h-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-700/30 cursor-pointer accent-emerald-700"
+                />
+                <span>Select All ({filteredProperties.length})</span>
+              </label>
+              {selectedPropertyIds.length > 0 && (
+                <span className="text-emerald-800 font-bold text-[11px] bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-200">
+                  {selectedPropertyIds.length} selected
+                </span>
+              )}
+            </div>
+          )}
+
           <div className="block md:hidden space-y-3">
             {loading ? (
               <div className="p-8 text-center text-slate-500 text-xs font-semibold">
@@ -1528,10 +1611,23 @@ export default function AdminPropertiesPage() {
               filteredProperties.map((prop) => (
                 <div
                   key={prop.id}
-                  className="bg-white rounded-2xl border border-slate-200/90 p-3.5 space-y-2.5 shadow-2xs hover:border-slate-300 transition"
+                  className={`rounded-2xl border p-3.5 space-y-2.5 shadow-2xs transition ${
+                    selectedPropertyIds.includes(prop.id)
+                      ? 'bg-emerald-50/70 border-emerald-400 ring-2 ring-emerald-500/20'
+                      : 'bg-white border-slate-200/90 hover:border-slate-300'
+                  }`}
                 >
-                  {/* Top: Thumbnail & Property Specs */}
+                  {/* Top: Checkbox + Thumbnail & Property Specs */}
                   <div className="flex items-start gap-3">
+                    <div className="pt-2 shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={selectedPropertyIds.includes(prop.id)}
+                        onChange={() => toggleSelectProperty(prop.id)}
+                        aria-label={`Select ${prop.title}`}
+                        className="w-4 h-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-700/30 cursor-pointer accent-emerald-700"
+                      />
+                    </div>
                     <div className="w-[84px] h-[72px] rounded-xl bg-slate-100 border border-slate-100 overflow-hidden shrink-0">
                       <img
                         src={
@@ -1626,6 +1722,18 @@ export default function AdminPropertiesPage() {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 text-slate-700 uppercase tracking-wider font-bold border-b border-slate-200">
                 <tr>
+                  <th className="w-12 px-4 py-4 text-center">
+                    <input
+                      type="checkbox"
+                      aria-label="Select all properties"
+                      checked={
+                        filteredProperties.length > 0 &&
+                        filteredProperties.every((p) => selectedPropertyIds.includes(p.id))
+                      }
+                      onChange={toggleSelectAllProperties}
+                      className="w-4 h-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-700/30 cursor-pointer accent-emerald-700"
+                    />
+                  </th>
                   <th className="px-6 py-4">Property Cover</th>
                   <th className="px-6 py-4">Property Title & Type</th>
                   <th className="px-6 py-4">Price</th>
@@ -1640,19 +1748,35 @@ export default function AdminPropertiesPage() {
               <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
                 {loading ? (
                   <tr>
-                    <td colSpan={9} className="p-8 text-center text-slate-500">
+                    <td colSpan={10} className="p-8 text-center text-slate-500">
                       Loading property listings...
                     </td>
                   </tr>
                 ) : filteredProperties.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="p-8 text-center text-slate-500">
+                    <td colSpan={10} className="p-8 text-center text-slate-500">
                       No matching property listings found.
                     </td>
                   </tr>
                 ) : (
                   filteredProperties.map((prop) => (
-                    <tr key={prop.id} className="hover:bg-slate-50 transition">
+                    <tr
+                      key={prop.id}
+                      className={`transition ${
+                        selectedPropertyIds.includes(prop.id)
+                          ? 'bg-emerald-50/70 hover:bg-emerald-50'
+                          : 'hover:bg-slate-50'
+                      }`}
+                    >
+                      <td className="w-12 px-4 py-3 text-center">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${prop.title}`}
+                          checked={selectedPropertyIds.includes(prop.id)}
+                          onChange={() => toggleSelectProperty(prop.id)}
+                          className="w-4 h-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-700/30 cursor-pointer accent-emerald-700"
+                        />
+                      </td>
                       <td className="px-6 py-3">
                         <div className="w-14 h-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
                           <img
@@ -1792,6 +1916,87 @@ export default function AdminPropertiesPage() {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Batch Actions Dock */}
+      {selectedPropertyIds.length > 0 && (
+        <div className="fixed bottom-6 inset-x-4 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 z-40 bg-slate-900/95 backdrop-blur-md text-white rounded-2xl shadow-2xl border border-slate-700/80 px-4 py-3 sm:px-6 sm:py-3.5 flex items-center justify-between sm:gap-8 animate-in fade-in slide-in-from-bottom-4 duration-200 max-w-xl w-full">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 text-slate-950 font-black text-xs">
+              {selectedPropertyIds.length}
+            </span>
+            <div className="text-xs sm:text-sm font-semibold">
+              <span>
+                {selectedPropertyIds.length === 1 ? '1 property selected' : `${selectedPropertyIds.length} properties selected`}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => setSelectedPropertyIds([])}
+              className="px-3 py-1.5 rounded-xl border border-slate-700 text-slate-300 text-xs font-semibold hover:bg-slate-800 transition cursor-pointer"
+            >
+              Deselect
+            </button>
+            <button
+              type="button"
+              onClick={() => setBatchDeleteModalOpen(true)}
+              className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-lg shadow-rose-900/30 cursor-pointer active:scale-98"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete Selected</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Delete Confirmation Modal */}
+      {batchDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4 relative">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-slate-900">
+                Delete {selectedPropertyIds.length} {selectedPropertyIds.length === 1 ? 'Property' : 'Properties'}?
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 mt-1.5 leading-relaxed">
+                Are you sure you want to permanently delete these {selectedPropertyIds.length} selected listings? This action cannot be undone.
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                disabled={batchDeleting}
+                onClick={() => setBatchDeleteModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs sm:text-sm hover:bg-slate-50 transition cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={batchDeleting}
+                onClick={handleConfirmBatchDelete}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-sm transition flex items-center gap-1.5 shadow-md shadow-rose-600/20 cursor-pointer disabled:opacity-50"
+              >
+                {batchDeleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    <span>Yes, Delete All {selectedPropertyIds.length}</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

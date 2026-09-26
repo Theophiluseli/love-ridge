@@ -22,7 +22,6 @@ import {
   ExternalLink,
   Sliders,
   Type,
-  Sparkles,
   Building2,
   Package,
   Info,
@@ -436,17 +435,9 @@ export default function AdminHeroPage() {
       {/* Top Header & Actions Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-              Hero Section Multi-Page Manager
-            </h1>
-            <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-[10px] font-black uppercase tracking-wider border border-emerald-300">
-              Live Real-Time Sync
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 font-medium">
-            Manage cycling hero backgrounds and custom titles/subtitles across <strong>Homepage, Properties, Store, About, Services, and Contact</strong> pages.
-          </p>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+            Hero Section Multi-Page Manager
+          </h1>
         </div>
 
         <div className="flex items-center gap-2">
@@ -503,9 +494,6 @@ export default function AdminHeroPage() {
         >
           <Type className="w-4 h-4" />
           <span>Page Hero Titles & Subtitles</span>
-          <span className="ml-1 px-2 py-0.5 text-[10px] rounded-full bg-amber-100 text-amber-900 font-bold">
-            5 Key Pages
-          </span>
         </button>
       </div>
 
@@ -533,8 +521,6 @@ export default function AdminHeroPage() {
                 <span className="text-xs font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
                   <Eye className="w-4 h-4" /> Live Hero Background Simulator ({activeSlides.length} Active Slides)
                 </span>
-                <span className="text-slate-500 text-xs">•</span>
-                <span className="text-xs text-slate-300 font-medium">Cycles every 4 seconds across all pages</span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -581,8 +567,8 @@ export default function AdminHeroPage() {
                 alt="Hero Preview"
                 className="w-full h-full object-cover transition-all duration-700"
               />
-              <div className="absolute inset-0 bg-slate-950/65 backdrop-blur-[1px]" />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 to-emerald-950/70" />
+              <div className="absolute inset-0 bg-slate-950/35 backdrop-blur-[1px]" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/65 via-slate-950/25 to-emerald-950/40" />
 
               {/* Foreground Content Mockup */}
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 space-y-3 z-10 pointer-events-none">
@@ -878,9 +864,8 @@ export default function AdminHeroPage() {
 
                       {/* Highlighted Accent Text */}
                       <div className="space-y-1">
-                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
-                          <Sparkles className="w-3 h-3 text-emerald-600" />
-                          <span>Green Highlight Words</span>
+                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                          Green Highlight Words
                         </label>
                         <input
                           type="text"

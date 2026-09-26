@@ -3,7 +3,7 @@ import { getSystemSetting, setSystemSetting } from './system-settings';
 import { invalidatePropertiesCache } from './properties-store';
 import { invalidateProductsCache } from './products-store';
 
-export type CatalogType = 'properties' | 'products' | 'categories' | 'hero';
+export type CatalogType = 'properties' | 'products' | 'categories' | 'hero' | 'gallery';
 export type EventType = 'INSERT' | 'UPDATE' | 'DELETE';
 
 export interface CatalogRevision {
@@ -12,6 +12,7 @@ export interface CatalogRevision {
   products: number;
   categories: number;
   hero: number;
+  gallery: number;
 }
 
 // Global revision registry shared across current server instance
@@ -25,6 +26,7 @@ const DEFAULT_REVISION: CatalogRevision = {
   products: 1,
   categories: 1,
   hero: 1,
+  gallery: 1,
 };
 
 if (!globalThis.__catalogRevision) {
@@ -74,10 +76,11 @@ export async function broadcastCatalogUpdate(
 
   // 2. Advance local memory revision
   if (!globalThis.__catalogRevision) {
-    globalThis.__catalogRevision = { version: now, properties: now, products: now, categories: now, hero: now };
+    globalThis.__catalogRevision = { version: now, properties: now, products: now, categories: now, hero: now, gallery: now };
+  } else {
+    globalThis.__catalogRevision[catalog] = now;
+    globalThis.__catalogRevision.version = now;
   }
-  globalThis.__catalogRevision[catalog] = now;
-  globalThis.__catalogRevision.version = now;
 
   // 3. Persist revision to PostgreSQL system_settings so all serverless workers see it
   try {

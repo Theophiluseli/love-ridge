@@ -1,4 +1,4 @@
-import { supabaseAdmin } from './supabase-admin';
+import { prisma } from './db';
 
 declare global {
   var __systemSettingsCache: Map<string, { value: any; timestamp: number }> | undefined;
@@ -8,7 +8,7 @@ if (!globalThis.__systemSettingsCache) {
   globalThis.__systemSettingsCache = new Map();
 }
 const settingsCache = globalThis.__systemSettingsCache;
-const CACHE_TTL = 60000; // 60s cache
+const CACHE_TTL = 60000; // 60s in-memory cache
 
 export async function getSystemSetting<T>(key: string, defaultValue: T): Promise<{ data: T; isDefault: boolean }> {
   const cached = settingsCache.get(key);
@@ -17,28 +17,31 @@ export async function getSystemSetting<T>(key: string, defaultValue: T): Promise
   }
 
   try {
-    const queryPromise = supabaseAdmin
-      .from('system_settings')
-      .select('value')
-      .eq('key', key)
-      .maybeSingle();
+    // Read directly from PostgreSQL system_settings table via Prisma
+    const rows = await prisma.$queryRaw<Array<{ value: string }>>`
+      SELECT value FROM system_settings WHERE key = ${key} LIMIT 1
+    `;
 
-    // 3500ms timeout race to ensure page loads NEVER hang, with sufficient buffer for database queries
-    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3500));
-    const result: any = await Promise.race([queryPromise, timeoutPromise]);
-
-    if (result && result.data && result.data.value) {
+    if (rows && rows.length > 0 && rows[0].value !== undefined && rows[0].value !== null) {
       try {
-        const parsed = JSON.parse(result.data.value);
+        let parsed = typeof rows[0].value === 'string' ? JSON.parse(rows[0].value) : rows[0].value;
+        if (typeof parsed === 'string') {
+          try {
+            const nested = JSON.parse(parsed);
+            if (nested !== null && nested !== undefined) {
+              parsed = nested;
+            }
+          } catch (_) {}
+        }
         settingsCache.set(key, { value: parsed, timestamp: Date.now() });
         return { data: parsed as T, isDefault: false };
       } catch (parseErr) {
-        settingsCache.set(key, { value: result.data.value, timestamp: Date.now() });
-        return { data: result.data.value as T, isDefault: false };
+        settingsCache.set(key, { value: rows[0].value, timestamp: Date.now() });
+        return { data: rows[0].value as T, isDefault: false };
       }
     }
   } catch (err) {
-    console.warn(`Failed to read system setting "${key}" from Supabase:`, err);
+    console.warn(`Failed to read system setting "${key}" via Prisma:`, err);
   }
 
   // If query failed or timed out, but we have a previous cached value, return it
@@ -54,19 +57,16 @@ export async function setSystemSetting<T>(key: string, value: T): Promise<boolea
   settingsCache.set(key, { value, timestamp: Date.now() });
 
   try {
-    const { error } = await supabaseAdmin.from('system_settings').upsert({
-      key,
-      value: jsonStr,
-      updated_at: new Date().toISOString(),
-    });
-
-    if (error) {
-      console.error(`Error saving setting "${key}":`, error.message);
-      return false;
-    }
+    // Upsert directly into PostgreSQL system_settings table via Prisma
+    await prisma.$executeRaw`
+      INSERT INTO system_settings (key, value, updated_at)
+      VALUES (${key}, ${jsonStr}, NOW())
+      ON CONFLICT (key)
+      DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at
+    `;
     return true;
   } catch (err) {
-    console.error(`Failed to write system setting "${key}":`, err);
+    console.error(`Failed to write system setting "${key}" via Prisma:`, err);
     return false;
   }
 }

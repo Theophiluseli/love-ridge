@@ -219,9 +219,9 @@ export default function PageHeroCarousel({
           />
         ))}
 
-        {/* Dark Luxury Brand Gradient & Glass Overlay (Identical across all pages) */}
-        <div className="absolute inset-0 bg-slate-950/65 backdrop-blur-[1px]" />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 to-emerald-950/70" />
+        {/* Luxury Brand Gradient & Glass Overlay (Brightened for vivid background clarity) */}
+        <div className="absolute inset-0 bg-slate-950/35 backdrop-blur-[1px]" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/65 via-slate-950/25 to-emerald-950/40" />
       </div>
 
       {/* Carousel Prev/Next Navigation Buttons */}

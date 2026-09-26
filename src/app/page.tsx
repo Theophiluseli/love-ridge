@@ -22,6 +22,24 @@ const DEFAULT_HERO_SLIDES = [
   '/hero_carousel_4.jpg',
 ];
 
+const TRUST_FEATURES = [
+  {
+    icon: Home,
+    title: 'Luxury Homes',
+    description: 'Verified land, villas & apartments',
+  },
+  {
+    icon: Clock,
+    title: '100% Trusted',
+    description: 'Clear title verification & legal search',
+  },
+  {
+    icon: Layers,
+    title: 'Quality Materials',
+    description: 'Direct factory procurement globally',
+  },
+];
+
 export default function HomePage() {
   const [properties, setProperties] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
@@ -30,6 +48,19 @@ export default function HomePage() {
   // Background Hero Carousel State
   const [heroSlidesList, setHeroSlidesList] = useState<string[]>(DEFAULT_HERO_SLIDES);
   const [heroSlide, setHeroSlide] = useState(0);
+
+  // Mobile Trust Features Carousel State
+  const [trustSlide, setTrustSlide] = useState(0);
+  const [trustPaused, setTrustPaused] = useState(false);
+  const [touchStartPos, setTouchStartPos] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (trustPaused) return;
+    const timer = setInterval(() => {
+      setTrustSlide((prev) => (prev + 1) % TRUST_FEATURES.length);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [trustPaused]);
 
   useEffect(() => {
     async function loadHeroSlides() {
@@ -152,6 +183,24 @@ export default function HomePage() {
     },
   ];
 
+  // Testimonial swipe touch handling
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+
+  function handleTestimonialTouchStart(e: React.TouchEvent) {
+    setTouchStartX(e.touches[0].clientX);
+  }
+
+  function handleTestimonialTouchEnd(e: React.TouchEvent) {
+    if (touchStartX === null) return;
+    const diff = touchStartX - e.changedTouches[0].clientX;
+    if (diff > 40) {
+      setCurrentTestimonial((prev) => (prev === testimonials.length - 1 ? 0 : prev + 1));
+    } else if (diff < -40) {
+      setCurrentTestimonial((prev) => (prev === 0 ? testimonials.length - 1 : prev - 1));
+    }
+    setTouchStartX(null);
+  }
+
   const faqs = [
     {
       question: 'How does Loveridge Properties & Consult verify property owners before clients make payments?',
@@ -207,9 +256,9 @@ export default function HomePage() {
 
   async function fetchData(forceFresh = false) {
     try {
-      const urlProp = forceFresh ? `/api/properties?featured=true&_t=${Date.now()}` : '/api/properties?featured=true';
-      const urlProd = forceFresh ? `/api/products?featured=true&_t=${Date.now()}` : '/api/products?featured=true';
-      const options = forceFresh ? { cache: 'no-store' as RequestCache } : {};
+      const urlProp = `/api/properties?featured=true&_t=${Date.now()}`;
+      const urlProd = `/api/products?featured=true&_t=${Date.now()}`;
+      const options = { cache: 'no-store' as RequestCache };
 
       const [propRes, prodRes] = await Promise.all([
         fetch(urlProp, options),
@@ -290,9 +339,9 @@ export default function HomePage() {
               />
             ))}
 
-            {/* Dark Sophisticated Backdrop & Brand Gradient Overlay */}
-            <div className="absolute inset-0 bg-slate-950/65 backdrop-blur-[1px]" />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/50 to-emerald-950/70" />
+            {/* Sophisticated Backdrop & Brand Gradient Overlay (Brightened for vivid background clarity) */}
+            <div className="absolute inset-0 bg-slate-950/35 backdrop-blur-[1px]" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/65 via-slate-950/25 to-emerald-950/40" />
           </div>
 
           <div className="max-w-5xl mx-auto text-center space-y-8 relative z-10 w-full pt-6 sm:pt-10">
@@ -369,41 +418,92 @@ export default function HomePage() {
             </div>
 
             {/* TRUST FEATURE CARDS ROW */}
-            <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 pt-4 sm:pt-6 px-2 sm:px-4">
-              <div className="bg-white/95 backdrop-blur-md p-4 sm:px-5 sm:py-4.5 rounded-2xl border border-white/20 shadow-xl flex items-center gap-4 hover:bg-white transition-all text-left">
-                <div className="w-11 h-11 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-800 shrink-0">
-                  <Home className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900 tracking-tight">Luxury Homes</h4>
-                  <p className="text-[11px] text-slate-500 font-medium leading-tight">
-                    Verified land, villas & apartments
-                  </p>
+            {/* Desktop View: 3-column static grid */}
+            <div className="hidden sm:grid max-w-5xl mx-auto sm:grid-cols-3 gap-4 sm:gap-6 pt-4 sm:pt-6 px-2 sm:px-4">
+              {TRUST_FEATURES.map((feature, idx) => {
+                const IconComponent = feature.icon;
+                return (
+                  <div
+                    key={idx}
+                    className="bg-white/95 backdrop-blur-md p-4 sm:px-5 sm:py-4.5 rounded-2xl border border-white/20 shadow-xl flex items-center gap-4 hover:bg-white transition-all text-left"
+                  >
+                    <div className="w-11 h-11 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-800 shrink-0">
+                      <IconComponent className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 tracking-tight">{feature.title}</h4>
+                      <p className="text-[11px] text-slate-500 font-medium leading-tight">
+                        {feature.description}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Mobile View: Auto-playing carousel moving left to right with swipe & indicator dots */}
+            <div
+              className="block sm:hidden w-full max-w-sm mx-auto pt-3 px-2"
+              onMouseEnter={() => setTrustPaused(true)}
+              onMouseLeave={() => setTrustPaused(false)}
+              onTouchStart={(e) => {
+                setTouchStartPos(e.touches[0].clientX);
+                setTrustPaused(true);
+              }}
+              onTouchEnd={(e) => {
+                if (touchStartPos !== null) {
+                  const touchEndPos = e.changedTouches[0].clientX;
+                  const diff = touchStartPos - touchEndPos;
+                  if (diff > 35) {
+                    setTrustSlide((prev) => (prev + 1) % TRUST_FEATURES.length);
+                  } else if (diff < -35) {
+                    setTrustSlide((prev) => (prev - 1 + TRUST_FEATURES.length) % TRUST_FEATURES.length);
+                  }
+                }
+                setTouchStartPos(null);
+                setTrustPaused(false);
+              }}
+            >
+              <div className="relative overflow-hidden rounded-2xl">
+                <div
+                  className="flex transition-transform duration-500 ease-out"
+                  style={{ transform: `translateX(-${trustSlide * 100}%)` }}
+                >
+                  {TRUST_FEATURES.map((feature, idx) => {
+                    const IconComponent = feature.icon;
+                    return (
+                      <div key={idx} className="w-full shrink-0 px-0.5">
+                        <div className="bg-white/95 backdrop-blur-md p-4 rounded-2xl border border-white/20 shadow-xl flex items-center gap-4 text-left">
+                          <div className="w-11 h-11 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-800 shrink-0">
+                            <IconComponent className="w-5 h-5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-xs font-bold text-slate-900 tracking-tight">{feature.title}</h4>
+                            <p className="text-[11px] text-slate-500 font-medium leading-tight truncate">
+                              {feature.description}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
-              <div className="bg-white/95 backdrop-blur-md p-4 sm:px-5 sm:py-4.5 rounded-2xl border border-white/20 shadow-xl flex items-center gap-4 hover:bg-white transition-all text-left">
-                <div className="w-11 h-11 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-800 shrink-0">
-                  <Clock className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900 tracking-tight">100% Trusted</h4>
-                  <p className="text-[11px] text-slate-500 font-medium leading-tight">
-                    Clear title verification & legal search
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-white/95 backdrop-blur-md p-4 sm:px-5 sm:py-4.5 rounded-2xl border border-white/20 shadow-xl flex items-center gap-4 hover:bg-white transition-all text-left">
-                <div className="w-11 h-11 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-800 shrink-0">
-                  <Layers className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900 tracking-tight">Quality Materials</h4>
-                  <p className="text-[11px] text-slate-500 font-medium leading-tight">
-                    Direct factory procurement globally
-                  </p>
-                </div>
+              {/* Mobile Carousel Indicator Dots */}
+              <div className="flex items-center justify-center gap-1.5 pt-2">
+                {TRUST_FEATURES.map((_, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setTrustSlide(idx)}
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                      idx === trustSlide ? 'w-5 bg-emerald-400' : 'w-1.5 bg-white/40 hover:bg-white/70'
+                    }`}
+                    title={`Slide ${idx + 1}`}
+                    aria-label={`Go to slide ${idx + 1}`}
+                  />
+                ))}
               </div>
             </div>
 
@@ -426,15 +526,15 @@ export default function HomePage() {
 
         {/* 1. ABOUT OUR FIRM SECTION */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-gradient-to-br from-emerald-50/90 via-white to-emerald-50/60 backdrop-blur-md rounded-3xl border border-emerald-200/80 shadow-xl p-8 sm:p-12 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center relative overflow-hidden group">
+          <div className="bg-gradient-to-br from-emerald-50/90 via-white to-emerald-50/60 backdrop-blur-md rounded-3xl border border-emerald-200/80 shadow-xl p-5 sm:p-8 lg:p-12 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10 items-center relative overflow-hidden group">
             {/* Left Skyscraper Image Container */}
-            <div className="relative rounded-3xl overflow-hidden shadow-lg h-[420px] sm:h-[480px]">
+            <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden shadow-lg h-[260px] sm:h-[380px] lg:h-[480px]">
               <img
                 src="/signature_apartment_accra.png"
                 alt="The Signature Luxury Apartments (East Legon / Accra Mall)"
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex flex-col justify-end p-6 sm:p-8">
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex flex-col justify-end p-5 sm:p-8">
                 <span className="text-[10px] font-extrabold text-emerald-400 uppercase tracking-widest mb-1">
                   GLOBAL REAL ESTATE & DIRECT PROCUREMENT
                 </span>
@@ -445,7 +545,7 @@ export default function HomePage() {
             </div>
 
             {/* Right Content */}
-            <div className="space-y-5 text-slate-700">
+            <div className="space-y-4 sm:space-y-5 text-slate-700 text-left">
               <span className="text-emerald-800 text-xs font-bold uppercase tracking-widest block">
                 ABOUT OUR FIRM
               </span>
@@ -469,16 +569,16 @@ export default function HomePage() {
                 Our mission is simple: make it easier for families and developers everywhere to find a home they love and build it with materials they can trust.
               </p>
 
-              <div className="pt-3 flex flex-wrap items-center gap-4">
+              <div className="pt-2 sm:pt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
                 <Link
                   href="/properties"
-                  className="bg-emerald-900 hover:bg-emerald-950 text-white font-bold px-6 py-3.5 rounded-2xl text-xs flex items-center gap-2 shadow-md transition-all"
+                  className="w-full sm:w-auto bg-emerald-900 hover:bg-emerald-950 text-white font-bold px-6 py-3.5 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all text-center"
                 >
                   Explore Luxury Properties <ChevronRight className="w-4 h-4" />
                 </Link>
                 <Link
                   href="/products"
-                  className="border-2 border-emerald-900 text-emerald-950 hover:bg-emerald-50 font-bold px-6 py-3.5 rounded-2xl text-xs transition-all"
+                  className="w-full sm:w-auto border-2 border-emerald-900 text-emerald-950 hover:bg-emerald-50 font-bold px-6 py-3.5 rounded-2xl text-xs flex items-center justify-center transition-all text-center"
                 >
                   Visit Our Store
                 </Link>
@@ -550,7 +650,7 @@ export default function HomePage() {
         {/* 2. STORE PRODUCTS HIGHLIGHT SECTION - FULL WIDE CONTAINER */}
         <section className="w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
           <div className="bg-gradient-to-br from-emerald-100/70 via-emerald-50/60 to-teal-50/50 p-8 sm:p-12 rounded-3xl border border-emerald-200/80 shadow-sm space-y-8 relative overflow-hidden">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-emerald-200/60 pb-4">
+            <div className="flex flex-col items-center text-center gap-3 border-b border-emerald-200/60 pb-4">
               <div>
                 <span className="text-emerald-800 font-extrabold text-xs uppercase tracking-widest block mb-1">
                   DIRECT IMPORTS & HARDWARE
@@ -561,7 +661,7 @@ export default function HomePage() {
               </div>
               <Link
                 href="/products"
-                className="text-xs sm:text-sm font-bold text-emerald-800 hover:text-emerald-950 flex items-center gap-1.5 group"
+                className="text-xs sm:text-sm font-bold text-emerald-800 hover:text-emerald-950 inline-flex items-center gap-1.5 group"
               >
                 Explore Full Store <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Link>
@@ -621,7 +721,7 @@ export default function HomePage() {
           </div>
 
           <div className="max-w-7xl mx-auto relative z-10">
-            <div className="relative rounded-3xl p-8 sm:p-12 border border-emerald-500/20 bg-slate-900/40 backdrop-blur-md shadow-2xl grid grid-cols-1 lg:grid-cols-5 gap-8 items-center">
+            <div className="relative rounded-3xl p-5 sm:p-8 md:p-12 border border-emerald-500/20 bg-slate-900/40 backdrop-blur-md shadow-2xl grid grid-cols-1 lg:grid-cols-5 gap-6 sm:gap-8 items-center">
               {/* Left Header Column */}
               <div className="lg:col-span-2 space-y-4 relative z-10">
                 <span className="text-emerald-400 font-extrabold text-xs uppercase tracking-widest block">
@@ -654,48 +754,108 @@ export default function HomePage() {
               </div>
 
               {/* Right Dynamic Testimonial Card */}
-              <div className="lg:col-span-3 bg-white/95 backdrop-blur-2xl rounded-3xl p-6 sm:p-8 border border-emerald-100/90 shadow-2xl shadow-slate-950/40 space-y-6 relative z-10">
-                <div className="flex items-center justify-between">
-                  <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-950 text-[11px] font-extrabold">
+              <div
+                onTouchStart={handleTestimonialTouchStart}
+                onTouchEnd={handleTestimonialTouchEnd}
+                className="lg:col-span-3 bg-white/95 backdrop-blur-2xl rounded-3xl p-5 sm:p-8 border border-emerald-100/90 shadow-2xl shadow-slate-950/40 space-y-4 sm:space-y-6 relative z-10 transition-all select-none"
+              >
+                {/* Card Top: Badge + Mobile Navigation Controls */}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-950 text-[11px] font-extrabold tracking-wide">
                     {testimonials[currentTestimonial].type}
                   </span>
+
+                  {/* Navigation controls on mobile (sm:hidden) + slide counter */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold text-slate-400">
+                      {currentTestimonial + 1} / {testimonials.length}
+                    </span>
+                    <div className="flex sm:hidden items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCurrentTestimonial((prev) => (prev === 0 ? testimonials.length - 1 : prev - 1))
+                        }
+                        aria-label="Previous testimonial"
+                        className="w-8 h-8 rounded-full border border-slate-200 bg-white hover:bg-slate-100 active:scale-95 flex items-center justify-center text-slate-700 transition cursor-pointer shadow-2xs"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCurrentTestimonial((prev) => (prev === testimonials.length - 1 ? 0 : prev + 1))
+                        }
+                        aria-label="Next testimonial"
+                        className="w-8 h-8 rounded-full border border-slate-200 bg-white hover:bg-slate-100 active:scale-95 flex items-center justify-center text-slate-700 transition cursor-pointer shadow-2xs"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
-                <p className="text-slate-800 text-sm sm:text-base italic font-semibold leading-relaxed">
-                  "{testimonials[currentTestimonial].comment}"
+                {/* Quote */}
+                <p className="text-slate-800 text-xs sm:text-base italic font-semibold leading-relaxed">
+                  &ldquo;{testimonials[currentTestimonial].comment}&rdquo;
                 </p>
 
-                <div className="flex items-center justify-between border-t border-slate-200 pt-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-emerald-900 text-white font-bold flex items-center justify-center text-xs shadow-xs">
+                {/* Card Bottom: Author Info + Desktop Navigation */}
+                <div className="flex items-center justify-between border-t border-slate-200 pt-3.5 sm:pt-4 gap-3">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-10 h-10 rounded-full bg-emerald-900 text-white font-bold flex items-center justify-center text-xs shadow-xs shrink-0">
                       {testimonials[currentTestimonial].avatar}
                     </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-900">{testimonials[currentTestimonial].name}</h4>
-                      <p className="text-[11px] text-slate-500 font-medium">
-                        {testimonials[currentTestimonial].role} • {testimonials[currentTestimonial].location}
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-xs sm:text-sm font-bold text-slate-900 truncate">
+                        {testimonials[currentTestimonial].name}
+                      </h4>
+                      <p className="text-[11px] text-slate-500 font-medium leading-tight truncate">
+                        <span className="text-slate-700 font-semibold">{testimonials[currentTestimonial].role}</span>
+                        <span className="text-slate-400"> • </span>
+                        <span>{testimonials[currentTestimonial].location}</span>
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  {/* Desktop navigation buttons */}
+                  <div className="hidden sm:flex items-center gap-2 shrink-0">
                     <button
+                      type="button"
                       onClick={() =>
                         setCurrentTestimonial((prev) => (prev === 0 ? testimonials.length - 1 : prev - 1))
                       }
-                      className="w-8 h-8 rounded-full border border-slate-300 bg-white hover:bg-slate-100 flex items-center justify-center text-slate-700 transition"
+                      aria-label="Previous testimonial"
+                      className="w-8 h-8 rounded-full border border-slate-300 bg-white hover:bg-slate-100 active:scale-95 flex items-center justify-center text-slate-700 transition cursor-pointer shadow-2xs"
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </button>
                     <button
+                      type="button"
                       onClick={() =>
                         setCurrentTestimonial((prev) => (prev === testimonials.length - 1 ? 0 : prev + 1))
                       }
-                      className="w-8 h-8 rounded-full border border-slate-300 bg-white hover:bg-slate-100 flex items-center justify-center text-slate-700 transition"
+                      aria-label="Next testimonial"
+                      className="w-8 h-8 rounded-full border border-slate-300 bg-white hover:bg-slate-100 active:scale-95 flex items-center justify-center text-slate-700 transition cursor-pointer shadow-2xs"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </button>
                   </div>
+                </div>
+
+                {/* Subtle Interactive Dot Indicators */}
+                <div className="flex items-center justify-center gap-1.5 pt-1">
+                  {testimonials.map((_, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setCurrentTestimonial(idx)}
+                      className={`h-1.5 rounded-full transition-all cursor-pointer ${
+                        currentTestimonial === idx ? 'w-6 bg-emerald-700' : 'w-1.5 bg-slate-300 hover:bg-slate-400'
+                      }`}
+                      aria-label={`Go to testimonial ${idx + 1}`}
+                    />
+                  ))}
                 </div>
               </div>
             </div>

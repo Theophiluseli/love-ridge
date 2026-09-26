@@ -51,9 +51,8 @@ function PropertiesContent() {
   const fetchProperties = useCallback(async (showSkeleton = false, forceFresh = false) => {
     if (showSkeleton) setLoading(true);
     try {
-      const url = forceFresh ? `/api/properties?_t=${Date.now()}` : '/api/properties';
-      const options = forceFresh ? { cache: 'no-store' as RequestCache } : {};
-      const res = await fetch(url, options);
+      const url = `/api/properties?_t=${Date.now()}`;
+      const res = await fetch(url, { cache: 'no-store' });
       const data = await res.json();
       if (data.properties && Array.isArray(data.properties)) {
         cachedClientProperties = data.properties;
@@ -67,7 +66,19 @@ function PropertiesContent() {
   }, []);
 
   useEffect(() => {
-    fetchProperties(!cachedClientProperties || cachedClientProperties.length === 0, false);
+    fetchProperties(!cachedClientProperties || cachedClientProperties.length === 0, true);
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        fetchProperties(false, true);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
   }, [fetchProperties]);
 
   // Real-time sync: auto-refetch when any admin or device adds/updates/deletes a property
@@ -191,7 +202,7 @@ function PropertiesContent() {
 
                   <button
                     onClick={resetFilters}
-                    className="text-[11px] text-emerald-800 font-bold hover:underline flex items-center gap-1 shrink-0 cursor-pointer"
+                    className="hidden sm:flex text-[11px] text-emerald-800 font-bold hover:underline items-center gap-1 shrink-0 cursor-pointer"
                     title="Reset Filters"
                   >
                     <RotateCcw className="w-3 h-3" />

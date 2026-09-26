@@ -24,6 +24,11 @@ export default function AdminProductsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PUBLISHED' | 'DRAFT'>('ALL');
 
+  // Batch Selection & Deletion State
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [batchDeleting, setBatchDeleting] = useState(false);
+  const [batchDeleteModalOpen, setBatchDeleteModalOpen] = useState(false);
+
   // Sub-Navigation Section: Products vs Categories
   const [storeSection, setStoreSection] = useState<'PRODUCTS' | 'CATEGORIES'>('PRODUCTS');
   const [categorySearch, setCategorySearch] = useState('');
@@ -403,6 +408,61 @@ export default function AdminProductsPage() {
       console.error('Delete product error:', err);
       alert('Error communicating with server during deletion.');
     } finally {
+      fetchProducts();
+    }
+  }
+
+  function toggleSelectProduct(id: string) {
+    setSelectedProductIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  }
+
+  function toggleSelectAllProducts() {
+    if (filteredProducts.length === 0) return;
+    const allFilteredIds = filteredProducts.map((p) => p.id);
+    const isAllSelected = allFilteredIds.every((id) => selectedProductIds.includes(id));
+    if (isAllSelected) {
+      setSelectedProductIds((prev) => prev.filter((id) => !allFilteredIds.includes(id)));
+    } else {
+      setSelectedProductIds((prev) => Array.from(new Set([...prev, ...allFilteredIds])));
+    }
+  }
+
+  async function handleConfirmBatchDelete() {
+    if (selectedProductIds.length === 0) return;
+    setBatchDeleting(true);
+    const token = localStorage.getItem('loveridge_token');
+    const idsToDelete = [...selectedProductIds];
+    const count = idsToDelete.length;
+
+    // Optimistic removal
+    setProducts((prev) => prev.filter((p) => !idsToDelete.includes(p.id)));
+    setSelectedProductIds([]);
+    setBatchDeleteModalOpen(false);
+
+    try {
+      const res = await fetch('/api/admin/products/batch-delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ ids: idsToDelete }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Failed to delete selected products.');
+      } else {
+        setMessage(`Successfully deleted ${count} products.`);
+        setTimeout(() => setMessage(''), 4000);
+      }
+    } catch (err: any) {
+      console.error('Batch delete error:', err);
+      alert('Network error while deleting products.');
+    } finally {
+      setBatchDeleting(false);
       fetchProducts();
     }
   }
@@ -1439,6 +1499,28 @@ export default function AdminProductsPage() {
           </div>
 
           {/* MOBILE PRODUCTS CARDS LIST (md:hidden) */}
+          {filteredProducts.length > 0 && (
+            <div className="md:hidden flex items-center justify-between px-3.5 py-2.5 bg-slate-100/90 border-b border-slate-200 text-xs font-semibold text-slate-700">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={
+                    filteredProducts.length > 0 &&
+                    filteredProducts.every((p) => selectedProductIds.includes(p.id))
+                  }
+                  onChange={toggleSelectAllProducts}
+                  className="w-4 h-4 rounded border-slate-300 text-emerald-800 focus:ring-emerald-800/30 cursor-pointer accent-emerald-800"
+                />
+                <span>Select All ({filteredProducts.length})</span>
+              </label>
+              {selectedProductIds.length > 0 && (
+                <span className="text-emerald-800 font-bold text-[11px] bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-200">
+                  {selectedProductIds.length} selected
+                </span>
+              )}
+            </div>
+          )}
+
           <div className="block md:hidden divide-y divide-slate-100 bg-slate-50/50">
             {filteredProducts.length === 0 ? (
               <div className="p-8 text-center text-slate-400 font-medium text-xs">
@@ -1446,9 +1528,25 @@ export default function AdminProductsPage() {
               </div>
             ) : (
               filteredProducts.map((prod) => (
-                <div key={prod.id} className="p-3.5 bg-white space-y-2.5 hover:bg-slate-50/60 transition">
-                  {/* Top: Image + Details */}
-                  <div className="flex gap-2.5 sm:gap-3">
+                <div
+                  key={prod.id}
+                  className={`p-3.5 space-y-2.5 transition ${
+                    selectedProductIds.includes(prod.id)
+                      ? 'bg-emerald-50/70 border-l-4 border-l-emerald-600'
+                      : 'bg-white hover:bg-slate-50/60'
+                  }`}
+                >
+                  {/* Top: Checkbox + Image + Details */}
+                  <div className="flex gap-2.5 sm:gap-3 items-start">
+                    <div className="pt-1.5 shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={selectedProductIds.includes(prod.id)}
+                        onChange={() => toggleSelectProduct(prod.id)}
+                        aria-label={`Select ${prod.name}`}
+                        className="w-4 h-4 rounded border-slate-300 text-emerald-800 focus:ring-emerald-800/30 cursor-pointer accent-emerald-800"
+                      />
+                    </div>
                     <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0 relative">
                       <img
                         src={prod.imageUrl || '/product_tiles.png'}
@@ -1588,6 +1686,18 @@ export default function AdminProductsPage() {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-900 text-white uppercase tracking-wider font-extrabold border-b border-slate-200">
                 <tr>
+                  <th className="w-12 px-4 py-4 text-center">
+                    <input
+                      type="checkbox"
+                      aria-label="Select all products"
+                      checked={
+                        filteredProducts.length > 0 &&
+                        filteredProducts.every((p) => selectedProductIds.includes(p.id))
+                      }
+                      onChange={toggleSelectAllProducts}
+                      className="w-4 h-4 rounded border-slate-300 text-emerald-500 focus:ring-emerald-500 cursor-pointer accent-emerald-500"
+                    />
+                  </th>
                   <th className="px-6 py-4">Item Cover</th>
                   <th className="px-6 py-4">Product & SKU</th>
                   <th className="px-6 py-4">Category</th>
@@ -1601,13 +1711,29 @@ export default function AdminProductsPage() {
               <tbody className="divide-y divide-slate-100">
                 {filteredProducts.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center text-slate-400 font-medium">
+                    <td colSpan={9} className="px-6 py-12 text-center text-slate-400 font-medium">
                       No products found matching &quot;{searchQuery}&quot;. Click &quot;Add Store Product&quot; to create one.
                     </td>
                   </tr>
                 ) : (
                   filteredProducts.map((prod) => (
-                    <tr key={prod.id} className="hover:bg-slate-50/80 transition group">
+                    <tr
+                      key={prod.id}
+                      className={`transition group ${
+                        selectedProductIds.includes(prod.id)
+                          ? 'bg-emerald-50/70 hover:bg-emerald-50'
+                          : 'hover:bg-slate-50/80'
+                      }`}
+                    >
+                      <td className="w-12 px-4 py-4 text-center">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${prod.name}`}
+                          checked={selectedProductIds.includes(prod.id)}
+                          onChange={() => toggleSelectProduct(prod.id)}
+                          className="w-4 h-4 rounded border-slate-300 text-emerald-800 focus:ring-emerald-800/30 cursor-pointer accent-emerald-800"
+                        />
+                      </td>
                       <td className="px-6 py-4">
                         <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0 relative">
                           <img
@@ -1994,6 +2120,87 @@ export default function AdminProductsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Batch Actions Dock */}
+      {selectedProductIds.length > 0 && (
+        <div className="fixed bottom-6 inset-x-4 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 z-40 bg-slate-900/95 backdrop-blur-md text-white rounded-2xl shadow-2xl border border-slate-700/80 px-4 py-3 sm:px-6 sm:py-3.5 flex items-center justify-between sm:gap-8 animate-in fade-in slide-in-from-bottom-4 duration-200 max-w-xl w-full">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 text-slate-950 font-black text-xs">
+              {selectedProductIds.length}
+            </span>
+            <div className="text-xs sm:text-sm font-semibold">
+              <span>
+                {selectedProductIds.length === 1 ? '1 product selected' : `${selectedProductIds.length} products selected`}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => setSelectedProductIds([])}
+              className="px-3 py-1.5 rounded-xl border border-slate-700 text-slate-300 text-xs font-semibold hover:bg-slate-800 transition cursor-pointer"
+            >
+              Deselect
+            </button>
+            <button
+              type="button"
+              onClick={() => setBatchDeleteModalOpen(true)}
+              className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-lg shadow-rose-900/30 cursor-pointer active:scale-98"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete Selected</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Delete Confirmation Modal */}
+      {batchDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4 relative">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-slate-900">
+                Delete {selectedProductIds.length} {selectedProductIds.length === 1 ? 'Product' : 'Products'}?
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 mt-1.5 leading-relaxed">
+                Are you sure you want to permanently delete these {selectedProductIds.length} selected items from your store catalogue? This action cannot be undone.
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                disabled={batchDeleting}
+                onClick={() => setBatchDeleteModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs sm:text-sm hover:bg-slate-50 transition cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={batchDeleting}
+                onClick={handleConfirmBatchDelete}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-sm transition flex items-center gap-1.5 shadow-md shadow-rose-600/20 cursor-pointer disabled:opacity-50"
+              >
+                {batchDeleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    <span>Yes, Delete All {selectedProductIds.length}</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

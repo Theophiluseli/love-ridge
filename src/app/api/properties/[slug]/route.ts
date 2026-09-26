@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllProperties, sanitizePropertyForPublic } from '@/lib/properties-store';
+import { getAllProperties, getDeletedPropertyIds, sanitizePropertyForPublic } from '@/lib/properties-store';
 import { prisma } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -11,10 +11,19 @@ export async function GET(
 ) {
   try {
     const { slug } = params;
+    const cleanSlug = decodeURIComponent(slug).toLowerCase().trim();
+    const deletedIds = await getDeletedPropertyIds();
+    if (deletedIds.has(cleanSlug) || deletedIds.has(slug)) {
+      return NextResponse.json({ error: 'Property not found.' }, { status: 404 });
+    }
+
     const allProps = await getAllProperties();
 
     const matched = allProps.find(
-      (p) => p.slug.toLowerCase() === slug.toLowerCase() || p.id.toLowerCase() === slug.toLowerCase()
+      (p) =>
+        (p.slug.toLowerCase() === cleanSlug || p.id.toLowerCase() === cleanSlug) &&
+        !deletedIds.has(p.id) &&
+        !deletedIds.has(p.slug)
     );
 
     if (matched) {
@@ -56,7 +65,7 @@ export async function GET(
       },
     });
 
-    if (!property) {
+    if (!property || deletedIds.has(property.id) || deletedIds.has(property.slug)) {
       return NextResponse.json({ error: 'Property not found.' }, { status: 404 });
     }
 

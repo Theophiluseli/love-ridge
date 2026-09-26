@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuthPermission } from '@/lib/auth/rbac';
 import { prisma } from '@/lib/db';
-import { supabaseAdmin } from '@/lib/supabase-admin';
 import { logAuditAction } from '@/lib/auth/audit';
 import { saveProperty, getAllProperties } from '@/lib/properties-store';
 import { broadcastCatalogUpdate } from '@/lib/realtime-broadcast';
@@ -28,43 +27,43 @@ export async function PATCH(
 
     if (!storeProp) {
       try {
-        const { data: sbProp } = await supabaseAdmin
-          .from('properties')
-          .select('*')
-          .or(`id.eq.${id},slug.eq.${id}`)
-          .maybeSingle();
+        const p: any = await prisma.property.findFirst({
+          where: {
+            OR: [{ id }, { slug: id }],
+          },
+        });
 
-        if (sbProp) {
+        if (p) {
           storeProp = {
-            id: sbProp.id,
-            title: sbProp.title,
-            slug: sbProp.slug,
-            description: sbProp.description,
-            listingType: sbProp.listingType,
-            propertyType: sbProp.propertyType,
-            status: sbProp.status,
-            price: sbProp.price,
-            currency: sbProp.currency,
-            pricePeriod: sbProp.pricePeriod,
-            bedrooms: sbProp.bedrooms,
-            bathrooms: sbProp.bathrooms,
-            guestRooms: sbProp.guestRooms || 0,
-            boysQuarters: sbProp.boysQuarters || 0,
-            garage: sbProp.garage || 0,
-            sizeSqft: sbProp.sizeSqft,
-            livingAreaSqft: sbProp.livingAreaSqft,
-            locationAddress: sbProp.locationAddress,
-            city: sbProp.city,
-            region: sbProp.region,
-            country: sbProp.country,
-            featured: sbProp.featured,
-            imageUrl: sbProp.imageUrl,
-            galleryUrls: sbProp.galleryUrls || [],
-            contactName: sbProp.contactName,
-            contactPhone: sbProp.contactPhone,
-            contactEmail: sbProp.contactEmail,
-            amenities: sbProp.amenities || [],
-            createdAt: sbProp.createdAt || new Date().toISOString(),
+            id: p.id,
+            title: p.title,
+            slug: p.slug,
+            description: p.description,
+            listingType: p.listingType,
+            propertyType: p.propertyType,
+            status: p.status,
+            price: p.price,
+            currency: p.currency,
+            pricePeriod: p.pricePeriod,
+            bedrooms: p.bedrooms,
+            bathrooms: p.bathrooms,
+            guestRooms: p.guestRooms || 0,
+            boysQuarters: p.boysQuarters || 0,
+            garage: p.garage || 0,
+            sizeSqft: p.sizeSqft,
+            livingAreaSqft: p.livingAreaSqft,
+            locationAddress: p.locationAddress,
+            city: p.city,
+            region: p.region,
+            country: p.country,
+            featured: p.featured,
+            imageUrl: p.imageUrl,
+            galleryUrls: p.galleryUrls || [],
+            contactName: p.contactName,
+            contactPhone: p.contactPhone,
+            contactEmail: p.contactEmail,
+            amenities: p.amenities || [],
+            createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           };
         }

@@ -40,7 +40,8 @@ export async function GET(req: NextRequest) {
     }
 
     if (featured === 'true') {
-      products = products.filter((p) => p.featured || p.isFavourite);
+      const feat = products.filter((p) => p.featured || p.isFavourite);
+      products = feat.length > 0 ? feat : products.slice(0, 8);
     }
 
     // Sort: Favourites come first (max 3), then newest

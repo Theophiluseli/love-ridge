@@ -293,3 +293,21 @@ model Faq {
 
   @@map("faqs")
 }
+
+model GalleryItem {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  imageUrl    String
+  category    String   @default("Exhibition")
+  location    String?
+  eventDate   String?
+  featured    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  status      String   @default("PUBLISHED")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("gallery_items")
+}
+

@@ -12,132 +12,19 @@ import { MapPin, Bed, Bath, Maximize2, Shield, Calendar, ChevronLeft, ChevronRig
 import Link from 'next/link';
 import { formatPropertyType } from '@/lib/property-categories';
 
-const SEED_PROPERTIES: Record<string, any> = {
-  'luxury-4-bedroom-smart-villa-east-legon': {
-    id: 'prop-1',
-    title: 'Luxury 4-Bedroom Smart Villa (East Legon)',
-    slug: 'luxury-4-bedroom-smart-villa-east-legon',
-    description: 'Ultra-modern 4-bedroom detached smart villa situated in the heart of East Legon. Features automated home systems, private infinity swimming pool, rooftop terrace, fully fitted Italian kitchen with Bosch appliances, solar backup system, and 24/7 security post.',
-    price: 450000,
-    currency: 'USD',
-    pricePeriod: 'outright purchase',
-    negotiable: true,
-    listingType: 'SALE',
-    propertyType: 'HOUSE',
-    bedrooms: 4,
-    bathrooms: 5,
-    guestRooms: 1,
-    sizeSqft: 4500,
-    livingAreaSqft: 3800,
-    locationAddress: 'Boundary Road, East Legon',
-    city: 'Accra',
-    region: 'Greater Accra',
-    imageUrl: '/property_villa.png',
-    galleryUrls: ['/property_villa.png', '/hero_carousel_1.jpg', '/hero_carousel_2.jpg'],
-    agent: { name: 'Kwame Appiah', email: 'k.appiah@loveridgeproperty.com', phone: '+233 24 643 2493', title: 'Senior Real Estate Consultant' },
-    updatedAt: new Date().toISOString(),
-    amenities: [
-      'Air conditioning',
-      'Cooker',
-      'Washing machine',
-      'Fans',
-      'Refrigerator',
-      'Microwave',
-      'Internet access',
-      'Satellite tv',
-      'Garden',
-      'Garage',
-      "Annexe (Boys' quarters)",
-      'Roof terrace',
-      'Private Swimming Pool',
-      'Smart Home Automation',
-      'Solar Hybrid Power System',
-      '24/7 Standby Generator',
-    ],
-  },
-  'executive-2-bedroom-serviced-apartment-airport-residential': {
-    id: 'prop-2',
-    title: 'Executive 2-Bedroom Serviced Apartment (Airport Residential)',
-    slug: 'executive-2-bedroom-serviced-apartment-airport-residential',
-    description: 'Modern high-rise residential apartment unit offering panoramic views of Airport Residential Area. Comes fully furnished with designer Italian furniture, gym access, standby generator, underground parking, and concierge service.',
-    price: 3200,
-    currency: 'USD',
-    pricePeriod: 'per month',
-    negotiable: true,
-    listingType: 'RENT',
-    propertyType: 'APARTMENT',
-    bedrooms: 2,
-    bathrooms: 2,
-    guestRooms: 0,
-    sizeSqft: 1800,
-    livingAreaSqft: 1500,
-    locationAddress: 'Airport Residential Area',
-    city: 'Accra',
-    region: 'Greater Accra',
-    imageUrl: '/property_apartment.png',
-    galleryUrls: ['/property_apartment.png', '/hero_carousel_3.jpg'],
-    agent: { name: 'Sandra Mensah', email: 's.mensah@loveridgeproperty.com', phone: '+233 24 643 2493', title: 'Commercial Property Specialist' },
-    updatedAt: new Date().toISOString(),
-    amenities: [
-      'Air conditioning',
-      'Cooker',
-      'Washing machine',
-      'Fans',
-      'Refrigerator',
-      'Microwave',
-      'Internet access',
-      'Satellite tv',
-      'Fully Furnished Designer Interior',
-      'Fully Equipped Fitness Gym',
-      '24/7 Concierge & Security',
-      'Rooftop Lounge & Pool',
-    ],
-  },
-  'prime-commercial-land-cantonments-embassy-quarter': {
-    id: 'prop-3',
-    title: 'Prime Commercial Land (1.2 Acres) - Cantonments',
-    slug: 'prime-commercial-land-cantonments-embassy-quarter',
-    description: 'Rare development opportunity! 1.2 acres of prime commercial/residential land located in the diplomatic zone of Cantonments. Fully registered title with Lands Commission clearance. Ideal for embassy headquarters, high-rise luxury apartments, or corporate office complex.',
-    price: 1800000,
-    currency: 'USD',
-    pricePeriod: 'outright purchase',
-    listingType: 'SALE',
-    propertyType: 'LAND',
-    bedrooms: 0,
-    bathrooms: 0,
-    guestRooms: 0,
-    sizeSqft: 52272,
-    livingAreaSqft: 0,
-    locationAddress: 'Cantonments Embassy Quarter',
-    city: 'Accra',
-    region: 'Greater Accra',
-    imageUrl: '/property_land.png',
-    galleryUrls: ['/property_land.png'],
-    agent: { name: 'Kwame Appiah', email: 'k.appiah@loveridgeproperty.com', phone: '+233 24 643 2493', title: 'Senior Real Estate Consultant' },
-    updatedAt: new Date().toISOString(),
-    amenities: [
-      { amenity: { name: 'Lands Commission Title Certificate' } },
-      { amenity: { name: 'Prime Diplomatic Zone' } },
-      { amenity: { name: 'Tarred Access Roads & Electricity' } },
-      { amenity: { name: 'High Capital Appreciation' } },
-    ],
-  },
-};
+
 
 export default function PropertyDetailPage({ params }: { params: { slug: string } }) {
-  const seedMatch = SEED_PROPERTIES[params?.slug] || Object.values(SEED_PROPERTIES).find((p) => p.id === params?.slug);
   const { formatPrice } = useCurrency();
 
-  const [property, setProperty] = useState<any>(seedMatch || null);
-  const [similar, setSimilar] = useState<any[]>(
-    seedMatch ? Object.values(SEED_PROPERTIES).filter((p) => p.slug !== seedMatch.slug) : []
-  );
-  const [loading, setLoading] = useState<boolean>(!seedMatch);
+  const [property, setProperty] = useState<any>(null);
+  const [similar, setSimilar] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [inquiryType, setInquiryType] = useState('General Consultancy');
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [activePhoto, setActivePhoto] = useState<string>(seedMatch?.imageUrl || '');
+  const [activePhoto, setActivePhoto] = useState<string>('');
   const [lightboxIndex, setLightboxIndex] = useState(0);
 
   useEffect(() => {
@@ -147,55 +34,28 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
         return;
       }
 
-      // 1. Instant optimistic lookup from local browser cache
+      // Fetch fresh data from API with cache busting
       try {
-        const stored = localStorage.getItem('loveridge_properties_override');
-        if (stored) {
-          const list = JSON.parse(stored);
-          const localMatch = list.find(
-            (p: any) =>
-              (p.slug && p.slug.toLowerCase() === params.slug.toLowerCase()) ||
-              (p.id && p.id.toLowerCase() === params.slug.toLowerCase())
-          );
-          if (localMatch) {
-            setProperty(localMatch);
-            if (localMatch.imageUrl) setActivePhoto(localMatch.imageUrl);
-            setLoading(false);
-          }
-        }
-      } catch (e) {}
-
-      // 2. Fetch fresh data from API
-      try {
-        const res = await fetch(`/api/properties/${params.slug}`);
-        const data = await res.json();
-        if (data && data.property) {
-          setProperty(data.property);
-          if (data.similar && data.similar.length > 0) {
-            setSimilar(data.similar);
-          }
-          if (data.property.imageUrl) {
-            setActivePhoto(data.property.imageUrl);
+        const res = await fetch(`/api/properties/${params.slug}?_t=${Date.now()}`, { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.property) {
+            setProperty(data.property);
+            if (data.similar && data.similar.length > 0) {
+              setSimilar(data.similar);
+            }
+            if (data.property.imageUrl) {
+              setActivePhoto(data.property.imageUrl);
+            }
+          } else {
+            setProperty(null);
           }
         } else {
-          // If DB didn't find it, fallback to seed properties by slug or ID
-          const fallback = Object.values(SEED_PROPERTIES).find(
-            (p) => p.slug === params.slug || p.id === params.slug
-          );
-          if (fallback) {
-            setProperty(fallback);
-            if (fallback.imageUrl) setActivePhoto(fallback.imageUrl);
-          }
+          setProperty(null);
         }
       } catch (err) {
         console.error('Property detail sync error:', err);
-        const fallback = Object.values(SEED_PROPERTIES).find(
-          (p) => p.slug === params.slug || p.id === params.slug
-        );
-        if (fallback) {
-          setProperty(fallback);
-          if (fallback.imageUrl) setActivePhoto(fallback.imageUrl);
-        }
+        setProperty(null);
       } finally {
         setLoading(false);
       }

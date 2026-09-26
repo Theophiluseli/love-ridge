@@ -74,7 +74,8 @@ export async function GET(req: NextRequest) {
     }
 
     if (featured === 'true') {
-      properties = properties.filter((p) => p.featured || p.isFavourite);
+      const feat = properties.filter((p) => p.featured || p.isFavourite);
+      properties = feat.length > 0 ? feat : properties.slice(0, 6);
     }
 
     // Sort so Favourites occupy the first positions (first 3 roles/rows), followed by newest listings
@@ -86,16 +87,14 @@ export async function GET(req: NextRequest) {
     });
 
     const publicProperties = properties.map(sanitizePropertyForPublic);
-    const isBypass = Boolean(searchParams.get('_t'));
-    const cacheHeader = isBypass
-      ? 'no-store, no-cache, must-revalidate, max-age=0'
-      : 'public, s-maxage=15, stale-while-revalidate=59';
 
     return NextResponse.json(
       { properties: publicProperties, count: publicProperties.length },
       {
         headers: {
-          'Cache-Control': cacheHeader,
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0',
         },
       }
     );
@@ -114,7 +113,9 @@ export async function GET(req: NextRequest) {
       { properties: publicProperties, count: publicProperties.length },
       {
         headers: {
-          'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=59',
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0',
         },
       }
     );

@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 
-type CatalogType = 'properties' | 'products' | 'categories' | 'hero';
+type CatalogType = 'properties' | 'products' | 'categories' | 'hero' | 'gallery';
 
 interface RevisionData {
   version: number;
@@ -11,6 +11,7 @@ interface RevisionData {
   products: number;
   categories: number;
   hero?: number;
+  gallery?: number;
 }
 
 /**
@@ -70,6 +71,10 @@ export function useRealtimeSync(onUpdate: (type: CatalogType) => void) {
         if (data.hero && data.hero > (lastSeenRef.current.hero || 0)) {
           lastSeenRef.current.hero = data.hero;
           callbackRef.current('hero');
+        }
+        if (data.gallery && data.gallery > (lastSeenRef.current.gallery || 0)) {
+          lastSeenRef.current.gallery = data.gallery;
+          callbackRef.current('gallery');
         }
         lastSeenRef.current.version = data.version;
       } catch {

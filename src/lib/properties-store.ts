@@ -1,8 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { prisma } from "./db";
-import { supabaseAdmin } from "./supabase-admin";
-import { getSystemSetting, setSystemSetting } from "./system-settings";
+import { getSystemSetting, setSystemSetting, invalidateSystemSetting } from "./system-settings";
 import {
   PropertyItem,
   sanitizePropertyForPublic,
@@ -12,6 +11,9 @@ import {
 export * from "./properties-constants";
 
 const FILE_PATH = path.join(process.cwd(), "scratch", "properties.json");
+const DELETED_PROPERTIES_FILE = path.join(process.cwd(), "scratch", "deleted-properties.json");
+const DELETED_PROPERTIES_SETTING_KEY = "deleted_property_ids";
+const CACHE_DURATION = 30000; // 30 seconds
 
 function ensureFile() {
   try {
@@ -40,7 +42,7 @@ export function readPropertiesFromFile(): PropertyItem[] {
   } catch (err) {
     // Return initial store on read error
   }
-  return INITIAL_PROPERTIES_STORE;
+  return [];
 }
 
 export function writePropertiesToFile(properties: PropertyItem[]) {
@@ -52,6 +54,25 @@ export function writePropertiesToFile(properties: PropertyItem[]) {
   }
 }
 
+function readDeletedPropertyIdsFromFile(): Set<string> {
+  try {
+    if (fs.existsSync(DELETED_PROPERTIES_FILE)) {
+      const data = fs.readFileSync(DELETED_PROPERTIES_FILE, "utf-8");
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) return new Set(parsed);
+    }
+  } catch (e) {}
+  return new Set();
+}
+
+function writeDeletedPropertyIdsToFile(ids: Set<string>) {
+  try {
+    const dir = path.dirname(DELETED_PROPERTIES_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(DELETED_PROPERTIES_FILE, JSON.stringify(Array.from(ids), null, 2), "utf-8");
+  } catch (e) {}
+}
+
 declare global {
   var __cachedProperties: PropertyItem[] | null | undefined;
   var __cachedPropertiesTime: number | undefined;
@@ -59,22 +80,23 @@ declare global {
   var __deletedIdsCacheTime: number | undefined;
 }
 
-const CACHE_DURATION = 30000; // 30 seconds
-const DELETED_PROPERTIES_SETTING_KEY = "deleted_property_ids";
-
 export async function getDeletedPropertyIds(): Promise<Set<string>> {
   const now = Date.now();
   if (globalThis.__cachedDeletedPropertyIds && now - (globalThis.__deletedIdsCacheTime || 0) < CACHE_DURATION) {
     return globalThis.__cachedDeletedPropertyIds;
   }
+
+  const fileSet = readDeletedPropertyIdsFromFile();
   try {
     const { data } = await getSystemSetting<string[]>(DELETED_PROPERTIES_SETTING_KEY, []);
-    const idSet = new Set<string>(Array.isArray(data) ? data : []);
+    const idSet = new Set<string>([...(Array.isArray(data) ? data : []), ...Array.from(fileSet)]);
     globalThis.__cachedDeletedPropertyIds = idSet;
     globalThis.__deletedIdsCacheTime = now;
+    writeDeletedPropertyIdsToFile(idSet);
     return idSet;
   } catch (err) {
-    return globalThis.__cachedDeletedPropertyIds || new Set<string>();
+    globalThis.__cachedDeletedPropertyIds = fileSet;
+    return fileSet;
   }
 }
 
@@ -84,7 +106,8 @@ export async function addDeletedPropertyId(id: string): Promise<void> {
     current.add(id);
     globalThis.__cachedDeletedPropertyIds = current;
     globalThis.__deletedIdsCacheTime = Date.now();
-    await setSystemSetting(DELETED_PROPERTIES_SETTING_KEY, Array.from(current));
+    writeDeletedPropertyIdsToFile(current);
+    await setSystemSetting(DELETED_PROPERTIES_SETTING_KEY, Array.from(current)).catch(() => null);
   } catch (err) {
     console.error("Failed adding deleted property ID:", err);
   }
@@ -97,7 +120,8 @@ export async function removeDeletedPropertyId(id: string): Promise<void> {
       current.delete(id);
       globalThis.__cachedDeletedPropertyIds = current;
       globalThis.__deletedIdsCacheTime = Date.now();
-      await setSystemSetting(DELETED_PROPERTIES_SETTING_KEY, Array.from(current));
+      writeDeletedPropertyIdsToFile(current);
+      await setSystemSetting(DELETED_PROPERTIES_SETTING_KEY, Array.from(current)).catch(() => null);
     }
   } catch (err) {
     console.error("Failed removing deleted property ID:", err);
@@ -109,19 +133,24 @@ export function invalidatePropertiesCache() {
   globalThis.__cachedPropertiesTime = 0;
   globalThis.__cachedDeletedPropertyIds = null;
   globalThis.__deletedIdsCacheTime = 0;
+  invalidateSystemSetting("properties_catalog");
+  invalidateSystemSetting("deleted_property_ids");
 }
 
 export async function getPropertyBySlug(slug: string): Promise<PropertyItem | null> {
   if (!slug) return null;
   const cleanSlug = decodeURIComponent(slug).toLowerCase().trim();
+  const deletedIds = await getDeletedPropertyIds();
+  if (deletedIds.has(cleanSlug) || deletedIds.has(slug)) return null;
+
   const properties = await getAllProperties();
-  return (
-    properties.find(
-      (p) =>
-        p.slug.toLowerCase() === cleanSlug ||
-        p.id.toLowerCase() === cleanSlug
-    ) || null
+  const found = properties.find(
+    (p) =>
+      p.slug.toLowerCase() === cleanSlug ||
+      p.id.toLowerCase() === cleanSlug
   );
+  if (found && (deletedIds.has(found.id) || deletedIds.has(found.slug))) return null;
+  return found || null;
 }
 
 export async function getAllProperties(): Promise<PropertyItem[]> {
@@ -130,29 +159,36 @@ export async function getAllProperties(): Promise<PropertyItem[]> {
     return globalThis.__cachedProperties;
   }
 
-  // Retrieve permanent deleted tombstones
-  const deletedIds = await getDeletedPropertyIds();
-
+  // 1. Authoritative DB catalog from system_settings table in PostgreSQL & deleted tombstones (fetched in parallel)
   let dbCatalog: PropertyItem[] = [];
+  let deletedIds = new Set<string>();
+
   try {
-    const settingRes = await getSystemSetting<PropertyItem[]>("properties_catalog", INITIAL_PROPERTIES_STORE);
-    if (Array.isArray(settingRes.data) && settingRes.data.length > 0) {
+    const [dIds, settingRes] = await Promise.all([
+      getDeletedPropertyIds(),
+      getSystemSetting<PropertyItem[]>("properties_catalog", []).catch(() => ({ data: [] as PropertyItem[], isDefault: true })),
+    ]);
+    deletedIds = dIds;
+    if (!settingRes.isDefault && Array.isArray(settingRes.data) && settingRes.data.length > 0) {
       dbCatalog = settingRes.data;
     }
   } catch (err) {
-    // transient
+    deletedIds = await getDeletedPropertyIds().catch(() => new Set<string>());
   }
 
-  // Read from local scratch file
+  // 2. Read from local scratch file (sub-millisecond)
   const fileProperties = readPropertiesFromFile();
 
-  let supabaseProperties: PropertyItem[] = [];
-  // Only query raw Supabase table if neither system_settings nor file has populated data
-  if (dbCatalog.length === 0 && fileProperties.length <= INITIAL_PROPERTIES_STORE.length) {
+  // 3. Only query Prisma properties table if BOTH dbCatalog and fileProperties are empty
+  let prismaProperties: PropertyItem[] = [];
+  if (dbCatalog.length === 0 && fileProperties.length === 0) {
     try {
-      const sbPropsRes = await supabaseAdmin.from("properties").select("*").limit(50);
-      if (sbPropsRes && sbPropsRes.data && Array.isArray(sbPropsRes.data)) {
-        supabaseProperties = sbPropsRes.data.map((p: any) => ({
+      const pProps: any[] = await prisma.property.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+      });
+      if (pProps && pProps.length > 0) {
+        prismaProperties = pProps.map((p: any) => ({
           id: p.id,
           title: p.title,
           slug: p.slug,
@@ -177,53 +213,50 @@ export async function getAllProperties(): Promise<PropertyItem[]> {
           region: p.region,
           country: p.country,
           featured: p.featured,
-          imageUrl: p.imageUrl || "/property_villa.webp",
+          imageUrl: p.imageUrl || "/property_villa.png",
           galleryUrls: p.galleryUrls || [],
           contactName: p.contactName || "Desmond Senanu",
           contactPhone: p.contactPhone || "+233 24 643 2493",
           contactEmail: p.contactEmail || "info@loveridgeproperty.com",
-          amenities: p.amenities || [],
-          createdAt: p.createdAt || new Date().toISOString(),
-          updatedAt: p.updatedAt || new Date().toISOString(),
+          amenities: [],
+          createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
+          updatedAt: p.updatedAt ? new Date(p.updatedAt).toISOString() : new Date().toISOString(),
         }));
       }
     } catch (e) {
-      // fallback
+      // transient
     }
   }
 
-  // Merge all unique records across all sources (priority: dbCatalog > supabaseProperties > file > initial)
   const map = new Map<string, PropertyItem>();
 
-  for (const p of INITIAL_PROPERTIES_STORE) {
-    if (p.id && !deletedIds.has(p.id)) map.set(p.id, p);
-  }
-  for (const p of fileProperties) {
-    if (p.id && !deletedIds.has(p.id)) map.set(p.id, { ...map.get(p.id), ...p });
-  }
-  for (const p of dbCatalog) {
-    if (p.id && !deletedIds.has(p.id)) map.set(p.id, { ...map.get(p.id), ...p });
-  }
-  for (const p of supabaseProperties) {
-    if (p.id && !deletedIds.has(p.id)) {
-      const existing = map.get(p.id) || ({} as any);
-      map.set(p.id, {
-        ...existing,
-        ...p,
-        status: p.status || existing.status || "PUBLISHED",
-        isFavourite: existing.isFavourite ?? (p as any).isFavourite ?? false,
-        featured: p.featured !== undefined ? p.featured : (existing.featured ?? false),
-        contactName: existing.contactName || p.contactName || "Desmond Senanu",
-        contactPhone: existing.contactPhone || p.contactPhone || "+233 24 643 2493",
-        contactEmail: existing.contactEmail || p.contactEmail || "info@loveridgeproperty.com",
-        ownerName: existing.ownerName || "",
-        ownerPhone: existing.ownerPhone || "",
-        ownerCompany: existing.ownerCompany || "",
-        commission: existing.commission || "",
-        amenities: existing.amenities && existing.amenities.length > 0 ? existing.amenities : p.amenities || [],
-        imageUrl: p.imageUrl || existing.imageUrl || "/property_villa.png",
-        galleryUrls: p.galleryUrls && p.galleryUrls.length > 0 ? p.galleryUrls : existing.galleryUrls || [],
-      });
+  // If neither dbCatalog nor prismaProperties nor fileProperties has items, seed once with INITIAL_PROPERTIES_STORE
+  if (dbCatalog.length === 0 && prismaProperties.length === 0 && fileProperties.length === 0) {
+    for (const p of INITIAL_PROPERTIES_STORE) {
+      if (p.id && !deletedIds.has(p.id)) map.set(p.id, p);
+    }
+    const seeded = Array.from(map.values());
+    setSystemSetting("properties_catalog", seeded).catch(() => null);
+    writePropertiesToFile(seeded);
+  } else {
+    // 1. Authoritative DB catalog from PostgreSQL system_settings
+    for (const p of dbCatalog) {
+      if (p.id && !deletedIds.has(p.id)) map.set(p.id, p);
+    }
+    // 2. Overlay Prisma properties
+    for (const p of prismaProperties) {
+      if (p.id && !deletedIds.has(p.id)) {
+        const existing = map.get(p.id) || ({} as any);
+        map.set(p.id, { ...existing, ...p });
+      }
+    }
+    // 3. Overlay file properties if any
+    for (const p of fileProperties) {
+      if (p.id && !deletedIds.has(p.id)) {
+        if (!map.has(p.id)) {
+          map.set(p.id, p);
+        }
+      }
     }
   }
 
@@ -233,9 +266,6 @@ export async function getAllProperties(): Promise<PropertyItem[]> {
   }
 
   const mergedList = Array.from(map.values());
-  if (mergedList.length === 0) {
-    return [];
-  }
 
   // Sort: Favourites come first (positions 1, 2, 3), then by newest creation date
   mergedList.sort((a, b) => {
@@ -248,22 +278,10 @@ export async function getAllProperties(): Promise<PropertyItem[]> {
   globalThis.__cachedProperties = mergedList;
   globalThis.__cachedPropertiesTime = now;
 
-  // Background sync if sources differed and not just deleted items
-  if (mergedList.length > fileProperties.length) {
-    writePropertiesToFile(mergedList);
-  }
-
   return mergedList;
 }
 
 export async function saveProperty(propData: Partial<PropertyItem>): Promise<PropertyItem> {
-  invalidatePropertiesCache();
-
-  // If re-saving or creating a property that had this ID, remove from deleted tombstones
-  if (propData.id) {
-    await removeDeletedPropertyId(propData.id);
-  }
-
   const currentProps = await getAllProperties();
   const now = new Date().toISOString();
 
@@ -377,18 +395,18 @@ export async function saveProperty(propData: Partial<PropertyItem>): Promise<Pro
   // 2. Write to local scratch file synchronously
   writePropertiesToFile(updatedList);
 
-  // 3. Write to Supabase system_settings immediately (<30ms)
+  // 3. Write to PostgreSQL system_settings table via Prisma
   try {
     await setSystemSetting("properties_catalog", updatedList);
   } catch (err) {
     console.error("Failed writing properties to system_settings:", err);
   }
 
-  // 4. Upsert directly to Supabase properties table via REST (sub-100ms)
+  // 4. Upsert directly to PostgreSQL properties table via Prisma
   try {
-    await supabaseAdmin
-      .from("properties")
-      .upsert({
+    await (prisma.property as any).upsert({
+      where: { id: newProperty.id },
+      create: {
         id: newProperty.id,
         title: newProperty.title,
         slug: newProperty.slug,
@@ -413,78 +431,42 @@ export async function saveProperty(propData: Partial<PropertyItem>): Promise<Pro
         featured: newProperty.featured,
         imageUrl: newProperty.imageUrl,
         galleryUrls: newProperty.galleryUrls,
-        contactName: newProperty.contactName,
-        contactPhone: newProperty.contactPhone,
-        contactEmail: newProperty.contactEmail,
-        amenities: newProperty.amenities,
-        updatedAt: now,
-      });
-  } catch (sbErr) {
-    console.warn("Supabase property upsert notice:", sbErr);
+        publishedAt: newProperty.status === "PUBLISHED" ? new Date() : null,
+        createdBy: { connect: { id: "1ee92fa7-a3b4-4841-bc10-22e26a3d9fef" } },
+      },
+      update: {
+        title: newProperty.title,
+        slug: newProperty.slug,
+        description: newProperty.description,
+        listingType: newProperty.listingType,
+        propertyType: newProperty.propertyType,
+        status: newProperty.status,
+        price: newProperty.price,
+        currency: newProperty.currency,
+        pricePeriod: newProperty.pricePeriod,
+        bedrooms: newProperty.bedrooms,
+        bathrooms: newProperty.bathrooms,
+        guestRooms: newProperty.guestRooms || 0,
+        boysQuarters: newProperty.boysQuarters || 0,
+        garage: newProperty.garage || 0,
+        sizeSqft: newProperty.sizeSqft,
+        livingAreaSqft: newProperty.livingAreaSqft,
+        locationAddress: newProperty.locationAddress,
+        city: newProperty.city,
+        region: newProperty.region,
+        country: newProperty.country,
+        featured: newProperty.featured,
+        imageUrl: newProperty.imageUrl,
+        galleryUrls: newProperty.galleryUrls,
+        publishedAt: newProperty.status === "PUBLISHED" ? new Date() : null,
+      },
+    });
+  } catch (e) {
+    console.warn("Prisma property upsert warning:", e);
   }
 
-  // 5. Fire non-blocking background Prisma upsert if configured
-  try {
-    (prisma.property as any)
-      .upsert({
-        where: { id: newProperty.id },
-        create: {
-          id: newProperty.id,
-          title: newProperty.title,
-          slug: newProperty.slug,
-          description: newProperty.description,
-          listingType: newProperty.listingType,
-          propertyType: newProperty.propertyType,
-          status: newProperty.status,
-          price: newProperty.price,
-          currency: newProperty.currency,
-          pricePeriod: newProperty.pricePeriod,
-          bedrooms: newProperty.bedrooms,
-          bathrooms: newProperty.bathrooms,
-          guestRooms: newProperty.guestRooms || 0,
-          boysQuarters: newProperty.boysQuarters || 0,
-          garage: newProperty.garage || 0,
-          sizeSqft: newProperty.sizeSqft,
-          livingAreaSqft: newProperty.livingAreaSqft,
-          locationAddress: newProperty.locationAddress,
-          city: newProperty.city,
-          region: newProperty.region,
-          country: newProperty.country,
-          featured: newProperty.featured,
-          imageUrl: newProperty.imageUrl,
-          galleryUrls: newProperty.galleryUrls,
-          publishedAt: newProperty.status === "PUBLISHED" ? new Date() : null,
-        },
-        update: {
-          title: newProperty.title,
-          slug: newProperty.slug,
-          description: newProperty.description,
-          listingType: newProperty.listingType,
-          propertyType: newProperty.propertyType,
-          status: newProperty.status,
-          price: newProperty.price,
-          currency: newProperty.currency,
-          pricePeriod: newProperty.pricePeriod,
-          bedrooms: newProperty.bedrooms,
-          bathrooms: newProperty.bathrooms,
-          guestRooms: newProperty.guestRooms || 0,
-          boysQuarters: newProperty.boysQuarters || 0,
-          garage: newProperty.garage || 0,
-          sizeSqft: newProperty.sizeSqft,
-          livingAreaSqft: newProperty.livingAreaSqft,
-          locationAddress: newProperty.locationAddress,
-          city: newProperty.city,
-          region: newProperty.region,
-          country: newProperty.country,
-          featured: newProperty.featured,
-          imageUrl: newProperty.imageUrl,
-          galleryUrls: newProperty.galleryUrls,
-          publishedAt: newProperty.status === "PUBLISHED" ? new Date() : null,
-        },
-      })
-      .catch(() => {});
-  } catch (e) {
-    // Non-blocking
+  if (newProperty.id) {
+    await removeDeletedPropertyId(newProperty.id);
   }
 
   // Clear memory cache so next read gets fresh data
@@ -498,38 +480,36 @@ export async function deleteProperty(id: string): Promise<boolean> {
 
   // 1. Permanently register this ID in deleted property tombstones
   await addDeletedPropertyId(id);
+  const deletedIds = await getDeletedPropertyIds();
 
   // 2. Remove from active property list
   const currentProps = await getAllProperties();
-  const updated = currentProps.filter((p) => p.id !== id);
+  const updated = currentProps.filter((p) => p.id !== id && !deletedIds.has(p.id));
 
   globalThis.__cachedProperties = updated;
   globalThis.__cachedPropertiesTime = Date.now();
 
-  writePropertiesToFile(updated);
+  const fileProps = readPropertiesFromFile().filter((p) => p.id !== id && !deletedIds.has(p.id));
+  writePropertiesToFile(fileProps);
+
   try {
     await setSystemSetting("properties_catalog", updated);
   } catch (err) {
     console.error("Failed writing updated catalog to system_settings:", err);
   }
 
-  // 3. Delete from Supabase REST properties table
+  // 3. Direct, guaranteed deletion from Prisma PostgreSQL tables
   try {
-    await supabaseAdmin.from("properties").delete().eq("id", id);
+    await prisma.propertyAmenity.deleteMany({ where: { propertyId: id } }).catch(() => null);
+    await prisma.propertyMedia.deleteMany({ where: { propertyId: id } }).catch(() => null);
+    await prisma.lead.updateMany({ where: { propertyId: id }, data: { propertyId: null } }).catch(() => null);
+    await prisma.property.delete({ where: { id } }).catch(() => null);
   } catch (e) {
-    // Ignore error
-  }
-
-  // 4. Background cleanup in Prisma (non-blocking)
-  try {
-    prisma.propertyMedia.deleteMany({ where: { propertyId: id } }).catch(() => null);
-    prisma.propertyAmenity.deleteMany({ where: { propertyId: id } }).catch(() => null);
-    prisma.lead.updateMany({ where: { propertyId: id }, data: { propertyId: null } }).catch(() => null);
-    prisma.property.delete({ where: { id } }).catch(() => null);
-  } catch (e) {
-    // Non-blocking
+    console.warn("Prisma property delete notice:", e);
   }
 
   invalidatePropertiesCache();
+  invalidateSystemSetting("properties_catalog");
+  invalidateSystemSetting("deleted_property_ids");
   return true;
 }

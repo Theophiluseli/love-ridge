@@ -30,7 +30,7 @@ export default function Navbar() {
       <header className="bg-emerald-950/95 backdrop-blur-2xl border border-emerald-500/30 shadow-2xl shadow-slate-950/60 rounded-full px-3 sm:px-5 py-2 sm:py-2.5 flex items-center justify-between relative transition-all">
         {/* Logo (Left) */}
         <Link href="/" className="flex items-center group pl-0.5 sm:pl-1 shrink-0 z-10">
-          <Logo className="h-8 sm:h-10 group-hover:scale-105 transition-transform duration-300" variant="light" />
+          <Logo className="h-7 sm:h-8 md:h-10 group-hover:scale-105 transition-transform duration-300" variant="light" />
         </Link>
 
         {/* Centered Navigation Menu */}
@@ -74,17 +74,30 @@ export default function Navbar() {
 
       {/* Mobile Drawer */}
       {mobileMenu && (
-        <div className="lg:hidden mt-2 bg-emerald-950/95 backdrop-blur-2xl border border-emerald-500/30 rounded-3xl p-4 space-y-2 shadow-2xl">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              onClick={() => setMobileMenu(false)}
-              className="block px-4 py-3 rounded-2xl text-sm font-bold text-emerald-100 hover:bg-emerald-900/80 hover:text-white"
-            >
-              {link.label}
-            </Link>
-          ))}
+        <div className="lg:hidden mt-2 bg-emerald-950/95 backdrop-blur-2xl border border-emerald-500/30 rounded-3xl p-4 sm:p-5 space-y-3 shadow-2xl animate-fade-in">
+          <div className="flex items-center justify-between border-b border-emerald-800/60 pb-3 px-2">
+            <Logo className="h-7" variant="light" />
+            <span className="text-[10px] text-emerald-300 font-extrabold uppercase tracking-widest">Navigation</span>
+          </div>
+          <div className="space-y-1">
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileMenu(false)}
+                  className={`block px-4 py-3 rounded-2xl text-sm font-bold transition-all ${
+                    isActive
+                      ? 'bg-emerald-400 text-slate-950 shadow-md shadow-emerald-400/30'
+                      : 'text-emerald-100 hover:bg-emerald-900/80 hover:text-white'
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

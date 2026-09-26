@@ -132,6 +132,19 @@ function ProductsContent() {
   // Reset visible count when category or search changes
   useEffect(() => {
     setVisibleCount(INITIAL_PAGE_SIZE);
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        clientProductsCache.clear();
+        fetchProducts(true);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
   }, [selectedCategory, search]);
 
   const visibleProducts = products.slice(0, visibleCount);

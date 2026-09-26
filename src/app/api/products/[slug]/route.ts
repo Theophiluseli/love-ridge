@@ -21,7 +21,9 @@ export async function GET(
       { product, related },
       {
         headers: {
-          'Cache-Control': 'public, max-age=60, s-maxage=120, stale-while-revalidate=600',
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0',
         },
       }
     );

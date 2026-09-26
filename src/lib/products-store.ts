@@ -1,7 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 import { prisma } from './db';
-import { supabaseAdmin } from './supabase-admin';
 import { getSystemSetting, setSystemSetting, invalidateSystemSetting } from './system-settings';
 import {
   ProductItem,
@@ -142,14 +141,17 @@ export function invalidateProductsCache() {
 export async function getProductBySlug(slug: string): Promise<ProductItem | null> {
   if (!slug) return null;
   const cleanSlug = decodeURIComponent(slug).toLowerCase().trim();
+  const deletedIds = await getDeletedProductIds();
+  if (deletedIds.has(cleanSlug) || deletedIds.has(slug)) return null;
+
   const products = await getAllProducts();
-  return (
-    products.find(
-      (p) =>
-        p.slug.toLowerCase() === cleanSlug ||
-        p.id.toLowerCase() === cleanSlug
-    ) || null
+  const found = products.find(
+    (p) =>
+      p.slug.toLowerCase() === cleanSlug ||
+      p.id.toLowerCase() === cleanSlug
   );
+  if (found && (deletedIds.has(found.id) || deletedIds.has(found.slug))) return null;
+  return found || null;
 }
 
 export async function getRelatedProducts(product: ProductItem, limit = 3): Promise<ProductItem[]> {
@@ -173,16 +175,20 @@ export async function getAllProducts(): Promise<ProductItem[]> {
     return globalThis.__cachedProducts;
   }
 
-  const deletedIds = await getDeletedProductIds();
-
   let dbCatalog: ProductItem[] = [];
+  let deletedIds = new Set<string>();
+
   try {
-    const settingRes = await getSystemSetting<ProductItem[]>('products_catalog', []);
+    const [dIds, settingRes] = await Promise.all([
+      getDeletedProductIds(),
+      getSystemSetting<ProductItem[]>('products_catalog', []).catch(() => ({ data: [] as ProductItem[], isDefault: true })),
+    ]);
+    deletedIds = dIds;
     if (!settingRes.isDefault && Array.isArray(settingRes.data) && settingRes.data.length > 0) {
       dbCatalog = settingRes.data;
     }
   } catch (err) {
-    // transient
+    deletedIds = await getDeletedProductIds().catch(() => new Set<string>());
   }
 
   // Read from local scratch file
@@ -342,21 +348,21 @@ export async function saveProduct(prodData: Partial<ProductItem>): Promise<Produ
   // 2. Local file write synchronously
   writeProductsToFile(fileProducts);
 
-  // 3. Save to Supabase system_settings table (<30ms)
+  // 3. Save to PostgreSQL system_settings table (<30ms)
   setSystemSetting('products_catalog', fileProducts).catch((err) => {
     console.error('Failed writing products to system_settings:', err);
   });
 
-  // 4. Upsert directly to Supabase REST products table (sub-100ms)
+  // 4. Upsert directly to PostgreSQL via Prisma
   try {
-    await supabaseAdmin
-      .from('products')
-      .upsert({
+    await (prisma.product as any).upsert({
+      where: { id: newProduct.id },
+      create: {
         id: newProduct.id,
         name: newProduct.name,
         slug: newProduct.slug,
         description: newProduct.description,
-        categoryId: newProduct.categoryId,
+        category: { connect: { id: newProduct.categoryId } },
         sku: newProduct.sku,
         price: newProduct.price,
         currency: newProduct.currency,
@@ -368,57 +374,28 @@ export async function saveProduct(prodData: Partial<ProductItem>): Promise<Produ
         status: newProduct.status,
         featured: newProduct.featured,
         imageUrl: newProduct.imageUrl,
-        galleryUrls: newProduct.galleryUrls,
-        updatedAt: now,
-      });
-  } catch (sbErr) {
-    console.warn('Supabase product upsert notice:', sbErr);
-  }
-
-  // 5. Fire non-blocking Prisma background upsert
-  try {
-    (prisma.product as any)
-      .upsert({
-        where: { id: newProduct.id },
-        create: {
-          id: newProduct.id,
-          name: newProduct.name,
-          slug: newProduct.slug,
-          description: newProduct.description,
-          categoryId: newProduct.categoryId,
-          sku: newProduct.sku,
-          price: newProduct.price,
-          currency: newProduct.currency,
-          unit: newProduct.unit,
-          stockQuantity: newProduct.stockQuantity,
-          stockStatus: newProduct.stockStatus,
-          originCountry: newProduct.originCountry,
-          moq: newProduct.moq,
-          status: newProduct.status,
-          featured: newProduct.featured,
-          imageUrl: newProduct.imageUrl,
-        },
-        update: {
-          name: newProduct.name,
-          slug: newProduct.slug,
-          description: newProduct.description,
-          categoryId: newProduct.categoryId,
-          sku: newProduct.sku,
-          price: newProduct.price,
-          currency: newProduct.currency,
-          unit: newProduct.unit,
-          stockQuantity: newProduct.stockQuantity,
-          stockStatus: newProduct.stockStatus,
-          originCountry: newProduct.originCountry,
-          moq: newProduct.moq,
-          status: newProduct.status,
-          featured: newProduct.featured,
-          imageUrl: newProduct.imageUrl,
-        },
-      })
-      .catch(() => {});
+        createdBy: { connect: { id: "1ee92fa7-a3b4-4841-bc10-22e26a3d9fef" } },
+      },
+      update: {
+        name: newProduct.name,
+        slug: newProduct.slug,
+        description: newProduct.description,
+        category: { connect: { id: newProduct.categoryId } },
+        sku: newProduct.sku,
+        price: newProduct.price,
+        currency: newProduct.currency,
+        unit: newProduct.unit,
+        stockQuantity: newProduct.stockQuantity,
+        stockStatus: newProduct.stockStatus,
+        originCountry: newProduct.originCountry,
+        moq: newProduct.moq,
+        status: newProduct.status,
+        featured: newProduct.featured,
+        imageUrl: newProduct.imageUrl,
+      },
+    });
   } catch (e) {
-    // Non-blocking
+    console.warn("Prisma product upsert warning:", e);
   }
 
   if (newProduct.id) {
@@ -434,35 +411,31 @@ export async function deleteProduct(id: string): Promise<boolean> {
 
   // 1. Permanently record this ID in deleted products tombstones
   await addDeletedProductId(id);
+  const deletedIds = await getDeletedProductIds();
 
   // 2. Remove from active product list
   const currentProducts = await getAllProducts();
-  const updated = currentProducts.filter((p) => p.id !== id);
+  const updated = currentProducts.filter((p) => p.id !== id && !deletedIds.has(p.id));
 
   globalThis.__cachedProducts = updated;
   globalThis.__cachedProductsTime = Date.now();
 
-  writeProductsToFile(updated);
+  const fileProds = readProductsFromFile().filter((p) => p.id !== id && !deletedIds.has(p.id));
+  writeProductsToFile(fileProds);
+
   try {
     await setSystemSetting('products_catalog', updated);
   } catch (err) {
     console.error('Failed writing products to system_settings:', err);
   }
 
-  // 3. Delete from Supabase REST products table
+  // 3. Direct, guaranteed deletion from Prisma PostgreSQL tables
   try {
-    await supabaseAdmin.from('products').delete().eq('id', id);
+    await prisma.productMedia.deleteMany({ where: { productId: id } }).catch(() => null);
+    await prisma.lead.updateMany({ where: { productId: id }, data: { productId: null } }).catch(() => null);
+    await prisma.product.delete({ where: { id } }).catch(() => null);
   } catch (e) {
-    // Ignore error
-  }
-
-  // 4. Background cleanup in Prisma (non-blocking)
-  try {
-    prisma.productMedia.deleteMany({ where: { productId: id } }).catch(() => null);
-    prisma.lead.updateMany({ where: { productId: id }, data: { productId: null } }).catch(() => null);
-    prisma.product.delete({ where: { id } }).catch(() => null);
-  } catch (e) {
-    // Non-blocking
+    console.warn("Prisma product delete notice:", e);
   }
 
   invalidateProductsCache();
