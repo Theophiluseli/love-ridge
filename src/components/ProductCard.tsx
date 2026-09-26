@@ -84,6 +84,17 @@ export default function ProductCard({ product, onRequestQuote }: ProductProps) {
               src={imgSrc}
               alt={product.name}
               loading="lazy"
+              onError={(e) => {
+                const target = e.currentTarget;
+                const fallback = product.slug?.includes('drill') || product.name?.toLowerCase().includes('drill')
+                  ? '/product_drill.webp'
+                  : product.slug?.includes('lock') || product.name?.toLowerCase().includes('lock')
+                  ? '/product_lock.webp'
+                  : '/product_tiles.webp';
+                if (!target.src.endsWith(fallback)) {
+                  target.src = fallback;
+                }
+              }}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
           </Link>

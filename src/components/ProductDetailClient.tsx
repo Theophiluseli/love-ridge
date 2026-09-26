@@ -126,6 +126,13 @@ export default function ProductDetailClient({
                 src={selectedImage}
                 alt={product.name}
                 loading="eager"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  const fallback = '/product_tiles.webp';
+                  if (!target.src.endsWith(fallback)) {
+                    target.src = fallback;
+                  }
+                }}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               />
             </div>
@@ -147,7 +154,19 @@ export default function ProductDetailClient({
                           : 'border-slate-200 hover:border-slate-300 opacity-80 hover:opacity-100'
                       }`}
                     >
-                      <img src={img} alt={`Gallery ${idx + 1}`} loading="lazy" className="w-full h-full object-cover" />
+                      <img
+                        src={img}
+                        alt={`Gallery ${idx + 1}`}
+                        loading="lazy"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          const fallback = '/product_tiles.webp';
+                          if (!target.src.endsWith(fallback)) {
+                            target.src = fallback;
+                          }
+                        }}
+                        className="w-full h-full object-cover"
+                      />
                     </button>
                   ))}
                 </div>

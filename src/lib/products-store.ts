@@ -12,6 +12,9 @@ import {
 export * from './products-constants';
 
 const FILE_PATH = path.join(process.cwd(), 'scratch', 'products.json');
+const DELETED_PRODUCTS_FILE = path.join(process.cwd(), 'scratch', 'deleted-products.json');
+const DELETED_PRODUCTS_SETTING_KEY = 'deleted_product_ids';
+const CACHE_DURATION = 30000; // 30 seconds
 
 function ensureFile() {
   try {
@@ -38,9 +41,9 @@ export function readProductsFromFile(): ProductItem[] {
       }
     }
   } catch (err) {
-    // Return initial store on read error
+    // Return empty on error
   }
-  return INITIAL_PRODUCTS_STORE;
+  return [];
 }
 
 export function writeProductsToFile(products: ProductItem[]) {
@@ -58,10 +61,6 @@ declare global {
   var __cachedDeletedProductIds: Set<string> | null | undefined;
   var __deletedProductIdsCacheTime: number | undefined;
 }
-
-const CACHE_DURATION = 30000; // 30 seconds
-const DELETED_PRODUCTS_SETTING_KEY = 'deleted_product_ids';
-const DELETED_PRODUCTS_FILE = path.join(process.cwd(), 'scratch', 'deleted-products.json');
 
 function readDeletedProductIdsFromFile(): Set<string> {
   try {
@@ -93,7 +92,6 @@ export async function getDeletedProductIds(): Promise<Set<string>> {
     const idSet = new Set<string>([...(Array.isArray(data) ? data : []), ...Array.from(fileSet)]);
     globalThis.__cachedDeletedProductIds = idSet;
     globalThis.__deletedProductIdsCacheTime = now;
-    writeDeletedProductIdsToFile(idSet);
     return idSet;
   } catch (err) {
     globalThis.__cachedDeletedProductIds = fileSet;
@@ -141,24 +139,72 @@ export function invalidateProductsCache() {
 export async function getProductBySlug(slug: string): Promise<ProductItem | null> {
   if (!slug) return null;
   const cleanSlug = decodeURIComponent(slug).toLowerCase().trim();
-  const deletedIds = await getDeletedProductIds();
-  if (deletedIds.has(cleanSlug) || deletedIds.has(slug)) return null;
 
+  // Try in-memory or store first
   const products = await getAllProducts();
   const found = products.find(
     (p) =>
       p.slug.toLowerCase() === cleanSlug ||
       p.id.toLowerCase() === cleanSlug
   );
-  if (found && (deletedIds.has(found.id) || deletedIds.has(found.slug))) return null;
-  return found || null;
+  if (found) return found;
+
+  // Direct database query fallback
+  try {
+    const dbProd = await prisma.product.findFirst({
+      where: {
+        OR: [
+          { slug: { equals: cleanSlug, mode: 'insensitive' } },
+          { id: cleanSlug }
+        ]
+      },
+      include: {
+        category: true,
+      }
+    });
+    if (dbProd) {
+      const ghsPrice = dbProd.price || 0;
+      const cnyPrice = Math.round(ghsPrice * 0.47);
+      return {
+        id: dbProd.id,
+        name: dbProd.name,
+        slug: dbProd.slug,
+        description: dbProd.description || '',
+        categoryId: dbProd.categoryId,
+        category: {
+          id: dbProd.category?.id || dbProd.categoryId,
+          name: dbProd.category?.name || 'Building Materials',
+          slug: dbProd.category?.slug || 'building-materials',
+        },
+        sku: dbProd.sku,
+        price: ghsPrice,
+        priceCny: cnyPrice,
+        currency: dbProd.currency || 'GHS',
+        unit: dbProd.unit || 'per piece',
+        stockQuantity: dbProd.stockQuantity || 0,
+        stockStatus: dbProd.stockStatus || 'IN_STOCK',
+        originCountry: dbProd.originCountry || 'China',
+        moq: dbProd.moq || 1,
+        status: dbProd.status || 'PUBLISHED',
+        featured: Boolean(dbProd.featured),
+        isFavourite: Boolean(dbProd.featured),
+        imageUrl: dbProd.imageUrl || '/product_tiles.webp',
+        galleryUrls: Array.isArray(dbProd.galleryUrls) && dbProd.galleryUrls.length > 0 ? dbProd.galleryUrls : [dbProd.imageUrl || '/product_tiles.webp'],
+        createdAt: dbProd.createdAt ? new Date(dbProd.createdAt).toISOString() : new Date().toISOString(),
+        updatedAt: dbProd.updatedAt ? new Date(dbProd.updatedAt).toISOString() : new Date().toISOString(),
+      };
+    }
+  } catch (e) {
+    console.error('Direct getProductBySlug DB lookup error:', e);
+  }
+
+  return null;
 }
 
 export async function getRelatedProducts(product: ProductItem, limit = 3): Promise<ProductItem[]> {
   const products = await getAllProducts();
   const published = products.filter((p) => p.id !== product.id && p.status === 'PUBLISHED');
 
-  // Prioritize same category first
   const sameCategory = published.filter(
     (p) =>
       (product.categoryId && p.categoryId === product.categoryId) ||
@@ -171,71 +217,101 @@ export async function getRelatedProducts(product: ProductItem, limit = 3): Promi
 
 export async function getAllProducts(): Promise<ProductItem[]> {
   const now = Date.now();
-  if (globalThis.__cachedProducts && globalThis.__cachedProducts.length > 0 && now - (globalThis.__cachedProductsTime || 0) < CACHE_DURATION) {
+  if (
+    globalThis.__cachedProducts &&
+    globalThis.__cachedProducts.length > 0 &&
+    now - (globalThis.__cachedProductsTime || 0) < CACHE_DURATION
+  ) {
     return globalThis.__cachedProducts;
   }
 
-  let dbCatalog: ProductItem[] = [];
-  let deletedIds = new Set<string>();
-
+  // 1. Authoritative primary source: Query Prisma PostgreSQL products table
+  let prismaProducts: ProductItem[] = [];
   try {
-    const [dIds, settingRes] = await Promise.all([
-      getDeletedProductIds(),
-      getSystemSetting<ProductItem[]>('products_catalog', []).catch(() => ({ data: [] as ProductItem[], isDefault: true })),
-    ]);
-    deletedIds = dIds;
-    if (!settingRes.isDefault && Array.isArray(settingRes.data) && settingRes.data.length > 0) {
-      dbCatalog = settingRes.data;
+    const pProds: any[] = await prisma.product.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        category: true,
+      },
+    });
+
+    if (pProds && pProds.length > 0) {
+      prismaProducts = pProds.map((p: any) => {
+        const ghsPrice = typeof p.price === 'number' ? p.price : parseFloat(p.price) || 0;
+        const cnyPrice = Math.round(ghsPrice * 0.47);
+        return {
+          id: p.id,
+          name: p.name,
+          slug: p.slug,
+          description: p.description || '',
+          categoryId: p.categoryId,
+          category: {
+            id: p.category?.id || p.categoryId,
+            name: p.category?.name || 'Building Materials',
+            slug: p.category?.slug || 'building-materials',
+          },
+          sku: p.sku,
+          price: ghsPrice,
+          priceCny: cnyPrice,
+          currency: p.currency || 'GHS',
+          unit: p.unit || 'per piece',
+          stockQuantity: p.stockQuantity || 0,
+          stockStatus: p.stockStatus || 'IN_STOCK',
+          originCountry: p.originCountry || 'China',
+          moq: p.moq || 1,
+          status: p.status || 'PUBLISHED',
+          featured: Boolean(p.featured),
+          isFavourite: Boolean(p.featured),
+          imageUrl: p.imageUrl || '/product_tiles.webp',
+          galleryUrls: Array.isArray(p.galleryUrls) && p.galleryUrls.length > 0 ? p.galleryUrls : [p.imageUrl || '/product_tiles.webp'],
+          createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
+          updatedAt: p.updatedAt ? new Date(p.updatedAt).toISOString() : new Date().toISOString(),
+        };
+      });
     }
   } catch (err) {
-    deletedIds = await getDeletedProductIds().catch(() => new Set<string>());
+    console.warn('Prisma product fetch notice, falling back to backup stores:', err);
   }
 
-  // Read from local scratch file
+  // If Prisma successfully returned products, use them as authoritative
+  if (prismaProducts.length > 0) {
+    // Sort: Favourites first, then newest
+    prismaProducts.sort((a, b) => {
+      const aFav = a.isFavourite ? 1 : 0;
+      const bFav = b.isFavourite ? 1 : 0;
+      if (aFav !== bFav) return bFav - aFav;
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+    });
+
+    globalThis.__cachedProducts = prismaProducts;
+    globalThis.__cachedProductsTime = now;
+    writeProductsToFile(prismaProducts);
+    setSystemSetting('products_catalog', prismaProducts).catch(() => null);
+    return prismaProducts;
+  }
+
+  // 2. Backup source: system_settings table in PostgreSQL
+  try {
+    const settingRes = await getSystemSetting<ProductItem[]>('products_catalog', []);
+    if (!settingRes.isDefault && Array.isArray(settingRes.data) && settingRes.data.length > 0) {
+      globalThis.__cachedProducts = settingRes.data;
+      globalThis.__cachedProductsTime = now;
+      return settingRes.data;
+    }
+  } catch (e) {}
+
+  // 3. Fallback: local scratch file or initial constant
   const fileProducts = readProductsFromFile();
-
-  const map = new Map<string, ProductItem>();
-
-  // If neither dbCatalog nor fileProducts has any items, seed once with INITIAL_PRODUCTS_STORE
-  if (dbCatalog.length === 0 && fileProducts.length === 0) {
-    for (const p of INITIAL_PRODUCTS_STORE) {
-      if (p.id && !deletedIds.has(p.id)) map.set(p.id, p);
-    }
-    const seeded = Array.from(map.values());
-    setSystemSetting('products_catalog', seeded).catch(() => null);
-    writeProductsToFile(seeded);
-  } else {
-    // 1. Authoritative DB catalog from system_settings
-    for (const p of dbCatalog) {
-      if (p.id && !deletedIds.has(p.id)) map.set(p.id, p);
-    }
-    // 2. Overlay file products if any exist
-    for (const p of fileProducts) {
-      if (p.id && !deletedIds.has(p.id)) {
-        map.set(p.id, { ...map.get(p.id), ...p });
-      }
-    }
+  if (fileProducts.length > 0) {
+    globalThis.__cachedProducts = fileProducts;
+    globalThis.__cachedProductsTime = now;
+    return fileProducts;
   }
 
-  // Explicit safety clean of any deleted tombstones
-  for (const id of Array.from(deletedIds)) {
-    map.delete(id);
-  }
-
-  const mergedList = Array.from(map.values());
-
-  // Sort: Favourites come first (max 3), then by newest creation date
-  mergedList.sort((a, b) => {
-    const aFav = a.isFavourite ? 1 : 0;
-    const bFav = b.isFavourite ? 1 : 0;
-    if (aFav !== bFav) return bFav - aFav;
-    return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
-  });
-
-  globalThis.__cachedProducts = mergedList;
+  // 4. Default constant store
+  globalThis.__cachedProducts = INITIAL_PRODUCTS_STORE;
   globalThis.__cachedProductsTime = now;
-
-  return mergedList;
+  return INITIAL_PRODUCTS_STORE;
 }
 
 export async function saveProduct(prodData: Partial<ProductItem>): Promise<ProductItem> {
@@ -319,41 +395,15 @@ export async function saveProduct(prodData: Partial<ProductItem>): Promise<Produ
     status: prodData.status || existing?.status || 'PUBLISHED',
     featured: prodData.featured !== undefined ? Boolean(prodData.featured) : Boolean(existing?.featured || isFav),
     isFavourite: isFav,
-    imageUrl: prodData.imageUrl || existing?.imageUrl || '/product_tiles.png',
-    galleryUrls: Array.isArray(prodData.galleryUrls)
+    imageUrl: prodData.imageUrl || existing?.imageUrl || '/product_tiles.webp',
+    galleryUrls: Array.isArray(prodData.galleryUrls) && prodData.galleryUrls.length > 0
       ? prodData.galleryUrls
-      : (existing?.galleryUrls || (prodData.imageUrl ? [prodData.imageUrl] : [])),
+      : (existing?.galleryUrls || (prodData.imageUrl ? [prodData.imageUrl] : ['/product_tiles.webp'])),
     createdAt: existing?.createdAt || now,
     updatedAt: now,
   };
 
-  if (existingIndex >= 0) {
-    fileProducts[existingIndex] = { ...fileProducts[existingIndex], ...newProduct };
-  } else {
-    fileProducts.unshift(newProduct);
-  }
-
-  // Sort updated list: Favourites first, then newest
-  fileProducts.sort((a, b) => {
-    const aFav = a.isFavourite ? 1 : 0;
-    const bFav = b.isFavourite ? 1 : 0;
-    if (aFav !== bFav) return bFav - aFav;
-    return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
-  });
-
-  // 1. In-memory cache update immediately (<1ms)
-  globalThis.__cachedProducts = fileProducts;
-  globalThis.__cachedProductsTime = Date.now();
-
-  // 2. Local file write synchronously
-  writeProductsToFile(fileProducts);
-
-  // 3. Save to PostgreSQL system_settings table (<30ms)
-  setSystemSetting('products_catalog', fileProducts).catch((err) => {
-    console.error('Failed writing products to system_settings:', err);
-  });
-
-  // 4. Upsert directly to PostgreSQL via Prisma
+  // 1. Direct upsert into PostgreSQL via Prisma
   try {
     await (prisma.product as any).upsert({
       where: { id: newProduct.id },
@@ -374,6 +424,7 @@ export async function saveProduct(prodData: Partial<ProductItem>): Promise<Produ
         status: newProduct.status,
         featured: newProduct.featured,
         imageUrl: newProduct.imageUrl,
+        galleryUrls: newProduct.galleryUrls,
         createdBy: { connect: { id: "1ee92fa7-a3b4-4841-bc10-22e26a3d9fef" } },
       },
       update: {
@@ -392,11 +443,31 @@ export async function saveProduct(prodData: Partial<ProductItem>): Promise<Produ
         status: newProduct.status,
         featured: newProduct.featured,
         imageUrl: newProduct.imageUrl,
+        galleryUrls: newProduct.galleryUrls,
       },
     });
   } catch (e) {
     console.warn("Prisma product upsert warning:", e);
   }
+
+  // 2. Update memory cache and backup stores
+  if (existingIndex >= 0) {
+    fileProducts[existingIndex] = { ...fileProducts[existingIndex], ...newProduct };
+  } else {
+    fileProducts.unshift(newProduct);
+  }
+
+  fileProducts.sort((a, b) => {
+    const aFav = a.isFavourite ? 1 : 0;
+    const bFav = b.isFavourite ? 1 : 0;
+    if (aFav !== bFav) return bFav - aFav;
+    return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+  });
+
+  globalThis.__cachedProducts = fileProducts;
+  globalThis.__cachedProductsTime = Date.now();
+  writeProductsToFile(fileProducts);
+  setSystemSetting('products_catalog', fileProducts).catch(() => null);
 
   if (newProduct.id) {
     await removeDeletedProductId(newProduct.id);
@@ -409,27 +480,7 @@ export async function saveProduct(prodData: Partial<ProductItem>): Promise<Produ
 export async function deleteProduct(id: string): Promise<boolean> {
   invalidateProductsCache();
 
-  // 1. Permanently record this ID in deleted products tombstones
-  await addDeletedProductId(id);
-  const deletedIds = await getDeletedProductIds();
-
-  // 2. Remove from active product list
-  const currentProducts = await getAllProducts();
-  const updated = currentProducts.filter((p) => p.id !== id && !deletedIds.has(p.id));
-
-  globalThis.__cachedProducts = updated;
-  globalThis.__cachedProductsTime = Date.now();
-
-  const fileProds = readProductsFromFile().filter((p) => p.id !== id && !deletedIds.has(p.id));
-  writeProductsToFile(fileProds);
-
-  try {
-    await setSystemSetting('products_catalog', updated);
-  } catch (err) {
-    console.error('Failed writing products to system_settings:', err);
-  }
-
-  // 3. Direct, guaranteed deletion from Prisma PostgreSQL tables
+  // 1. Direct deletion from Prisma PostgreSQL tables
   try {
     await prisma.productMedia.deleteMany({ where: { productId: id } }).catch(() => null);
     await prisma.lead.updateMany({ where: { productId: id }, data: { productId: null } }).catch(() => null);
@@ -438,8 +489,15 @@ export async function deleteProduct(id: string): Promise<boolean> {
     console.warn("Prisma product delete notice:", e);
   }
 
+  // 2. Remove from active memory list and backup stores
+  const currentProducts = await getAllProducts();
+  const updated = currentProducts.filter((p) => p.id !== id);
+
+  globalThis.__cachedProducts = updated;
+  globalThis.__cachedProductsTime = Date.now();
+  writeProductsToFile(updated);
+  setSystemSetting('products_catalog', updated).catch(() => null);
+
   invalidateProductsCache();
-  invalidateSystemSetting('products_catalog');
-  invalidateSystemSetting('deleted_product_ids');
   return true;
 }

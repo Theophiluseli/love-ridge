@@ -236,6 +236,13 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
             src={currentCover}
             alt={property.title}
             loading="eager"
+            onError={(e) => {
+              const target = e.currentTarget;
+              const fallback = '/property_villa.webp';
+              if (!target.src.endsWith(fallback)) {
+                target.src = fallback;
+              }
+            }}
             className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 cursor-pointer"
             onClick={() => {
               setLightboxIndex(galleryImages.indexOf(currentCover) >= 0 ? galleryImages.indexOf(currentCover) : 0);
@@ -585,6 +592,13 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
                       src={imgUrl}
                       alt={`Property Photo ${idx + 1}`}
                       loading="lazy"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        const fallback = '/property_villa.webp';
+                        if (!target.src.endsWith(fallback)) {
+                          target.src = fallback;
+                        }
+                      }}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 bg-slate-950/20 group-hover:bg-slate-950/0 transition-colors flex items-center justify-center">

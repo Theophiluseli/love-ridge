@@ -52,13 +52,16 @@ export async function GET(req: NextRequest) {
       return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
     });
 
+    const isBust = Boolean(searchParams.get('_t'));
+    const cacheHeader = isBust
+      ? 'no-store, no-cache, must-revalidate, max-age=0'
+      : 'public, s-maxage=10, stale-while-revalidate=59';
+
     return NextResponse.json(
       { products, count: products.length },
       {
         headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
-          'Pragma': 'no-cache',
-          'Expires': '0',
+          'Cache-Control': cacheHeader,
         },
       }
     );

@@ -145,6 +145,12 @@ export default function PropertyCard({ property, onRequestViewing, hidePropertyT
             src={currentImg}
             alt={`${property.title} - Photo ${currentImageIndex + 1}`}
             loading="lazy"
+            onError={(e) => {
+              const target = e.currentTarget;
+              if (target.src !== fallbackImg) {
+                target.src = fallbackImg;
+              }
+            }}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
         </Link>
