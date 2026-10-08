@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, CheckCircle, Search, ShieldCheck, Eye, Image as ImageIcon, Trees, Warehouse, Building, Building2, Upload, ArrowRight, X, Phone, Mail, User, Loader2, Clock, Tv, Network, Asterisk, Check, Zap, AlertTriangle, Star } from 'lucide-react';
+import { Plus, Edit2, Trash2, CheckCircle, Search, ShieldCheck, Eye, ExternalLink, MapPin, Bed, Bath, Car, Image as ImageIcon, Trees, Warehouse, Building, Building2, Upload, ArrowRight, X, Phone, Mail, User, Loader2, Clock, Tv, Network, Asterisk, Check, Zap, AlertTriangle, Star, Share2, Send } from 'lucide-react';
 import Link from 'next/link';
 import { compressImage, watermarkImage, optimizeImageToWebP, ImageOptimizationReport } from '@/lib/utils/imageCompressor';
 import { AMENITY_GROUPS, ALL_AMENITIES_LIST } from '@/lib/amenities-constants';
@@ -23,6 +23,15 @@ export default function AdminPropertiesPage() {
   // Form View State
   const [activeTab, setActiveTab] = useState<'LIST' | 'CREATE' | 'EDIT'>('LIST');
   const [editItem, setEditItem] = useState<any>(null);
+  const [viewItem, setViewItem] = useState<any>(null);
+  const [isEditingOwnerRecord, setIsEditingOwnerRecord] = useState(false);
+  const [ownerRecordForm, setOwnerRecordForm] = useState({
+    ownerName: '',
+    ownerPhone: '',
+    ownerCompany: '',
+  });
+  const [savingOwnerRecord, setSavingOwnerRecord] = useState(false);
+  const [ownerRecordSuccess, setOwnerRecordSuccess] = useState('');
 
   // Agent Selection Dropdown & Custom Input State
   const [agentSelectMode, setAgentSelectMode] = useState<string>('Kwame Appiah');
@@ -55,9 +64,11 @@ export default function AdminPropertiesPage() {
     imageUrl: '',
     galleryUrls: [] as string[],
     amenities: [] as string[],
-    contactName: 'Kwame Appiah',
+    contactName: 'Desmond Senanu',
     contactPhone: '+233 24 643 2493',
-    contactEmail: 'agent@loveridge.com',
+    contactEmail: 'info@loveridgeproperty.com',
+    socialPlatform: 'TIKTOK', // TIKTOK, INSTAGRAM, FACEBOOK, YOUTUBE
+    socialUrl: '',
     ownerName: '',
     ownerPhone: '',
     ownerCompany: '',
@@ -124,6 +135,52 @@ export default function AdminPropertiesPage() {
     return matchesStatus && matchesSearch;
   });
 
+  async function saveOwnerRecordQuick() {
+    if (!viewItem) return;
+    setSavingOwnerRecord(true);
+    setOwnerRecordSuccess('');
+    try {
+      const token = localStorage.getItem('loveridge_token');
+      const res = await fetch(`/api/admin/properties/${viewItem.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ownerName: ownerRecordForm.ownerName.trim(),
+          ownerPhone: ownerRecordForm.ownerPhone.trim(),
+          ownerCompany: ownerRecordForm.ownerCompany.trim(),
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        const updated = data.property || {
+          ...viewItem,
+          ownerName: ownerRecordForm.ownerName.trim(),
+          ownerPhone: ownerRecordForm.ownerPhone.trim(),
+          ownerCompany: ownerRecordForm.ownerCompany.trim(),
+        };
+
+        setViewItem(updated);
+        setProperties((prev) =>
+          prev.map((p) => (p.id === viewItem.id ? { ...p, ...updated } : p))
+        );
+        setIsEditingOwnerRecord(false);
+        setOwnerRecordSuccess('Owner record updated successfully!');
+        setTimeout(() => setOwnerRecordSuccess(''), 4000);
+      } else {
+        alert(data.error || 'Failed to save owner record.');
+      }
+    } catch (err) {
+      console.error('Failed to save owner record:', err);
+      alert('Network error while saving owner record.');
+    } finally {
+      setSavingOwnerRecord(false);
+    }
+  }
+
   async function handleSave(e: React.FormEvent, targetStatus?: 'DRAFT' | 'PUBLISHED') {
     if (e) e.preventDefault();
 
@@ -161,6 +218,21 @@ export default function AdminPropertiesPage() {
           return;
         }
         throw new Error(data.error || `Server response status: ${res.status}`);
+      }
+
+      if (data.property) {
+        if (viewItem && (viewItem.id === data.property.id || (editItem && editItem.id === data.property.id))) {
+          setViewItem(data.property);
+        }
+        setProperties((prev) => {
+          const idx = prev.findIndex((p) => p.id === data.property.id);
+          if (idx >= 0) {
+            const next = [...prev];
+            next[idx] = data.property;
+            return next;
+          }
+          return [data.property, ...prev];
+        });
       }
 
       setMessage(
@@ -401,15 +473,16 @@ export default function AdminPropertiesPage() {
   }
 
   function openEdit(prop: any) {
+    if (!prop) return;
     setEditItem(prop);
-    const existingAgent = prop.contactName || prop.agent?.name || 'Kwame Appiah';
+    const existingAgent = prop.contactName || prop.agent?.name || 'Desmond Senanu';
 
     setForm({
-      title: prop.title,
-      description: prop.description,
-      listingType: prop.propertyType === 'LAND' ? 'SALE' : prop.listingType,
-      propertyType: prop.propertyType,
-      price: prop.price.toString(),
+      title: prop.title || '',
+      description: prop.description || '',
+      listingType: prop.propertyType === 'LAND' ? 'SALE' : (prop.listingType || 'SALE'),
+      propertyType: prop.propertyType || 'HOUSE',
+      price: (prop.price ?? 0).toString(),
       currency: prop.currency || 'USD',
       pricePeriod: prop.propertyType === 'LAND' ? 'outright purchase' : (prop.pricePeriod || (prop.listingType === 'RENT' ? 'per month' : 'outright purchase')),
       negotiable: prop.negotiable !== undefined ? Boolean(prop.negotiable) : true,
@@ -420,12 +493,12 @@ export default function AdminPropertiesPage() {
       guestRooms: (prop.guestRooms || 0).toString(),
       boysQuarters: (prop.boysQuarters || 0).toString(),
       garage: (prop.garage || 0).toString(),
-      sizeSqft: prop.sizeSqft ? prop.sizeSqft.toString() : '',
-      livingAreaSqft: prop.livingAreaSqft ? prop.livingAreaSqft.toString() : '',
-      locationAddress: prop.locationAddress,
-      city: prop.city,
+      sizeSqft: prop.sizeSqft != null ? prop.sizeSqft.toString() : '',
+      livingAreaSqft: prop.livingAreaSqft != null ? prop.livingAreaSqft.toString() : '',
+      locationAddress: prop.locationAddress || '',
+      city: prop.city || 'Accra',
       region: prop.region || 'Greater Accra',
-      featured: prop.featured || false,
+      featured: Boolean(prop.featured),
       status: prop.status || 'DRAFT',
       imageUrl: prop.imageUrl || '',
       galleryUrls: Array.isArray(prop.galleryUrls) ? prop.galleryUrls : [],
@@ -433,8 +506,10 @@ export default function AdminPropertiesPage() {
         ? prop.amenities.map((a: any) => (typeof a === 'string' ? a : a.amenity?.name || a.name || ''))
         : [],
       contactName: existingAgent,
-      contactPhone: '+233 24 643 2493',
-      contactEmail: 'agent@loveridge.com',
+      contactPhone: prop.contactPhone || '+233 24 643 2493',
+      contactEmail: prop.contactEmail || 'info@loveridgeproperty.com',
+      socialPlatform: prop.socialPlatform ? prop.socialPlatform.toUpperCase() : 'TIKTOK',
+      socialUrl: prop.socialUrl || prop.tiktokUrl || prop.videoUrl || '',
       ownerName: prop.ownerName || '',
       ownerPhone: prop.ownerPhone || '',
       ownerCompany: prop.ownerCompany || '',
@@ -481,9 +556,11 @@ export default function AdminPropertiesPage() {
       imageUrl: '',
       galleryUrls: [],
       amenities: [],
-      contactName: 'Loveridge Staff Agent',
+      contactName: 'Desmond Senanu',
       contactPhone: '+233 24 643 2493',
-      contactEmail: 'agent@loveridge.com',
+      contactEmail: 'info@loveridgeproperty.com',
+      socialPlatform: 'TIKTOK',
+      socialUrl: '',
       ownerName: '',
       ownerPhone: '',
       ownerCompany: '',
@@ -1241,25 +1318,22 @@ export default function AdminPropertiesPage() {
                 </div>
               </div>
 
-              {/* PROPERTY OWNER & SOURCING RECORD (STRICTLY CONFIDENTIAL - ADMIN ONLY) */}
+              {/* PROPERTY OWNER & SOURCING RECORD */}
               <div className="p-6 bg-slate-50/90 rounded-3xl border-2 border-slate-200 space-y-5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/80 pb-3">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-lg bg-emerald-800 text-white flex items-center justify-center text-xs font-black">
-                        🔒
-                      </span>
+                      <div className="w-6 h-6 rounded-lg bg-emerald-800 text-white flex items-center justify-center text-xs font-black">
+                        <User className="w-3.5 h-3.5" />
+                      </div>
                       <h3 className="text-sm font-black text-slate-900">
-                        Property Owner & Sourcing Details (Internal Record Only)
+                        Property Owner & Sourcing Details
                       </h3>
                     </div>
                     <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                      Confidential broker record to check owner information. Never displayed to clients or on the public website.
+                      Internal staff record for landlord contact, direct sourcing, and property verification.
                     </p>
                   </div>
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-900 border border-amber-200 rounded-full text-[11px] font-black self-start sm:self-auto shadow-2xs">
-                    🔒 Strictly Confidential
-                  </span>
                 </div>
 
                 {/* 3 Core Fields: Name, Phone Number, Company/Agency Name */}
@@ -1301,7 +1375,7 @@ export default function AdminPropertiesPage() {
                       type="text"
                       value={form.ownerCompany || ''}
                       onChange={(e) => setForm({ ...form, ownerCompany: e.target.value })}
-                      placeholder="e.g. GoldKey Properties / Private Landlord"
+                      placeholder="e.g. GoldKey Properties Ltd or Individual Landlord"
                       className="admin-input"
                     />
                   </div>
@@ -1457,6 +1531,205 @@ export default function AdminPropertiesPage() {
                   onChange={(e) => setForm({ ...form, featured: e.target.checked })}
                   className="w-5 h-5 text-emerald-800 rounded border-slate-300 focus:ring-emerald-800 cursor-pointer shrink-0"
                 />
+              </div>
+
+              {/* SOCIAL MEDIA SHOWCASE & BUTTON LINK (TikTok, Instagram, Facebook, YouTube) */}
+              <div className="p-6 bg-slate-50/80 rounded-3xl border border-slate-200 space-y-5">
+                <div className="border-b border-slate-200 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                      <Share2 className="w-4 h-4 text-emerald-700" /> Property Card Social Media Button & Link
+                    </h3>
+                    <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                      Choose which social platform button to feature on the property card (3rd action button) and paste its direct link.
+                    </p>
+                  </div>
+                  <span className="text-[10px] text-slate-700 bg-white border border-slate-200 font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1 shadow-2xs self-start sm:self-auto">
+                    Live on Website Cards
+                  </span>
+                </div>
+
+                {/* Platform Selector (4 Pills/Cards) */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 mb-2">
+                    Select Social Platform *
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    {/* TikTok */}
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, socialPlatform: 'TIKTOK' })}
+                      className={`py-3 px-3.5 rounded-2xl border-2 flex items-center justify-center gap-2 text-xs font-extrabold transition-all cursor-pointer ${
+                        form.socialPlatform === 'TIKTOK'
+                          ? 'border-black bg-black text-white shadow-md scale-[1.02]'
+                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-400'
+                      }`}
+                    >
+                      <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+                        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1.04-.1z" />
+                      </svg>
+                      <span>TikTok</span>
+                      {form.socialPlatform === 'TIKTOK' && <Check className="w-3.5 h-3.5 ml-auto text-emerald-400" />}
+                    </button>
+
+                    {/* Instagram */}
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, socialPlatform: 'INSTAGRAM' })}
+                      className={`py-3 px-3.5 rounded-2xl border-2 flex items-center justify-center gap-2 text-xs font-extrabold transition-all cursor-pointer ${
+                        form.socialPlatform === 'INSTAGRAM'
+                          ? 'border-[#fd1d1d] bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045] text-white shadow-md scale-[1.02]'
+                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-400'
+                      }`}
+                    >
+                      <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+                        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+                      </svg>
+                      <span>Instagram</span>
+                      {form.socialPlatform === 'INSTAGRAM' && <Check className="w-3.5 h-3.5 ml-auto text-white" />}
+                    </button>
+
+                    {/* Facebook */}
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, socialPlatform: 'FACEBOOK' })}
+                      className={`py-3 px-3.5 rounded-2xl border-2 flex items-center justify-center gap-2 text-xs font-extrabold transition-all cursor-pointer ${
+                        form.socialPlatform === 'FACEBOOK'
+                          ? 'border-[#1877F2] bg-[#1877F2] text-white shadow-md scale-[1.02]'
+                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-400'
+                      }`}
+                    >
+                      <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                      </svg>
+                      <span>Facebook</span>
+                      {form.socialPlatform === 'FACEBOOK' && <Check className="w-3.5 h-3.5 ml-auto text-white" />}
+                    </button>
+
+                    {/* YouTube */}
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, socialPlatform: 'YOUTUBE' })}
+                      className={`py-3 px-3.5 rounded-2xl border-2 flex items-center justify-center gap-2 text-xs font-extrabold transition-all cursor-pointer ${
+                        form.socialPlatform === 'YOUTUBE'
+                          ? 'border-[#FF0000] bg-[#FF0000] text-white shadow-md scale-[1.02]'
+                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-400'
+                      }`}
+                    >
+                      <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                      </svg>
+                      <span>YouTube</span>
+                      {form.socialPlatform === 'YOUTUBE' && <Check className="w-3.5 h-3.5 ml-auto text-white" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Link Input */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-slate-800">
+                      Paste {form.socialPlatform === 'TIKTOK' ? 'TikTok' : form.socialPlatform === 'INSTAGRAM' ? 'Instagram' : form.socialPlatform === 'FACEBOOK' ? 'Facebook' : 'YouTube'} Link
+                    </label>
+                    <span className="text-[10px] text-slate-500 font-medium">
+                      (Leave blank to use official Loveridge {form.socialPlatform === 'TIKTOK' ? 'TikTok' : form.socialPlatform === 'INSTAGRAM' ? 'Instagram' : form.socialPlatform === 'FACEBOOK' ? 'Facebook' : 'YouTube'} channel)
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="url"
+                      value={form.socialUrl || ''}
+                      onChange={(e) => setForm({ ...form, socialUrl: e.target.value })}
+                      placeholder={
+                        form.socialPlatform === 'TIKTOK'
+                          ? 'https://www.tiktok.com/@loveridgeproperties/video/123456789...'
+                          : form.socialPlatform === 'INSTAGRAM'
+                          ? 'https://www.instagram.com/reel/C... or https://www.instagram.com/p/...'
+                          : form.socialPlatform === 'FACEBOOK'
+                          ? 'https://www.facebook.com/loveridgeproperties/posts/...'
+                          : 'https://www.youtube.com/watch?v=... or https://youtu.be/...'
+                      }
+                      className="admin-input pr-10 font-mono text-xs"
+                    />
+                    {form.socialUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, socialUrl: '' })}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                        title="Clear link"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Real-time Live Button Preview */}
+                <div className="pt-2">
+                  <div className="bg-slate-900 text-white rounded-2xl p-3.5 sm:p-4">
+                    <div className="flex items-center justify-between mb-2.5">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                        <Eye className="w-3.5 h-3.5" /> Real-time Website Card Action Preview
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-medium">
+                        Target: {form.socialUrl ? form.socialUrl : `Official Loveridge ${form.socialPlatform} Profile`}
+                      </span>
+                    </div>
+
+                    <div className="max-w-md mx-auto bg-white p-3 rounded-2xl shadow-inner border border-slate-200">
+                      <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                        {/* 1. View Details */}
+                        <div className="py-2.5 px-2 rounded-full border-2 border-slate-900 text-slate-900 text-[11px] sm:text-xs font-black text-center truncate">
+                          View Details
+                        </div>
+                        {/* 2. Enquire */}
+                        <div className="py-2.5 px-2 rounded-full bg-[#034d35] text-white text-[11px] sm:text-xs font-black text-center flex items-center justify-center gap-1 truncate">
+                          <Send className="w-3 h-3 shrink-0" />
+                          <span>Enquire</span>
+                        </div>
+                        {/* 3. Dynamic Selected Platform Pill */}
+                        <div
+                          className={`py-2.5 px-2 rounded-full text-[11px] sm:text-xs font-black text-center flex items-center justify-center gap-1 text-white shadow-2xs truncate ${
+                            form.socialPlatform === 'INSTAGRAM'
+                              ? 'bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045]'
+                              : form.socialPlatform === 'FACEBOOK'
+                              ? 'bg-[#1877F2]'
+                              : form.socialPlatform === 'YOUTUBE'
+                              ? 'bg-[#FF0000]'
+                              : 'bg-black'
+                          }`}
+                        >
+                          {form.socialPlatform === 'INSTAGRAM' ? (
+                            <svg className="w-3 h-3 shrink-0 fill-current" viewBox="0 0 24 24">
+                              <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+                            </svg>
+                          ) : form.socialPlatform === 'FACEBOOK' ? (
+                            <svg className="w-3 h-3 shrink-0 fill-current" viewBox="0 0 24 24">
+                              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                            </svg>
+                          ) : form.socialPlatform === 'YOUTUBE' ? (
+                            <svg className="w-3 h-3 shrink-0 fill-current" viewBox="0 0 24 24">
+                              <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                            </svg>
+                          ) : (
+                            <svg className="w-3 h-3 shrink-0 fill-current" viewBox="0 0 24 24">
+                              <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1.04-.1z" />
+                            </svg>
+                          )}
+                          <span>
+                            {form.socialPlatform === 'INSTAGRAM'
+                              ? 'Instagram'
+                              : form.socialPlatform === 'FACEBOOK'
+                              ? 'Facebook'
+                              : form.socialPlatform === 'YOUTUBE'
+                              ? 'YouTube'
+                              : 'TikTok'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Property Description */}
@@ -1628,7 +1901,11 @@ export default function AdminPropertiesPage() {
                         className="w-4 h-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-700/30 cursor-pointer accent-emerald-700"
                       />
                     </div>
-                    <div className="w-[84px] h-[72px] rounded-xl bg-slate-100 border border-slate-100 overflow-hidden shrink-0">
+                    <div 
+                      onClick={() => setViewItem(prop)}
+                      className="w-[84px] h-[72px] rounded-xl bg-slate-100 border border-slate-100 overflow-hidden shrink-0 cursor-pointer group"
+                      title="Click to view details"
+                    >
                       <img
                         src={
                           prop.imageUrl ||
@@ -1641,16 +1918,30 @@ export default function AdminPropertiesPage() {
                                 : '/property_villa.png')
                         }
                         alt={prop.title}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                         loading="lazy"
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-sm text-slate-900 line-clamp-2 leading-snug">
+                      <h4 
+                        onClick={() => setViewItem(prop)}
+                        className="font-bold text-sm text-slate-900 line-clamp-2 leading-snug hover:text-emerald-700 cursor-pointer transition"
+                        title="Click to view details"
+                      >
                         {prop.title}
                       </h4>
-                      <div className="text-[10px] text-emerald-700 font-black tracking-wider uppercase mt-1">
-                        FOR {prop.listingType} • {formatPropertyType(prop.propertyType)}
+                      <div className="text-[10px] text-emerald-700 font-black tracking-wider uppercase mt-1 flex items-center gap-1.5 flex-wrap">
+                        <span>FOR {prop.listingType} • {formatPropertyType(prop.propertyType)}</span>
+                        {prop.socialPlatform && (
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-extrabold text-white ${
+                            prop.socialPlatform === 'INSTAGRAM' ? 'bg-[#E1306C]' :
+                            prop.socialPlatform === 'FACEBOOK' ? 'bg-[#1877F2]' :
+                            prop.socialPlatform === 'YOUTUBE' ? 'bg-[#FF0000]' :
+                            'bg-black'
+                          }`}>
+                            {prop.socialPlatform}
+                          </span>
+                        )}
                       </div>
                       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                         <span className="font-black text-sm text-slate-900 tracking-tight">
@@ -1672,14 +1963,55 @@ export default function AdminPropertiesPage() {
 
                   {/* Bottom: User Agent / Staff + Status + Action Buttons */}
                   <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <User className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                      <span className="text-xs font-semibold text-slate-800 truncate max-w-[140px] sm:max-w-[200px]">
-                        {prop.ownerName || prop.contactName || 'Desmond Senanu'}
-                      </span>
+                    <div className="flex flex-col min-w-0">
+                      {prop.ownerName ? (
+                        <div className="flex items-center gap-1 text-xs font-bold text-slate-900 truncate">
+                          <User className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
+                          <span className="truncate max-w-[140px]" title={prop.ownerName}>
+                            {prop.ownerName}
+                          </span>
+                          {prop.ownerPhone && (
+                            <span className="text-[10px] text-emerald-700 font-semibold shrink-0">
+                              ({prop.ownerPhone})
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[11px] text-slate-400 italic">No Owner Recorded</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setViewItem(prop);
+                              setOwnerRecordForm({
+                                ownerName: '',
+                                ownerPhone: '',
+                                ownerCompany: '',
+                              });
+                              setIsEditingOwnerRecord(true);
+                            }}
+                            className="text-[10px] text-emerald-800 hover:text-emerald-950 font-bold bg-emerald-50 hover:bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200 transition shrink-0"
+                          >
+                            + Add
+                          </button>
+                        </div>
+                      )}
+                      <div className="text-[10px] text-slate-500 font-medium truncate">
+                        Agent: <strong className="text-slate-700">{prop.contactName || 'Desmond Senanu'}</strong>
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setViewItem(prop)}
+                        className="p-1.5 rounded-lg border border-emerald-200 text-emerald-700 hover:bg-emerald-50 transition bg-white"
+                        title="View Property Details"
+                        aria-label="View Property Details"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
+
                       <button
                         type="button"
                         onClick={() => handlePublish(prop.id, prop.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED')}
@@ -1778,7 +2110,11 @@ export default function AdminPropertiesPage() {
                         />
                       </td>
                       <td className="px-6 py-3">
-                        <div className="w-14 h-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
+                        <div 
+                          onClick={() => setViewItem(prop)}
+                          className="w-14 h-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center cursor-pointer group"
+                          title="Click to view details"
+                        >
                           <img
                             src={
                               prop.imageUrl ||
@@ -1791,14 +2127,30 @@ export default function AdminPropertiesPage() {
                                     : '/property_villa.png')
                             }
                             alt={prop.title}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover group-hover:scale-110 transition duration-300"
                           />
                         </div>
                       </td>
                       <td className="px-6 py-4 font-bold text-slate-900">
-                        <div className="line-clamp-1 text-sm text-slate-900">{prop.title}</div>
-                        <div className="text-[10px] text-emerald-800 font-semibold mt-0.5">
-                          FOR {prop.listingType} • {formatPropertyType(prop.propertyType)}
+                        <div 
+                          onClick={() => setViewItem(prop)}
+                          className="line-clamp-1 text-sm text-slate-900 hover:text-emerald-700 cursor-pointer transition font-bold"
+                          title="Click to view details"
+                        >
+                          {prop.title}
+                        </div>
+                        <div className="text-[10px] text-emerald-800 font-semibold mt-0.5 flex items-center gap-1.5 flex-wrap">
+                          <span>FOR {prop.listingType} • {formatPropertyType(prop.propertyType)}</span>
+                          {prop.socialPlatform && (
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-extrabold text-white ${
+                              prop.socialPlatform === 'INSTAGRAM' ? 'bg-[#E1306C]' :
+                              prop.socialPlatform === 'FACEBOOK' ? 'bg-[#1877F2]' :
+                              prop.socialPlatform === 'YOUTUBE' ? 'bg-[#FF0000]' :
+                              'bg-black'
+                            }`}>
+                              {prop.socialPlatform}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 font-extrabold text-slate-900">
@@ -1814,27 +2166,74 @@ export default function AdminPropertiesPage() {
                       <td className="px-6 py-4 text-slate-600">{prop.city}</td>
 
                       {/* INTERNAL OWNER / SOURCING RECORD COLUMN */}
-                      <td className="px-6 py-4 font-bold text-slate-800">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1.5 text-slate-900 font-extrabold text-xs">
-                            <User className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
-                            <span className="truncate max-w-[150px]" title={prop.ownerName || prop.contactName || 'Desmond Senanu'}>
-                              {prop.ownerName || prop.contactName || 'Desmond Senanu'}
+                      <td className="px-6 py-4 text-slate-800">
+                        <div className="space-y-1.5">
+                          {prop.ownerName ? (
+                            <div className="space-y-0.5">
+                              <div className="flex items-center justify-between gap-1">
+                                <div className="flex items-center gap-1.5 text-slate-900 font-black text-xs">
+                                  <User className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
+                                  <span className="truncate max-w-[140px]" title={prop.ownerName}>
+                                    {prop.ownerName}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setViewItem(prop);
+                                    setOwnerRecordForm({
+                                      ownerName: prop.ownerName || '',
+                                      ownerPhone: prop.ownerPhone || '',
+                                      ownerCompany: prop.ownerCompany || '',
+                                    });
+                                    setIsEditingOwnerRecord(true);
+                                  }}
+                                  className="text-[10px] text-emerald-800 hover:text-emerald-950 font-bold bg-emerald-50 hover:bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200 transition shrink-0"
+                                  title="Edit Owner Details"
+                                >
+                                  Edit
+                                </button>
+                              </div>
+                              {prop.ownerPhone && (
+                                <div className="text-[11px] text-emerald-800 font-bold flex items-center gap-1">
+                                  <Phone className="w-3 h-3 text-emerald-700 shrink-0" /> {prop.ownerPhone}
+                                </div>
+                              )}
+                              {prop.ownerCompany && (
+                                <div className="text-[10px] text-slate-500 font-medium truncate max-w-[170px]" title={prop.ownerCompany}>
+                                  {prop.ownerCompany}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between gap-1.5">
+                              <div className="text-[11px] text-slate-400 italic flex items-center gap-1">
+                                <User className="w-3 h-3 text-slate-300 shrink-0" />
+                                <span>No Owner Recorded</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setViewItem(prop);
+                                  setOwnerRecordForm({
+                                    ownerName: '',
+                                    ownerPhone: '',
+                                    ownerCompany: '',
+                                  });
+                                  setIsEditingOwnerRecord(true);
+                                }}
+                                className="text-[10px] text-emerald-800 hover:text-emerald-950 font-bold bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-200 transition shrink-0"
+                              >
+                                + Add
+                              </button>
+                            </div>
+                          )}
+
+                          <div className="pt-1 border-t border-slate-100 text-[10px]">
+                            <span className="text-slate-500 font-medium truncate">
+                              Agent: <strong className="text-slate-700">{prop.contactName || 'Desmond Senanu'}</strong>
                             </span>
                           </div>
-                          {prop.ownerPhone && (
-                            <div className="text-[11px] text-emerald-800 font-bold flex items-center gap-1">
-                              <Phone className="w-3 h-3 text-emerald-700 shrink-0" /> {prop.ownerPhone}
-                            </div>
-                          )}
-                          {prop.ownerCompany && (
-                            <div className="text-[10px] text-slate-500 font-medium truncate max-w-[160px]" title={prop.ownerCompany}>
-                              {prop.ownerCompany}
-                            </div>
-                          )}
-                          <span className="inline-flex items-center gap-0.5 text-[9px] text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 font-black uppercase">
-                            🔒 Confidential
-                          </span>
                         </div>
                       </td>
 
@@ -1897,16 +2296,31 @@ export default function AdminPropertiesPage() {
                           </button>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-right space-x-2">
+                      <td className="px-6 py-4 text-right space-x-1.5 whitespace-nowrap">
                         <button
+                          type="button"
+                          onClick={() => setViewItem(prop)}
+                          className="p-2 rounded-lg text-emerald-800 hover:text-emerald-950 hover:bg-emerald-50 border border-emerald-200 transition"
+                          title="View Full Property Details"
+                          aria-label="View Full Property Details"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => openEdit(prop)}
-                          className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200"
+                          className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition"
+                          title="Edit Property"
+                          aria-label="Edit Property"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleDelete(prop.id)}
-                          className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 border border-rose-200"
+                          className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 border border-rose-200 transition"
+                          title="Delete Property"
+                          aria-label="Delete Property"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -2013,6 +2427,459 @@ export default function AdminPropertiesPage() {
         reports={optimizationReports}
         title="Image Size Exceeded Fast-Load Standard"
       />
+
+      {/* Property Details View Modal */}
+      {viewItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="p-5 sm:p-6 border-b border-slate-200 flex items-start justify-between gap-4 bg-slate-50/80 shrink-0">
+              <div className="space-y-1.5 min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className={`px-2.5 py-0.5 text-[11px] font-black rounded-full uppercase border flex items-center gap-1 ${
+                      viewItem.status === 'PUBLISHED'
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                        : 'bg-amber-100 text-amber-900 border-amber-300'
+                    }`}
+                  >
+                    {viewItem.status === 'PUBLISHED' ? (
+                      <CheckCircle className="w-3 h-3 text-emerald-600" />
+                    ) : (
+                      <Clock className="w-3 h-3 text-amber-700" />
+                    )}
+                    {viewItem.status}
+                  </span>
+                  <span className="px-2.5 py-0.5 text-[11px] font-bold bg-slate-200 text-slate-800 rounded-full">
+                    FOR {viewItem.listingType} • {formatPropertyType(viewItem.propertyType)}
+                  </span>
+                  {(viewItem.isFavourite || viewItem.featured) && (
+                    <span className="px-2 py-0.5 text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 rounded-md flex items-center gap-0.5">
+                      <Star className="w-3 h-3 fill-blue-600 text-blue-600" /> Featured Favourite
+                    </span>
+                  )}
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
+                  {viewItem.title}
+                </h2>
+                <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-600 font-medium">
+                  <MapPin className="w-4 h-4 text-emerald-700 shrink-0" />
+                  <span>
+                    {viewItem.locationAddress}, {viewItem.city}
+                    {viewItem.region ? `, ${viewItem.region}` : ''}, Ghana
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setViewItem(null);
+                  setIsEditingOwnerRecord(false);
+                  setOwnerRecordSuccess('');
+                }}
+                className="w-9 h-9 rounded-full bg-slate-200/80 hover:bg-slate-300 flex items-center justify-center text-slate-700 transition shrink-0 cursor-pointer"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Scrollable Content Body */}
+            <div className="p-5 sm:p-6 overflow-y-auto space-y-6 text-slate-700">
+              {/* Cover & Gallery Photos */}
+              <div className="space-y-3">
+                <div className="w-full h-64 sm:h-80 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 relative">
+                  <img
+                    src={viewItem.imageUrl || '/property_villa.webp'}
+                    alt={viewItem.title}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute top-3 right-3 bg-slate-900/80 backdrop-blur-xs text-white text-xs font-bold px-3 py-1.5 rounded-full">
+                    {viewItem.currency || 'USD'} {viewItem.price ? Number(viewItem.price).toLocaleString() : '0'}
+                    {viewItem.pricePeriod ? ` • ${viewItem.pricePeriod}` : ''}
+                  </div>
+                </div>
+
+                {Array.isArray(viewItem.galleryUrls) && viewItem.galleryUrls.length > 1 && (
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                    {viewItem.galleryUrls.map((gUrl: string, idx: number) => (
+                      <div key={idx} className="w-20 h-16 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
+                        <img src={gUrl} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* PROPERTY OWNER & SOURCING DETAILS */}
+              <div className="p-5 bg-emerald-50/60 rounded-3xl border-2 border-emerald-200/80 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-200/70 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-xl bg-emerald-800 text-white flex items-center justify-center shrink-0">
+                      <User className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-slate-900">
+                        Property Owner & Sourcing Details
+                      </h3>
+                      <p className="text-[11px] text-slate-500 font-medium">
+                        Internal staff record for landlord contact, direct sourcing, and property verification
+                      </p>
+                    </div>
+                  </div>
+
+                  {!isEditingOwnerRecord ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOwnerRecordForm({
+                          ownerName: viewItem.ownerName || '',
+                          ownerPhone: viewItem.ownerPhone || '',
+                          ownerCompany: viewItem.ownerCompany || '',
+                        });
+                        setIsEditingOwnerRecord(true);
+                      }}
+                      className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-emerald-100/70 border border-emerald-300 text-emerald-900 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition self-start sm:self-auto cursor-pointer"
+                    >
+                      <Edit2 className="w-3.5 h-3.5 text-emerald-800" />
+                      <span>{viewItem.ownerName ? 'Edit Owner Record' : '+ Add Owner Record'}</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingOwnerRecord(false)}
+                      className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 text-xs font-bold transition self-start sm:self-auto cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+
+                {ownerRecordSuccess && (
+                  <div className="p-3 bg-emerald-100/90 border border-emerald-300 text-emerald-950 rounded-xl text-xs font-bold flex items-center gap-2 animate-in fade-in duration-150">
+                    <CheckCircle className="w-4 h-4 text-emerald-700 shrink-0" />
+                    <span>{ownerRecordSuccess}</span>
+                  </div>
+                )}
+
+                {isEditingOwnerRecord ? (
+                  <div className="p-4 bg-white rounded-2xl border border-emerald-300 shadow-xs space-y-4">
+                    <div className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                      <Edit2 className="w-3.5 h-3.5 text-emerald-800" />
+                      <span>Edit Property Owner & Sourcing Details</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                          Owner / Contact Full Name
+                        </label>
+                        <input
+                          type="text"
+                          value={ownerRecordForm.ownerName}
+                          onChange={(e) => setOwnerRecordForm({ ...ownerRecordForm, ownerName: e.target.value })}
+                          placeholder="e.g. Nana Kwame Mensah / Alhaji Issah"
+                          className="admin-input bg-slate-50 text-xs"
+                          autoFocus
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                          Owner Phone Number
+                        </label>
+                        <input
+                          type="tel"
+                          value={ownerRecordForm.ownerPhone}
+                          onChange={(e) => setOwnerRecordForm({ ...ownerRecordForm, ownerPhone: e.target.value })}
+                          placeholder="e.g. +233 24 643 2493"
+                          className="admin-input bg-slate-50 text-xs"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                          Company / Agency Name
+                        </label>
+                        <input
+                          type="text"
+                          value={ownerRecordForm.ownerCompany}
+                          onChange={(e) => setOwnerRecordForm({ ...ownerRecordForm, ownerCompany: e.target.value })}
+                          placeholder="e.g. GoldKey Properties Ltd or Individual Landlord"
+                          className="admin-input bg-slate-50 text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingOwnerRecord(false)}
+                        disabled={savingOwnerRecord}
+                        className="px-4 py-2 rounded-xl border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 text-xs font-bold transition cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={saveOwnerRecordQuick}
+                        disabled={savingOwnerRecord}
+                        className="px-5 py-2 rounded-xl bg-[#064e3b] hover:bg-[#033c2e] text-white text-xs font-bold flex items-center gap-2 shadow-xs transition cursor-pointer"
+                      >
+                        {savingOwnerRecord ? (
+                          <>
+                            <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            <span>Saving...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            <span>Save Owner Record</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {!viewItem.ownerName && !viewItem.ownerPhone && !viewItem.ownerCompany && (
+                      <div className="p-4 bg-white/90 rounded-2xl border border-dashed border-emerald-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="space-y-0.5">
+                          <div className="text-xs font-black text-slate-800">
+                            No Owner or Landlord Details Recorded Yet
+                          </div>
+                          <p className="text-[11px] text-slate-500 font-medium">
+                            Attach the owner or landlord contact details to keep this property record complete.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOwnerRecordForm({
+                              ownerName: '',
+                              ownerPhone: '',
+                              ownerCompany: '',
+                            });
+                            setIsEditingOwnerRecord(true);
+                          }}
+                          className="px-4 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold flex items-center justify-center gap-1.5 shrink-0 shadow-2xs transition cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                          <span>Add Owner Record</span>
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="p-3.5 bg-white rounded-2xl border border-emerald-100 shadow-2xs">
+                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                          Owner / Contact Full Name
+                        </div>
+                        <div className="text-sm font-black text-slate-900 flex items-center gap-2">
+                          <User className="w-4 h-4 text-emerald-700 shrink-0" />
+                          <span className="truncate">{viewItem.ownerName || <em className="text-slate-400 font-normal">None recorded</em>}</span>
+                        </div>
+                      </div>
+
+                      <div className="p-3.5 bg-white rounded-2xl border border-emerald-100 shadow-2xs">
+                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                          Owner Phone Number
+                        </div>
+                        <div className="text-sm font-black text-slate-900 flex items-center gap-2">
+                          <Phone className="w-4 h-4 text-emerald-700 shrink-0" />
+                          {viewItem.ownerPhone ? (
+                            <a href={`tel:${viewItem.ownerPhone}`} className="text-emerald-800 hover:underline truncate">
+                              {viewItem.ownerPhone}
+                            </a>
+                          ) : (
+                            <em className="text-slate-400 font-normal">None recorded</em>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="p-3.5 bg-white rounded-2xl border border-emerald-100 shadow-2xs">
+                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                          Company / Agency Name
+                        </div>
+                        <div className="text-sm font-black text-slate-900 flex items-center gap-2">
+                          <Building2 className="w-4 h-4 text-emerald-700 shrink-0" />
+                          <span className="truncate">{viewItem.ownerCompany || <em className="text-slate-400 font-normal">None recorded</em>}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-emerald-200/70 flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <span className="text-slate-600 font-medium">
+                        Assigned Internal Loveridge Broker Agent:
+                      </span>
+                      <span className="font-extrabold text-slate-900 bg-white px-3 py-1 rounded-xl border border-emerald-300 shadow-2xs">
+                        {viewItem.contactName || 'Desmond Senanu'}
+                      </span>
+                    </div>
+
+                    {/* Social Media Button Showcase in Modal */}
+                    <div className="p-3.5 bg-white rounded-2xl border border-emerald-100 shadow-2xs mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">
+                          Featured Card Social Action
+                        </div>
+                        <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5 flex-wrap">
+                          <span className={`px-2 py-0.5 rounded-full text-white text-[11px] font-extrabold ${
+                            viewItem.socialPlatform === 'INSTAGRAM'
+                              ? 'bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045]'
+                              : viewItem.socialPlatform === 'FACEBOOK'
+                              ? 'bg-[#1877F2]'
+                              : viewItem.socialPlatform === 'YOUTUBE'
+                              ? 'bg-[#FF0000]'
+                              : 'bg-black'
+                          }`}>
+                            {viewItem.socialPlatform === 'INSTAGRAM' ? '📷 Instagram' : viewItem.socialPlatform === 'FACEBOOK' ? '📘 Facebook' : viewItem.socialPlatform === 'YOUTUBE' ? '📹 YouTube' : '🎵 TikTok'}
+                          </span>
+                          {viewItem.socialUrl ? (
+                            <span className="text-[11px] text-slate-500 font-mono truncate max-w-xs block">
+                              {viewItem.socialUrl}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-slate-400 italic">Default Official Profile</span>
+                          )}
+                        </div>
+                      </div>
+                      <a
+                        href={
+                          viewItem.socialUrl ||
+                          (viewItem.socialPlatform === 'INSTAGRAM'
+                            ? 'https://www.instagram.com/loveridgepropertiesgh/'
+                            : viewItem.socialPlatform === 'FACEBOOK'
+                            ? 'https://web.facebook.com/loveridgepropertiesgh'
+                            : viewItem.socialPlatform === 'YOUTUBE'
+                            ? 'https://www.youtube.com/@loveridgeproperties'
+                            : 'https://www.tiktok.com/@loveridgeproperty?is_from_webapp=1&sender_device=pc')
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3.5 py-1.5 rounded-full bg-slate-900 hover:bg-black text-white text-xs font-bold flex items-center justify-center gap-1.5 shrink-0 transition"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" /> Test Link
+                      </a>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Key Specs Matrix */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200">
+                  <span className="text-[11px] text-slate-500 font-bold block mb-1">Pricing & Terms</span>
+                  <span className="text-sm font-black text-slate-900 block">
+                    {viewItem.currency} {viewItem.price ? Number(viewItem.price).toLocaleString() : '0'}
+                  </span>
+                  <span className="text-[10px] text-emerald-700 font-bold">
+                    {viewItem.negotiable ? '✓ Negotiable' : 'Fixed Price'}
+                  </span>
+                </div>
+
+                <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200">
+                  <span className="text-[11px] text-slate-500 font-bold block mb-1">Rooms (Ensuite)</span>
+                  <div className="flex items-center gap-2 text-sm font-black text-slate-900">
+                    <Bed className="w-4 h-4 text-emerald-700" />
+                    <span>{viewItem.bedrooms || 0} Beds</span>
+                    <span className="text-slate-300">•</span>
+                    <Bath className="w-4 h-4 text-emerald-700" />
+                    <span>{viewItem.bathrooms || 0} Baths</span>
+                  </div>
+                </div>
+
+                <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200">
+                  <span className="text-[11px] text-slate-500 font-bold block mb-1">Quarters & Parking</span>
+                  <span className="text-xs font-bold text-slate-800 block">
+                    {viewItem.boysQuarters || 0} BQ • {viewItem.guestRooms || 0} Guest
+                  </span>
+                  <span className="text-xs font-bold text-slate-800 block">
+                    {viewItem.garage || 0} Garage / Parking
+                  </span>
+                </div>
+
+                <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200">
+                  <span className="text-[11px] text-slate-500 font-bold block mb-1">Area / Dimensions</span>
+                  <span className="text-xs font-bold text-slate-800 block">
+                    {viewItem.sizeSqft ? `${viewItem.sizeSqft} Sq Ft Lot` : 'Plot size pending'}
+                  </span>
+                  <span className="text-xs font-bold text-slate-800 block">
+                    {viewItem.livingAreaSqft ? `${viewItem.livingAreaSqft} Sq Ft Living` : 'Floor size pending'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-700">Listing Description</h4>
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-line font-medium">
+                  {viewItem.description || 'No description provided.'}
+                </div>
+              </div>
+
+              {/* Amenities */}
+              {Array.isArray(viewItem.amenities) && viewItem.amenities.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-700">Features & Amenities</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {viewItem.amenities.map((amenity: any, idx: number) => {
+                      const name = typeof amenity === 'string' ? amenity : amenity.name || amenity.amenity?.name || '';
+                      if (!name) return null;
+                      return (
+                        <span key={idx} className="px-3 py-1 bg-slate-100 border border-slate-200 rounded-full text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
+                          {name}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="p-4 sm:p-5 border-t border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-3 shrink-0">
+              <Link
+                href={`/properties/${viewItem.slug}`}
+                target="_blank"
+                className="px-4 py-2 rounded-xl border border-slate-300 bg-white text-slate-800 hover:bg-slate-100 text-xs sm:text-sm font-bold flex items-center gap-2 transition"
+              >
+                <ExternalLink className="w-4 h-4 text-emerald-700" />
+                <span>Open Public Page</span>
+              </Link>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const itm = viewItem;
+                    setViewItem(null);
+                    openEdit(itm);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-bold flex items-center gap-2 transition cursor-pointer"
+                >
+                  <Edit2 className="w-4 h-4" />
+                  <span>Edit This Property</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewItem(null);
+                    setIsEditingOwnerRecord(false);
+                    setOwnerRecordSuccess('');
+                  }}
+                  className="px-4 py-2 rounded-xl border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 text-xs sm:text-sm font-bold transition cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

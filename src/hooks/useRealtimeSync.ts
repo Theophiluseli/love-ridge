@@ -35,6 +35,7 @@ export function useRealtimeSync(onUpdate: (type: CatalogType) => void) {
     categories: 0,
     hero: 0,
   });
+  const lastCheckTimeRef = useRef<number>(0);
 
   useEffect(() => {
     callbackRef.current = onUpdate;
@@ -44,9 +45,15 @@ export function useRealtimeSync(onUpdate: (type: CatalogType) => void) {
     if (typeof window === 'undefined') return;
 
     // Helper: fetch version endpoint and trigger updates for any advanced counters
-    const checkServerRevision = async () => {
+    const checkServerRevision = async (force = false) => {
+      const now = Date.now();
+      if (!force && now - lastCheckTimeRef.current < 4000) {
+        return; // throttle rapid duplicate checks
+      }
+      lastCheckTimeRef.current = now;
+
       try {
-        const res = await fetch(`/api/sync/version?_t=${Date.now()}`, { cache: 'no-store' });
+        const res = await fetch(`/api/sync/version?_t=${now}`, { cache: 'no-store' });
         if (!res.ok) return;
         const data: RevisionData = await res.json();
 

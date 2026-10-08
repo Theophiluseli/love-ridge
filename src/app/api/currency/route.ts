@@ -23,19 +23,47 @@ const FALLBACK_RATES = {
   GBP: 19.8,
 };
 
+// In-memory server cache to eliminate round-trips and 429 rate limiting
+let cachedCurrencyData: {
+  rates: { GHS: number; USD: number; EUR: number; GBP: number };
+  lastUpdated: string;
+  timestamp: number;
+} | null = null;
+
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+
 export async function GET() {
   const now = new Date().toISOString();
+  const nowMs = Date.now();
+
+  // 1. Return immediately from in-memory cache if fresh (< 6 hours)
+  if (cachedCurrencyData && nowMs - cachedCurrencyData.timestamp < CACHE_TTL_MS) {
+    return NextResponse.json<CurrencyRatesResponse>(
+      {
+        success: true,
+        isLive: true,
+        rates: cachedCurrencyData.rates,
+        lastUpdated: cachedCurrencyData.lastUpdated,
+        fetchedAt: now,
+      },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=21600, stale-while-revalidate=86400',
+        },
+      }
+    );
+  }
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000);
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
 
     const response = await fetch('https://open.er-api.com/v6/latest/USD', {
       signal: controller.signal,
       headers: {
         'Accept': 'application/json',
       },
-      next: { revalidate: 43200 },
+      next: { revalidate: 21600 },
     });
 
     clearTimeout(timeoutId);
@@ -62,28 +90,45 @@ export async function GET() {
       GBP: Number((ghsRate / gbpRate).toFixed(4)),
     };
 
+    cachedCurrencyData = {
+      rates,
+      lastUpdated: data.time_last_update_utc || now,
+      timestamp: nowMs,
+    };
+
     return NextResponse.json<CurrencyRatesResponse>(
       {
         success: true,
         isLive: true,
         rates,
-        lastUpdated: data.time_last_update_utc || now,
+        lastUpdated: cachedCurrencyData.lastUpdated,
         fetchedAt: now,
       },
       {
         headers: {
-          'Cache-Control': 'public, s-maxage=43200, stale-while-revalidate=86400',
+          'Cache-Control': 'public, s-maxage=21600, stale-while-revalidate=86400',
         },
       }
     );
   } catch (error) {
-    console.warn('[Currency API] Using fallback exchange rates due to error:', error);
+    console.warn('[Currency API] Using fallback/cached exchange rates due to error:', error);
 
-    return NextResponse.json<CurrencyRatesResponse>({
-      success: false,
-      isLive: false,
-      rates: FALLBACK_RATES,
-      fetchedAt: now,
-    });
+    // If we have previous cache data (even if slightly stale), use that instead of hardcoded
+    const fallbackRates = cachedCurrencyData?.rates || FALLBACK_RATES;
+
+    return NextResponse.json<CurrencyRatesResponse>(
+      {
+        success: Boolean(cachedCurrencyData),
+        isLive: Boolean(cachedCurrencyData),
+        rates: fallbackRates,
+        lastUpdated: cachedCurrencyData?.lastUpdated || now,
+        fetchedAt: now,
+      },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=7200',
+        },
+      }
+    );
   }
 }

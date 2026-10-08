@@ -45,9 +45,10 @@ export default function PropertyCardSkeleton() {
           </div>
 
           {/* Button CTA */}
-          <div className="grid grid-cols-2 gap-2.5 pt-1">
-            <div className="h-11 sm:h-12 bg-slate-200 rounded-xl sm:rounded-2xl" />
-            <div className="h-11 sm:h-12 bg-slate-200 rounded-xl sm:rounded-2xl" />
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-2 pt-1.5">
+            <div className="h-10 sm:h-11 bg-slate-200 rounded-full" />
+            <div className="h-10 sm:h-11 bg-slate-200 rounded-full" />
+            <div className="h-10 sm:h-11 bg-slate-200 rounded-full" />
           </div>
         </div>
       </div>

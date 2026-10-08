@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Package, Globe, Tag, Image as ImageIcon, CheckCircle, Upload, Layers, X, Loader2, Clock, Search, RefreshCw, Link2, ExternalLink, Copy, Check, Zap, AlertTriangle, FolderPlus, ArrowUpRight, Star, ArrowLeft } from 'lucide-react';
+import { Plus, Edit2, Trash2, Package, Globe, Tag, Image as ImageIcon, CheckCircle, Upload, Layers, X, Loader2, Clock, Search, RefreshCw, Link2, ExternalLink, Copy, Check, Zap, AlertTriangle, FolderPlus, ArrowUpRight, Star, ArrowLeft, Share2, Eye } from 'lucide-react';
 import { compressImage, watermarkImage, optimizeImageToWebP, ImageOptimizationReport } from '@/lib/utils/imageCompressor';
 import { INITIAL_PRODUCTS_STORE, INITIAL_CATEGORIES_STORE } from '@/lib/products-constants';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
@@ -85,6 +85,8 @@ export default function AdminProductsPage() {
     isFavourite: false,
     imageUrl: '',
     galleryUrls: [] as string[],
+    socialPlatform: 'TIKTOK',
+    socialUrl: '',
   });
 
   const [galleryInput, setGalleryInput] = useState('');
@@ -537,6 +539,8 @@ export default function AdminProductsPage() {
       isFavourite: Boolean(prod.isFavourite || prod.favourite),
       imageUrl: prod.imageUrl || '',
       galleryUrls: Array.isArray(prod.galleryUrls) ? prod.galleryUrls : [],
+      socialPlatform: prod.socialPlatform || 'TIKTOK',
+      socialUrl: prod.socialUrl || '',
     });
     setCopiedLink(false);
     setActiveTab('EDIT');
@@ -563,6 +567,8 @@ export default function AdminProductsPage() {
       isFavourite: false,
       imageUrl: '',
       galleryUrls: [],
+      socialPlatform: 'TIKTOK',
+      socialUrl: '',
     });
     setCopiedLink(false);
     setGalleryInput('');
@@ -863,10 +869,10 @@ export default function AdminProductsPage() {
                 </div>
               </div>
 
-              {/* Category, Ghana Cedis Price, Chinese Yuan Price & Unit */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-[1.5fr_1fr_1fr_0.75fr] gap-4">
+              {/* Category, Ghana Cedis Price & Unit */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {/* Catalogue Category */}
-                <div className="sm:col-span-2 xl:col-span-1">
+                <div className="sm:col-span-2 lg:col-span-1">
                   <div className="flex items-center justify-between mb-2 min-h-[20px]">
                     <label className="block text-xs font-bold text-slate-800 truncate" title="Catalogue Category">
                       Catalogue Category *
@@ -939,7 +945,7 @@ export default function AdminProductsPage() {
                 </div>
 
                 {/* Price in Cedis (GH₵) */}
-                <div className="sm:col-span-1 xl:col-span-1">
+                <div className="sm:col-span-1 lg:col-span-1">
                   <div className="flex items-center justify-between mb-2 min-h-[20px]">
                     <label className="block text-xs font-bold text-slate-800 truncate" title="Price in Cedis (GH₵)">
                       Price in Cedis (GH₵) *
@@ -959,11 +965,9 @@ export default function AdminProductsPage() {
                       value={form.price}
                       onChange={(e) => {
                         const val = e.target.value;
-                        const num = parseFloat(val);
                         setForm((prev) => ({
                           ...prev,
                           price: val,
-                          priceCny: !prev.priceCny || isNaN(num) ? (isNaN(num) ? '' : (num * 0.47).toFixed(2)) : prev.priceCny,
                         }));
                       }}
                       placeholder="145.00"
@@ -972,33 +976,8 @@ export default function AdminProductsPage() {
                   </div>
                 </div>
 
-                {/* Price in Chinese Yuan (¥) */}
-                <div className="sm:col-span-1 xl:col-span-1">
-                  <div className="flex items-center justify-between mb-2 min-h-[20px]">
-                    <label className="block text-xs font-bold text-slate-800 truncate" title="Price in Chinese Yuan (¥)">
-                      Price in Yuan (¥) *
-                    </label>
-                    <span className="text-[10px] text-red-800 bg-red-100 font-black px-1.5 py-0.5 rounded shrink-0">
-                      CNY / RMB
-                    </span>
-                  </div>
-                  <div className="flex rounded-xl border border-slate-300/80 overflow-hidden focus-within:border-red-600 focus-within:ring-2 focus-within:ring-red-600/15 bg-white shadow-xs transition h-12">
-                    <span className="inline-flex items-center px-3 bg-red-50 text-red-800 font-black text-xs border-r border-red-200 select-none shrink-0">
-                      ¥ CNY
-                    </span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={form.priceCny}
-                      onChange={(e) => setForm({ ...form, priceCny: e.target.value })}
-                      placeholder="68.00"
-                      className="w-full bg-transparent px-3 py-2.5 text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none h-full min-w-0"
-                    />
-                  </div>
-                </div>
-
                 {/* Unit Measure */}
-                <div className="sm:col-span-2 xl:col-span-1">
+                <div className="sm:col-span-1 lg:col-span-1">
                   <div className="flex items-center justify-between mb-2 min-h-[20px]">
                     <label className="block text-xs font-bold text-slate-800">Unit Measure</label>
                     <span className="text-[10px] text-slate-500 bg-slate-100 font-medium px-1.5 py-0.5 rounded shrink-0">
@@ -1246,6 +1225,200 @@ export default function AdminProductsPage() {
                   placeholder="Provide technical specifications, material grade, dimensions, wear rating, or battery voltage."
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-medium focus:border-emerald-700 focus:bg-white"
                 />
+              </div>
+
+              {/* SOCIAL MEDIA SHOWCASE & BUTTON LINK (TikTok, Instagram, Facebook, YouTube) */}
+              <div className="p-6 bg-slate-50/80 rounded-3xl border border-slate-200 space-y-5">
+                <div className="border-b border-slate-200 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                      <Share2 className="w-4 h-4 text-emerald-700" /> Store Product Social Media Button & Link
+                    </h3>
+                    <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                      Choose which social platform button to feature on the product card (action button) and paste its direct video or showcase link.
+                    </p>
+                  </div>
+                  <span className="text-[10px] text-slate-700 bg-white border border-slate-200 font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1 shadow-2xs self-start sm:self-auto">
+                    Live on Store Cards
+                  </span>
+                </div>
+
+                {/* Platform Selector (4 Pills/Cards) */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 mb-2">
+                    Select Social Platform *
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    {/* TikTok */}
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, socialPlatform: 'TIKTOK' })}
+                      className={`py-3 px-3.5 rounded-2xl border-2 flex items-center justify-center gap-2 text-xs font-extrabold transition-all cursor-pointer ${
+                        form.socialPlatform === 'TIKTOK'
+                          ? 'border-black bg-black text-white shadow-md scale-[1.02]'
+                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-400'
+                      }`}
+                    >
+                      <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+                        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1.04-.1z" />
+                      </svg>
+                      <span>TikTok</span>
+                      {form.socialPlatform === 'TIKTOK' && <Check className="w-3.5 h-3.5 ml-auto text-emerald-400" />}
+                    </button>
+
+                    {/* Instagram */}
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, socialPlatform: 'INSTAGRAM' })}
+                      className={`py-3 px-3.5 rounded-2xl border-2 flex items-center justify-center gap-2 text-xs font-extrabold transition-all cursor-pointer ${
+                        form.socialPlatform === 'INSTAGRAM'
+                          ? 'border-[#fd1d1d] bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045] text-white shadow-md scale-[1.02]'
+                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-400'
+                      }`}
+                    >
+                      <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+                        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+                      </svg>
+                      <span>Instagram</span>
+                      {form.socialPlatform === 'INSTAGRAM' && <Check className="w-3.5 h-3.5 ml-auto text-white" />}
+                    </button>
+
+                    {/* Facebook */}
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, socialPlatform: 'FACEBOOK' })}
+                      className={`py-3 px-3.5 rounded-2xl border-2 flex items-center justify-center gap-2 text-xs font-extrabold transition-all cursor-pointer ${
+                        form.socialPlatform === 'FACEBOOK'
+                          ? 'border-[#1877F2] bg-[#1877F2] text-white shadow-md scale-[1.02]'
+                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-400'
+                      }`}
+                    >
+                      <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                      </svg>
+                      <span>Facebook</span>
+                      {form.socialPlatform === 'FACEBOOK' && <Check className="w-3.5 h-3.5 ml-auto text-white" />}
+                    </button>
+
+                    {/* YouTube */}
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, socialPlatform: 'YOUTUBE' })}
+                      className={`py-3 px-3.5 rounded-2xl border-2 flex items-center justify-center gap-2 text-xs font-extrabold transition-all cursor-pointer ${
+                        form.socialPlatform === 'YOUTUBE'
+                          ? 'border-[#FF0000] bg-[#FF0000] text-white shadow-md scale-[1.02]'
+                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-400'
+                      }`}
+                    >
+                      <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                      </svg>
+                      <span>YouTube</span>
+                      {form.socialPlatform === 'YOUTUBE' && <Check className="w-3.5 h-3.5 ml-auto text-white" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Link Input */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-slate-800">
+                      Paste {form.socialPlatform === 'TIKTOK' ? 'TikTok' : form.socialPlatform === 'INSTAGRAM' ? 'Instagram' : form.socialPlatform === 'FACEBOOK' ? 'Facebook' : 'YouTube'} Link
+                    </label>
+                    <span className="text-[10px] text-slate-500 font-medium">
+                      (Leave blank to use official Loveridge channel)
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="url"
+                      value={form.socialUrl || ''}
+                      onChange={(e) => setForm({ ...form, socialUrl: e.target.value })}
+                      placeholder={
+                        form.socialPlatform === 'TIKTOK'
+                          ? 'https://www.tiktok.com/@loveridgeproperties/video/123456789...'
+                          : form.socialPlatform === 'INSTAGRAM'
+                          ? 'https://www.instagram.com/reel/C... or https://www.instagram.com/p/...'
+                          : form.socialPlatform === 'FACEBOOK'
+                          ? 'https://www.facebook.com/loveridgeproperties/posts/...'
+                          : 'https://www.youtube.com/watch?v=... or https://youtu.be/...'
+                      }
+                      className="admin-input pr-10 font-mono text-xs"
+                    />
+                    {form.socialUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, socialUrl: '' })}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                        title="Clear link"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Real-time Live Button Preview */}
+                <div className="pt-2">
+                  <div className="bg-slate-900 text-white rounded-2xl p-3.5 sm:p-4">
+                    <div className="flex items-center justify-between mb-2.5">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                        <Eye className="w-3.5 h-3.5" /> Real-time Store Card Action Preview
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-medium truncate max-w-[240px]">
+                        Target: {form.socialUrl ? form.socialUrl : `Official Loveridge ${form.socialPlatform} Profile`}
+                      </span>
+                    </div>
+
+                    <div className="max-w-xs mx-auto bg-white p-3 rounded-2xl shadow-inner border border-slate-200">
+                      <div className="grid grid-cols-2 gap-2">
+                        {/* 1. View More */}
+                        <div className="py-2.5 px-3 rounded-full border-2 border-slate-900 text-slate-900 text-xs font-black text-center truncate">
+                          View More
+                        </div>
+                        {/* 2. Dynamic Selected Platform Pill */}
+                        <div
+                          className={`py-2.5 px-3 rounded-full text-xs font-black text-center flex items-center justify-center gap-1.5 text-white shadow-2xs truncate ${
+                            form.socialPlatform === 'INSTAGRAM'
+                              ? 'bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045]'
+                              : form.socialPlatform === 'FACEBOOK'
+                              ? 'bg-[#1877F2]'
+                              : form.socialPlatform === 'YOUTUBE'
+                              ? 'bg-[#FF0000]'
+                              : 'bg-black'
+                          }`}
+                        >
+                          {form.socialPlatform === 'INSTAGRAM' ? (
+                            <svg className="w-3.5 h-3.5 shrink-0 fill-current" viewBox="0 0 24 24">
+                              <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+                            </svg>
+                          ) : form.socialPlatform === 'FACEBOOK' ? (
+                            <svg className="w-3.5 h-3.5 shrink-0 fill-current" viewBox="0 0 24 24">
+                              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                            </svg>
+                          ) : form.socialPlatform === 'YOUTUBE' ? (
+                            <svg className="w-3.5 h-3.5 shrink-0 fill-current" viewBox="0 0 24 24">
+                              <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                            </svg>
+                          ) : (
+                            <svg className="w-3.5 h-3.5 shrink-0 fill-current" viewBox="0 0 24 24">
+                              <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1.04-.1z" />
+                            </svg>
+                          )}
+                          <span>
+                            {form.socialPlatform === 'INSTAGRAM'
+                              ? 'Instagram'
+                              : form.socialPlatform === 'FACEBOOK'
+                              ? 'Facebook'
+                              : form.socialPlatform === 'YOUTUBE'
+                              ? 'YouTube'
+                              : 'TikTok'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Submit Buttons: Save Draft vs Publish */}
@@ -1584,13 +1757,26 @@ export default function AdminProductsPage() {
                         </span>
                       </div>
 
-                      {/* Price */}
-                      <div className="flex items-baseline gap-1.5 pt-0.5">
+                      {/* Price & Social Platform */}
+                      <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
                         <span className="text-xs sm:text-sm font-black text-slate-950">
                           GH₵{prod.price?.toLocaleString()}
                         </span>
-                        <span className="text-[9px] sm:text-[10px] font-bold text-amber-700">
-                          {prod.priceCny ? `¥${prod.priceCny?.toLocaleString()} CNY` : `¥${Math.round((prod.price || 0) * 0.47).toLocaleString()} CNY`}
+                        {prod.unit && (
+                          <span className="text-[9px] sm:text-[10px] text-slate-500 font-medium">
+                            /{prod.unit}
+                          </span>
+                        )}
+                        <span className={`inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                          prod.socialPlatform === 'INSTAGRAM'
+                            ? 'bg-gradient-to-r from-[#833ab4]/10 to-[#fd1d1d]/10 text-[#fd1d1d] border border-[#fd1d1d]/20'
+                            : prod.socialPlatform === 'FACEBOOK'
+                            ? 'bg-[#1877F2]/10 text-[#1877F2] border border-[#1877F2]/20'
+                            : prod.socialPlatform === 'YOUTUBE'
+                            ? 'bg-red-50 text-red-600 border border-red-200'
+                            : 'bg-black/5 text-black border border-black/10'
+                        }`}>
+                          {prod.socialPlatform === 'INSTAGRAM' ? 'Instagram' : prod.socialPlatform === 'FACEBOOK' ? 'Facebook' : prod.socialPlatform === 'YOUTUBE' ? 'YouTube' : 'TikTok'}
                         </span>
                       </div>
                     </div>
@@ -1784,19 +1970,24 @@ export default function AdminProductsPage() {
                       <td className="px-6 py-4 text-slate-600 font-semibold">{prod.category?.name || 'Store Item'}</td>
 
                       <td className="px-6 py-4">
-                        <div className="space-y-0.5">
+                        <div className="space-y-1">
                           <span className="font-bold text-slate-900 block">
                             GH₵{prod.price?.toLocaleString()}
                           </span>
-                          {prod.priceCny ? (
-                            <span className="text-[10px] font-bold text-amber-700 block">
-                              ¥{prod.priceCny?.toLocaleString()} CNY
-                            </span>
-                          ) : (
-                            <span className="text-[10px] font-semibold text-slate-400 block">
-                              ¥{Math.round((prod.price || 0) * 0.47).toLocaleString()} CNY
-                            </span>
-                          )}
+                          <span className="text-[10px] text-slate-500 font-medium block">
+                            {prod.unit || 'per unit'}
+                          </span>
+                          <span className={`inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                            prod.socialPlatform === 'INSTAGRAM'
+                              ? 'bg-gradient-to-r from-[#833ab4]/10 to-[#fd1d1d]/10 text-[#fd1d1d] border border-[#fd1d1d]/20'
+                              : prod.socialPlatform === 'FACEBOOK'
+                              ? 'bg-[#1877F2]/10 text-[#1877F2] border border-[#1877F2]/20'
+                              : prod.socialPlatform === 'YOUTUBE'
+                              ? 'bg-red-50 text-red-600 border border-red-200'
+                              : 'bg-black/5 text-black border border-black/10'
+                          }`}>
+                            {prod.socialPlatform === 'INSTAGRAM' ? 'Instagram' : prod.socialPlatform === 'FACEBOOK' ? 'Facebook' : prod.socialPlatform === 'YOUTUBE' ? 'YouTube' : 'TikTok'}
+                          </span>
                         </div>
                       </td>
 

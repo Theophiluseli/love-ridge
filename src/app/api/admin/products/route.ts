@@ -53,6 +53,8 @@ export async function POST(req: NextRequest) {
       featured = false,
       imageUrl,
       galleryUrls = [],
+      socialPlatform = 'TIKTOK',
+      socialUrl = '',
     } = body;
 
     if (!name || !description || !categoryId || price === undefined) {
@@ -89,6 +91,8 @@ export async function POST(req: NextRequest) {
       isFavourite: Boolean(body.isFavourite ?? body.favourite),
       imageUrl: imageUrl || null,
       galleryUrls: Array.isArray(galleryUrls) ? galleryUrls : [],
+      socialPlatform: socialPlatform || 'TIKTOK',
+      socialUrl: socialUrl || '',
     });
 
     await logAuditAction({

@@ -79,6 +79,12 @@ const DEFAULT_GALLERY_ITEMS = [
   },
 ];
 
+declare global {
+  var __cachedGalleryData: { items: any[]; categories: string[]; timestamp: number } | null | undefined;
+}
+
+const GALLERY_CACHE_TTL = 300000; // 5 minutes
+
 // GET: Fetch gallery items with filters
 export async function GET(req: NextRequest) {
   try {
@@ -87,6 +93,28 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get('search');
     const featured = searchParams.get('featured');
     const includeAll = searchParams.get('includeAll') === 'true';
+
+    const isSimplePublicList = !category && !search && !featured && !includeAll;
+    const now = Date.now();
+
+    if (
+      isSimplePublicList &&
+      globalThis.__cachedGalleryData &&
+      now - globalThis.__cachedGalleryData.timestamp < GALLERY_CACHE_TTL
+    ) {
+      return NextResponse.json(
+        {
+          items: globalThis.__cachedGalleryData.items,
+          total: globalThis.__cachedGalleryData.items.length,
+          categories: globalThis.__cachedGalleryData.categories,
+        },
+        {
+          headers: {
+            'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=600',
+          },
+        }
+      );
+    }
 
     // Build Prisma query filter
     const where: any = {};
@@ -141,11 +169,21 @@ export async function GET(req: NextRequest) {
       new Set(['All', ...allCategoriesRaw.map((c) => c.category).filter(Boolean)])
     );
 
+    if (isSimplePublicList) {
+      globalThis.__cachedGalleryData = {
+        items,
+        categories,
+        timestamp: now,
+      };
+    }
+
     return NextResponse.json(
       { items, total: items.length, categories },
       {
         headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'Cache-Control': isSimplePublicList
+            ? 'public, s-maxage=120, stale-while-revalidate=600'
+            : 'no-store, no-cache, must-revalidate',
         },
       }
     );
@@ -209,6 +247,7 @@ export async function POST(req: NextRequest) {
         status: status || 'PUBLISHED',
       },
     });
+    globalThis.__cachedGalleryData = null;
 
     // Broadcast change to all clients via Supabase Realtime
     await broadcastCatalogUpdate('gallery', 'INSERT', { id: newItem.id });

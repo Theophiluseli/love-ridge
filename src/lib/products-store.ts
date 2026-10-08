@@ -14,7 +14,7 @@ export * from './products-constants';
 const FILE_PATH = path.join(process.cwd(), 'scratch', 'products.json');
 const DELETED_PRODUCTS_FILE = path.join(process.cwd(), 'scratch', 'deleted-products.json');
 const DELETED_PRODUCTS_SETTING_KEY = 'deleted_product_ids';
-const CACHE_DURATION = 30000; // 30 seconds
+const CACHE_DURATION = 300000; // 5 minutes (invalidated instantly on mutation)
 
 function ensureFile() {
   try {
@@ -190,6 +190,8 @@ export async function getProductBySlug(slug: string): Promise<ProductItem | null
         isFavourite: Boolean(dbProd.featured),
         imageUrl: dbProd.imageUrl || '/product_tiles.webp',
         galleryUrls: Array.isArray(dbProd.galleryUrls) && dbProd.galleryUrls.length > 0 ? dbProd.galleryUrls : [dbProd.imageUrl || '/product_tiles.webp'],
+        socialPlatform: (dbProd as any).socialPlatform || 'TIKTOK',
+        socialUrl: (dbProd as any).socialUrl || '',
         createdAt: dbProd.createdAt ? new Date(dbProd.createdAt).toISOString() : new Date().toISOString(),
         updatedAt: dbProd.updatedAt ? new Date(dbProd.updatedAt).toISOString() : new Date().toISOString(),
       };
@@ -215,14 +217,79 @@ export async function getRelatedProducts(product: ProductItem, limit = 3): Promi
   return [...sameCategory, ...others].slice(0, limit);
 }
 
-export async function getAllProducts(): Promise<ProductItem[]> {
+export async function getAllProducts(forceFresh = false): Promise<ProductItem[]> {
   const now = Date.now();
   if (
+    !forceFresh &&
     globalThis.__cachedProducts &&
     globalThis.__cachedProducts.length > 0 &&
     now - (globalThis.__cachedProductsTime || 0) < CACHE_DURATION
   ) {
     return globalThis.__cachedProducts;
+  }
+
+  // Fast-path: if in-memory cache is empty, serve immediately from file cache (<1ms)
+  // while asynchronously revalidating from Supabase Prisma in background
+  if (!forceFresh && (!globalThis.__cachedProducts || globalThis.__cachedProducts.length === 0)) {
+    const fileProducts = readProductsFromFile();
+    if (fileProducts && fileProducts.length > 0) {
+      globalThis.__cachedProducts = fileProducts;
+      globalThis.__cachedProductsTime = now;
+      // Revalidate in background
+      (async () => {
+        try {
+          const pProds: any[] = await prisma.product.findMany({
+            orderBy: { createdAt: 'desc' },
+            include: { category: true },
+          });
+          if (pProds && pProds.length > 0) {
+            const mapped = pProds.map((p: any) => {
+              const ghsPrice = typeof p.price === 'number' ? p.price : parseFloat(p.price) || 0;
+              return {
+                id: p.id,
+                name: p.name,
+                slug: p.slug,
+                description: p.description || '',
+                categoryId: p.categoryId,
+                category: {
+                  id: p.category?.id || p.categoryId,
+                  name: p.category?.name || 'Building Materials',
+                  slug: p.category?.slug || 'building-materials',
+                },
+                sku: p.sku,
+                price: ghsPrice,
+                priceCny: Math.round(ghsPrice * 0.47),
+                currency: p.currency || 'GHS',
+                unit: p.unit || 'per piece',
+                stockQuantity: p.stockQuantity || 0,
+                stockStatus: p.stockStatus || 'IN_STOCK',
+                originCountry: p.originCountry || 'China',
+                moq: p.moq || 1,
+                status: p.status || 'PUBLISHED',
+                featured: Boolean(p.featured),
+                isFavourite: Boolean(p.featured),
+                imageUrl: p.imageUrl || '/product_tiles.webp',
+                galleryUrls: Array.isArray(p.galleryUrls) && p.galleryUrls.length > 0 ? p.galleryUrls : [p.imageUrl || '/product_tiles.webp'],
+                socialPlatform: (p as any).socialPlatform || 'TIKTOK',
+                socialUrl: (p as any).socialUrl || '',
+                createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
+                updatedAt: p.updatedAt ? new Date(p.updatedAt).toISOString() : new Date().toISOString(),
+              };
+            });
+            mapped.sort((a, b) => {
+              const aFav = a.isFavourite ? 1 : 0;
+              const bFav = b.isFavourite ? 1 : 0;
+              if (aFav !== bFav) return bFav - aFav;
+              return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+            });
+            globalThis.__cachedProducts = mapped;
+            globalThis.__cachedProductsTime = Date.now();
+            writeProductsToFile(mapped);
+          }
+        } catch (_) {}
+      })();
+      return fileProducts;
+    }
   }
 
   // 1. Authoritative primary source: Query Prisma PostgreSQL products table
@@ -264,6 +331,8 @@ export async function getAllProducts(): Promise<ProductItem[]> {
           isFavourite: Boolean(p.featured),
           imageUrl: p.imageUrl || '/product_tiles.webp',
           galleryUrls: Array.isArray(p.galleryUrls) && p.galleryUrls.length > 0 ? p.galleryUrls : [p.imageUrl || '/product_tiles.webp'],
+          socialPlatform: (p as any).socialPlatform || 'TIKTOK',
+          socialUrl: (p as any).socialUrl || '',
           createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
           updatedAt: p.updatedAt ? new Date(p.updatedAt).toISOString() : new Date().toISOString(),
         };
@@ -286,7 +355,6 @@ export async function getAllProducts(): Promise<ProductItem[]> {
     globalThis.__cachedProducts = prismaProducts;
     globalThis.__cachedProductsTime = now;
     writeProductsToFile(prismaProducts);
-    setSystemSetting('products_catalog', prismaProducts).catch(() => null);
     return prismaProducts;
   }
 
@@ -399,6 +467,8 @@ export async function saveProduct(prodData: Partial<ProductItem>): Promise<Produ
     galleryUrls: Array.isArray(prodData.galleryUrls) && prodData.galleryUrls.length > 0
       ? prodData.galleryUrls
       : (existing?.galleryUrls || (prodData.imageUrl ? [prodData.imageUrl] : ['/product_tiles.webp'])),
+    socialPlatform: prodData.socialPlatform || existing?.socialPlatform || 'TIKTOK',
+    socialUrl: prodData.socialUrl !== undefined ? prodData.socialUrl : (existing?.socialUrl || ''),
     createdAt: existing?.createdAt || now,
     updatedAt: now,
   };
@@ -425,6 +495,8 @@ export async function saveProduct(prodData: Partial<ProductItem>): Promise<Produ
         featured: newProduct.featured,
         imageUrl: newProduct.imageUrl,
         galleryUrls: newProduct.galleryUrls,
+        socialPlatform: newProduct.socialPlatform,
+        socialUrl: newProduct.socialUrl,
         createdBy: { connect: { id: "1ee92fa7-a3b4-4841-bc10-22e26a3d9fef" } },
       },
       update: {
@@ -444,6 +516,8 @@ export async function saveProduct(prodData: Partial<ProductItem>): Promise<Produ
         featured: newProduct.featured,
         imageUrl: newProduct.imageUrl,
         galleryUrls: newProduct.galleryUrls,
+        socialPlatform: newProduct.socialPlatform,
+        socialUrl: newProduct.socialUrl,
       },
     });
   } catch (e) {

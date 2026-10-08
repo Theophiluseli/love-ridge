@@ -22,12 +22,19 @@ export async function PATCH(
 
     if (body.isFavourite === true) {
       const currentProps = await getAllProperties();
-      const favCount = currentProps.filter((p) => p.isFavourite && p.id !== id).length;
-      if (favCount >= 3) {
-        return NextResponse.json(
-          { error: 'Only 3 properties can be selected as Favourite. Please deselect an existing Favourite first.' },
-          { status: 400 }
-        );
+      const existing = currentProps.find((p) => p.id === id);
+      if (!existing?.isFavourite) {
+        const favCount = currentProps.filter((p) => p.isFavourite && p.id !== id).length;
+        if (favCount >= 3) {
+          if (body.title || body.socialPlatform || body.price || body.listingType) {
+            body.isFavourite = false;
+          } else {
+            return NextResponse.json(
+              { error: 'Only 3 properties can be selected as Favourite. Please deselect an existing Favourite first.' },
+              { status: 400 }
+            );
+          }
+        }
       }
     }
 
@@ -35,35 +42,6 @@ export async function PATCH(
       id,
       ...body,
     });
-
-    try {
-      prisma.property.update({
-        where: { id },
-        data: {
-          title: body.title,
-          description: body.description,
-          listingType: body.listingType,
-          propertyType: body.propertyType,
-          status: body.status,
-          price: body.price !== undefined ? parseFloat(body.price) : undefined,
-          bedrooms: body.bedrooms !== undefined ? parseInt(body.bedrooms) : undefined,
-          bathrooms: body.bathrooms !== undefined ? parseInt(body.bathrooms) : undefined,
-          guestRooms: body.guestRooms !== undefined ? parseInt(body.guestRooms) : undefined,
-          boysQuarters: body.boysQuarters !== undefined ? parseInt(body.boysQuarters) : undefined,
-          garage: body.garage !== undefined ? parseInt(body.garage) : undefined,
-          sizeSqft: body.sizeSqft !== undefined ? parseFloat(body.sizeSqft) : undefined,
-          livingAreaSqft: body.livingAreaSqft !== undefined ? parseFloat(body.livingAreaSqft) : undefined,
-          locationAddress: body.locationAddress,
-          city: body.city,
-          featured: body.featured !== undefined ? Boolean(body.featured) : undefined,
-          imageUrl: body.imageUrl,
-          galleryUrls: body.galleryUrls,
-          publishedAt: body.status === 'PUBLISHED' ? new Date() : body.status === 'DRAFT' ? null : undefined,
-        },
-      }).catch(() => null);
-    } catch (e) {
-      // ignore DB update error
-    }
 
     try {
       await logAuditAction({

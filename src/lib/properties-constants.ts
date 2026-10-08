@@ -29,6 +29,8 @@ export interface PropertyItem {
   contactName?: string;
   contactPhone?: string;
   contactEmail?: string;
+  socialPlatform?: 'TIKTOK' | 'INSTAGRAM' | 'FACEBOOK' | 'YOUTUBE' | string | null;
+  socialUrl?: string | null;
   ownerName?: string;
   ownerPhone?: string;
   ownerCompany?: string;

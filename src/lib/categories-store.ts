@@ -95,7 +95,7 @@ export function writeCategoriesToFile(categories: ProductCategory[]) {
 // In-memory instant cache for blazing fast reads (<2ms)
 let cachedCategories: ProductCategory[] | null = null;
 let cacheTime = 0;
-const CACHE_DURATION = 30000; // 30 seconds
+const CACHE_DURATION = 300000; // 5 minutes
 
 export function slugify(text: string): string {
   return text
@@ -116,50 +116,26 @@ export async function getAllCategories(includeCounts = false): Promise<CategoryW
   if (cachedCategories && now - cacheTime < CACHE_DURATION) {
     categories = cachedCategories;
   } else {
-    // 1. Check PostgreSQL system_settings cloud catalog first
-    try {
-      const { data: dbCategories, isDefault } = await getSystemSetting<ProductCategory[]>(
-        'categories_catalog',
-        DEFAULT_CATEGORIES
-      );
-      if (!isDefault && Array.isArray(dbCategories) && dbCategories.length > 0) {
-        categories = dbCategories;
-      }
-    } catch (e) {
-      console.warn('Could not read categories from system_settings:', e);
-    }
-
-    // 2. Fall back to file/default if needed
-    if (categories.length === 0) {
-      categories = readCategoriesFromFile();
-    }
-
-    // 3. Sync to Prisma product_categories table in background
-    (async () => {
-      try {
-        for (const cat of categories) {
-          await prisma.productCategory.upsert({
-            where: { id: cat.id },
-            update: {
-              name: cat.name,
-              slug: cat.slug,
-              description: cat.description || null,
-            },
-            create: {
-              id: cat.id,
-              name: cat.name,
-              slug: cat.slug,
-              description: cat.description || null,
-            },
-          }).catch(() => null);
-        }
-      } catch (err) {
-        // Ignore background sync errors
-      }
-    })();
-
+    // Fast-path: read from local file/defaults instantly (<0.5ms)
+    categories = readCategoriesFromFile();
     cachedCategories = categories;
     cacheTime = now;
+
+    // Asynchronously check PostgreSQL system_settings cloud catalog in background
+    (async () => {
+      try {
+        const { data: dbCategories, isDefault } = await getSystemSetting<ProductCategory[]>(
+          'categories_catalog',
+          DEFAULT_CATEGORIES
+        );
+        if (!isDefault && Array.isArray(dbCategories) && dbCategories.length > 0) {
+          cachedCategories = dbCategories;
+          writeCategoriesToFile(dbCategories);
+        }
+      } catch (e) {
+        // ignore background refresh error
+      }
+    })();
   }
 
   // Calculate live product counts for each category

@@ -12,8 +12,11 @@ export default function ProductCardSkeleton() {
             <div className="w-16 h-5 bg-slate-300 rounded-full" />
           </div>
 
-          {/* Floating Circle "+" Button Skeleton */}
-          <div className="absolute bottom-2.5 right-2.5 sm:bottom-3 sm:right-3 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-300 z-10" />
+          {/* Floating Price & Circle "+" Button Skeleton */}
+          <div className="absolute bottom-2.5 right-2.5 sm:bottom-3 sm:right-3 z-10 flex items-center gap-1.5 sm:gap-2">
+            <div className="w-20 h-7 sm:h-8 bg-slate-300 rounded-full" />
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-300" />
+          </div>
         </div>
 
         {/* Product Details Skeleton */}
@@ -21,13 +24,10 @@ export default function ProductCardSkeleton() {
         <div className="w-2/3 h-5 bg-slate-200 rounded mb-3" />
       </div>
 
-      {/* Pricing & Button Footer Skeleton */}
-      <div className="pt-2.5 sm:pt-3 border-t border-slate-100 flex items-center justify-between">
-        <div className="flex items-baseline gap-1.5">
-          <div className="w-20 h-6 bg-slate-200 rounded" />
-          <div className="w-12 h-4 bg-slate-200 rounded" />
-        </div>
-        <div className="w-16 h-8 bg-slate-200 rounded-xl" />
+      {/* Action Buttons Footer Skeleton */}
+      <div className="pt-2.5 sm:pt-3 border-t border-slate-100 grid grid-cols-2 gap-2">
+        <div className="h-9 sm:h-10 bg-slate-200 rounded-xl sm:rounded-2xl" />
+        <div className="h-9 sm:h-10 bg-slate-200 rounded-xl sm:rounded-2xl" />
       </div>
     </div>
   );

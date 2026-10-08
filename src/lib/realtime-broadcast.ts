@@ -18,6 +18,7 @@ export interface CatalogRevision {
 // Global revision registry shared across current server instance
 declare global {
   var __catalogRevision: CatalogRevision | undefined;
+  var __catalogRevisionTime: number | undefined;
 }
 
 const DEFAULT_REVISION: CatalogRevision = {
@@ -33,17 +34,31 @@ if (!globalThis.__catalogRevision) {
   globalThis.__catalogRevision = { ...DEFAULT_REVISION };
 }
 
+const REVISION_CACHE_TTL = 300000; // 5 minutes
+
 export async function getLatestCatalogRevision(): Promise<CatalogRevision> {
+  const now = Date.now();
+  // If memory revision is already loaded and fresh (< 5 mins), return immediately (0.01ms)
+  if (
+    globalThis.__catalogRevision &&
+    globalThis.__catalogRevisionTime &&
+    now - globalThis.__catalogRevisionTime < REVISION_CACHE_TTL
+  ) {
+    return { ...globalThis.__catalogRevision };
+  }
+
   try {
     const { data } = await getSystemSetting<CatalogRevision>('catalog_revision', DEFAULT_REVISION);
     if (data && typeof data.version === 'number') {
       globalThis.__catalogRevision = { ...data };
+      globalThis.__catalogRevisionTime = now;
       return { ...data };
     }
   } catch (e) {
     // Fallback to local memory registry
   }
 
+  globalThis.__catalogRevisionTime = now;
   return { ...getCatalogRevision() };
 }
 

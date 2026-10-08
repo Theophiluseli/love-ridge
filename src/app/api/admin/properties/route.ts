@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   if ('response' in auth) return auth.response;
 
   try {
-    const properties = await getAllProperties();
+    const properties = await getAllProperties(true);
     return NextResponse.json(
       { properties },
       {
@@ -146,10 +146,14 @@ export async function POST(req: NextRequest) {
       featured: Boolean(featured),
       imageUrl: imageUrl || null,
       galleryUrls: Array.isArray(galleryUrls) ? galleryUrls : [],
-      contactName: body.contactName || 'Desmond Senanu',
-      ownerName: body.ownerName || '',
-      ownerPhone: body.ownerPhone || '',
-      ownerCompany: body.ownerCompany || '',
+      contactName: body.contactName?.trim() || 'Desmond Senanu',
+      contactPhone: body.contactPhone?.trim() || '+233 24 643 2493',
+      contactEmail: body.contactEmail?.trim() || 'info@loveridgeproperty.com',
+      socialPlatform: body.socialPlatform ? String(body.socialPlatform).trim().toUpperCase() : 'TIKTOK',
+      socialUrl: body.socialUrl ? String(body.socialUrl).trim() : '',
+      ownerName: body.ownerName ? String(body.ownerName).trim() : '',
+      ownerPhone: body.ownerPhone ? String(body.ownerPhone).trim() : '',
+      ownerCompany: body.ownerCompany ? String(body.ownerCompany).trim() : '',
       negotiable: Boolean(body.negotiable),
       isFavourite: Boolean(body.isFavourite ?? body.favourite),
       commission: body.commission || '',

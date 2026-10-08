@@ -93,7 +93,18 @@ model Property {
   featured        Boolean            @default(false)
   imageUrl        String?
   galleryUrls     String[]           @default([])
+  socialPlatform  String?            @default("TIKTOK")
+  socialUrl       String?            @default("")
   
+  ownerName       String?
+  ownerPhone      String?
+  ownerCompany    String?
+  contactName     String?
+  contactPhone    String?
+  contactEmail    String?
+  negotiable      Boolean?           @default(true)
+  commission      String?
+
   agentId         String?
   agent           User?              @relation("AgentProperties", fields: [agentId], references: [id])
   createdById     String
@@ -177,6 +188,8 @@ model Product {
   featured      Boolean         @default(false)
   imageUrl      String?
   galleryUrls   String[]        @default([])
+  socialPlatform String?        @default("TIKTOK")
+  socialUrl      String?        @default("")
 
   createdById   String
   createdBy     User            @relation("CreatedProducts", fields: [createdById], references: [id])

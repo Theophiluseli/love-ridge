@@ -8,7 +8,7 @@ import InquiryModal from '@/components/InquiryModal';
 import ImageGalleryModal from '@/components/ImageGalleryModal';
 import SocialShare from '@/components/SocialShare';
 import { useCurrency } from '@/context/CurrencyContext';
-import { MapPin, Bed, Bath, Maximize2, Shield, Calendar, ChevronLeft, ChevronRight, CheckCircle2, Images, X, PhoneCall, Mail, UserCheck, Home, Clock, BadgeCheck, Tv, Network, Asterisk, Check, Wind, Flame, Shirt, Fan, Wifi, Trees, Car, Sun, Send } from 'lucide-react';
+import { MapPin, Bed, Bath, Maximize2, Shield, Calendar, ChevronLeft, ChevronRight, CheckCircle2, Images, X, PhoneCall, Mail, UserCheck, Home, Clock, BadgeCheck, Tv, Network, Asterisk, Check, Wind, Flame, Shirt, Fan, Wifi, Trees, Car, Sun, Send, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { formatPropertyType } from '@/lib/property-categories';
 
@@ -661,6 +661,34 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
                 >
                   <Calendar className="w-4 h-4 text-emerald-800" /> Book Physical Viewing
                 </button>
+
+                {/* Featured Social Media Showcase Button */}
+                {(() => {
+                  const rawPlat = ((property as any).socialPlatform || '').toUpperCase().trim();
+                  const matched =
+                    rawPlat.includes('INSTA') ? 'INSTAGRAM' :
+                    rawPlat.includes('FACE') ? 'FACEBOOK' :
+                    rawPlat.includes('YOU') || rawPlat.includes('YT') ? 'YOUTUBE' :
+                    'TIKTOK';
+                  const cfg = {
+                    TIKTOK: { label: 'Watch on TikTok', url: (property as any).socialUrl || 'https://www.tiktok.com/@loveridgeproperty?is_from_webapp=1&sender_device=pc', cls: 'bg-black hover:bg-neutral-800 text-white' },
+                    INSTAGRAM: { label: 'Watch on Instagram', url: (property as any).socialUrl || 'https://www.instagram.com/loveridgepropertiesgh/', cls: 'bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045] hover:opacity-95 text-white' },
+                    FACEBOOK: { label: 'View on Facebook', url: (property as any).socialUrl || 'https://web.facebook.com/loveridgepropertiesgh', cls: 'bg-[#1877F2] hover:bg-[#166fe5] text-white' },
+                    YOUTUBE: { label: 'Watch on YouTube', url: (property as any).socialUrl || 'https://www.youtube.com/@loveridgeproperties', cls: 'bg-[#FF0000] hover:bg-[#d90000] text-white' },
+                  }[matched];
+
+                  return (
+                    <a
+                      href={cfg.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`w-full ${cfg.cls} py-3 rounded-2xl text-xs font-black flex items-center justify-center gap-2 transition shadow-md`}
+                    >
+                      <span>{cfg.label}</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  );
+                })()}
               </div>
 
               {/* Full Official Loveridge Contact Details Card */}

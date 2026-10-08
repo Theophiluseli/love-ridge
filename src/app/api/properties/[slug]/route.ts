@@ -79,7 +79,10 @@ export async function GET(
       include: { agent: true },
     });
 
-    return NextResponse.json({ property, similar });
+    return NextResponse.json({
+      property: sanitizePropertyForPublic(property as any),
+      similar: similar.map((s: any) => sanitizePropertyForPublic(s as any)),
+    });
   } catch (error) {
     console.error('Error fetching property detail:', error);
     return NextResponse.json({ error: 'Failed to fetch property details.' }, { status: 500 });

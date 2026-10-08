@@ -35,6 +35,8 @@ export interface ProductItem {
   imageUrl?: string | null;
   galleryUrls?: string[];
   specs?: Record<string, string>;
+  socialPlatform?: 'TIKTOK' | 'INSTAGRAM' | 'FACEBOOK' | 'YOUTUBE' | string | null;
+  socialUrl?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
