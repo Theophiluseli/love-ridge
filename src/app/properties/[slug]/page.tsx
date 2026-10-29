@@ -249,8 +249,6 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
               setLightboxOpen(true);
             }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent z-10 pointer-events-none" />
-
           {/* Left & Right Navigation Arrows */}
           {galleryImages.length > 1 && (
             <>
@@ -295,26 +293,6 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
           >
             <Images className="w-4 h-4" /> View Full Gallery ({galleryImages.length})
           </button>
-
-          <div className="relative z-20 max-w-3xl text-center space-y-3 sm:space-y-4 pointer-events-none">
-            <div className="flex items-center justify-center gap-2">
-              <span className="px-3.5 py-1 bg-emerald-800 text-white text-[10px] sm:text-xs font-bold uppercase rounded-full shadow-sm">
-                FOR {property.propertyType === 'LAND' ? 'SALE' : property.listingType}
-              </span>
-              <span className="px-3.5 py-1 bg-white/95 text-slate-900 text-[10px] sm:text-xs font-bold rounded-full shadow-sm">
-                {property.propertyType}
-              </span>
-            </div>
-
-            <h1 className="text-xl sm:text-5xl font-black text-white leading-tight drop-shadow-md">
-              {property.title}
-            </h1>
-
-            <div className="flex items-center justify-center gap-1.5 text-emerald-200 text-xs sm:text-sm font-semibold">
-              <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 shrink-0" />
-              <span className="truncate">{property.locationAddress}, {property.city}, {property.region || 'Ghana'}</span>
-            </div>
-          </div>
         </div>
 
         {/* Main Grid: Details + Sidebar */}
@@ -409,19 +387,6 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
                   <span className="text-slate-500 text-[11px] block">Land Documentation</span>
                   <span className="text-emerald-800 font-bold block flex items-center gap-1">
                     <Shield className="w-3.5 h-3.5 text-emerald-600" /> Titled & Indenture Checked
-                  </span>
-                </div>
-
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
-                  <span className="text-slate-500 text-[11px] block">Price Terms</span>
-                  <span className="text-slate-900 font-bold block flex items-center gap-1.5">
-                    {property.negotiable ? (
-                      <span className="text-blue-700 flex items-center gap-1">
-                        <Check className="w-3.5 h-3.5 stroke-[3] text-blue-600" /> Negotiable
-                      </span>
-                    ) : (
-                      'Fixed Price'
-                    )}
                   </span>
                 </div>
               </div>
@@ -624,19 +589,9 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
               <div>
                 <span className="text-xs text-slate-500 font-bold block uppercase tracking-wider">LISTING PRICE</span>
                 <div className="flex flex-wrap items-baseline gap-2 mt-1">
-                  <span className="text-3xl font-black text-emerald-950">
+                  <span className="text-2xl font-black text-emerald-950">
                     {formattedPrice}
                   </span>
-                  {property.pricePeriod && (
-                    <span className="inline-flex items-center text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 rounded-lg">
-                      {property.pricePeriod.toLowerCase() === 'outright purchase' ? 'Outright Purchase' : property.pricePeriod.toLowerCase() === 'per month' ? 'Per Month' : property.pricePeriod}
-                    </span>
-                  )}
-                  {property.negotiable && (
-                    <span className="inline-flex items-center gap-1 text-xs font-black text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg shadow-2xs">
-                      <Check className="w-3.5 h-3.5 stroke-[3] text-blue-600" /> Negotiable
-                    </span>
-                  )}
                 </div>
               </div>
 

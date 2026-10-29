@@ -1,12 +1,13 @@
 const { spawn } = require('child_process');
 const http = require('http');
+const path = require('path');
 
 console.log('[Loveridge Server] Initializing Next.js multi-port listening engine...');
 
 // 1. Launch Next.js on port 3000
-const nextProcess = spawn('npx', ['next', 'dev', '-p', '3000'], {
+const nextBin = path.join(__dirname, 'node_modules', 'next', 'dist', 'bin', 'next');
+const nextProcess = spawn(process.execPath, [nextBin, 'dev', '-p', '3000'], {
   stdio: 'inherit',
-  shell: true,
   cwd: __dirname,
 });
 

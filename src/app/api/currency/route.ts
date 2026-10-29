@@ -63,7 +63,7 @@ export async function GET() {
       headers: {
         'Accept': 'application/json',
       },
-      next: { revalidate: 21600 },
+      cache: 'no-store',
     });
 
     clearTimeout(timeoutId);

@@ -1,9 +1,8 @@
 // Loveridge Progressive Web App Service Worker
-const CACHE_NAME = 'loveridge-pwa-v1';
+const CACHE_NAME = 'loveridge-pwa-v2';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE_ASSETS = [
-  '/',
   '/offline.html',
   '/manifest.json',
   '/logo-green.png',
@@ -43,6 +42,27 @@ self.addEventListener('fetch', (event) => {
 
   // Skip non-GET requests and chrome-extension / external requests
   if (request.method !== 'GET' || !url.protocol.startsWith('http')) {
+    return;
+  }
+
+  // Never intercept requests on localhost / 127.0.0.1 so Next.js dev server & HMR CSS always load fresh
+  if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+    return;
+  }
+
+  // Always use network-first for Next.js build chunks & stylesheets to prevent unstyled pages
+  if (url.pathname.startsWith('/_next/')) {
+    event.respondWith(
+      fetch(request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const copy = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match(request, { ignoreSearch: true }))
+    );
     return;
   }
 

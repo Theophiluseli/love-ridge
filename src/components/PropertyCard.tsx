@@ -261,19 +261,9 @@ export default function PropertyCard({ property, onRequestViewing, hidePropertyT
         <div className="absolute bottom-3.5 left-3.5 right-3.5 sm:bottom-4 sm:left-4 sm:right-4 z-20 flex flex-wrap items-end justify-between gap-2">
           <div className="flex flex-col min-w-0 max-w-full">
             <div className="flex items-baseline flex-wrap gap-2">
-              <span className="text-2xl sm:text-3xl font-black text-white tracking-tight drop-shadow-md">
+              <span className="text-lg sm:text-xl font-black text-white tracking-tight drop-shadow-md">
                 {formattedPrice}
               </span>
-              {property.pricePeriod && (
-                <span className="inline-flex items-center text-xs font-bold text-emerald-300 bg-slate-950/85 backdrop-blur-md px-2.5 py-1 rounded-md border border-emerald-500/40 whitespace-nowrap shadow-sm">
-                  {formatPeriod(property.pricePeriod)}
-                </span>
-              )}
-              {property.negotiable && (
-                <span className="inline-flex items-center text-xs font-bold text-blue-200 bg-blue-950/85 backdrop-blur-md px-2.5 py-1 rounded-md border border-blue-500/40 whitespace-nowrap shadow-sm gap-1">
-                  <Check className="w-3 h-3 stroke-[3] text-blue-400" /> Negotiable
-                </span>
-              )}
             </div>
           </div>
           {!hidePropertyType && (
@@ -299,7 +289,7 @@ export default function PropertyCard({ property, onRequestViewing, hidePropertyT
             )}
           </div>
 
-          <h3 className="text-lg sm:text-xl font-bold text-slate-900 group-hover:text-emerald-800 transition-colors line-clamp-2 leading-snug">
+          <h3 className="text-sm sm:text-base font-bold text-slate-900 group-hover:text-emerald-800 transition-colors line-clamp-2 leading-snug">
             {property.title}
           </h3>
 

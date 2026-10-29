@@ -63,18 +63,38 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
       mediaQuery.addListener(handler);
     }
 
-    // 3. Register Service Worker in production/browser
+    // 3. Register Service Worker in production; unregister & clear stale caches on localhost dev
     if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker
-          .register('/sw.js')
-          .then((reg) => {
-            console.log('[PWA] Service Worker registered with scope:', reg.scope);
-          })
-          .catch((err) => {
-            console.warn('[PWA] Service Worker registration skipped or failed:', err);
+      const isLocalDev =
+        process.env.NODE_ENV === 'development' ||
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1';
+
+      if (isLocalDev) {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          for (const registration of registrations) {
+            registration.unregister();
+          }
+        });
+        if ('caches' in window) {
+          caches.keys().then((keys) => {
+            for (const key of keys) {
+              caches.delete(key);
+            }
           });
-      });
+        }
+      } else {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker
+            .register('/sw.js')
+            .then((reg) => {
+              console.log('[PWA] Service Worker registered with scope:', reg.scope);
+            })
+            .catch((err) => {
+              console.warn('[PWA] Service Worker registration skipped or failed:', err);
+            });
+        });
+      }
     }
 
     // 4. Capture native install prompt

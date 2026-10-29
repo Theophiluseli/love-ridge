@@ -1165,8 +1165,8 @@ export default function AdminPropertiesPage() {
                 </div>
               )}
 
-              {/* Currency, Listing Price & Period */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Currency & Listing Price */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-800 mb-2">Currency</label>
                   <select
@@ -1189,50 +1189,6 @@ export default function AdminPropertiesPage() {
                     placeholder="e.g. 4500"
                     className="admin-input"
                   />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-800 mb-2">Payment Period</label>
-                  <input
-                    type="text"
-                    value={form.pricePeriod}
-                    onChange={(e) => setForm({ ...form, pricePeriod: e.target.value })}
-                    placeholder="per month, per year, outright"
-                    className="admin-input"
-                  />
-                </div>
-              </div>
-
-              {/* PRICING TERMS: NEGOTIABLE */}
-              <div className="p-5 bg-slate-50/90 rounded-2xl border border-slate-200">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  {/* [✓] Negotiable */}
-                  <label className="flex items-center gap-3 cursor-pointer select-none">
-                    <div
-                      onClick={() => setForm({ ...form, negotiable: !form.negotiable })}
-                      className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all cursor-pointer ${form.negotiable
-                          ? 'bg-blue-600 text-white shadow-xs ring-2 ring-blue-600/20'
-                          : 'bg-white border-2 border-slate-300 hover:border-slate-400'
-                        }`}
-                    >
-                      {form.negotiable && <Check className="w-4 h-4 stroke-[3]" />}
-                    </div>
-                    <span
-                      onClick={() => setForm({ ...form, negotiable: !form.negotiable })}
-                      className="text-sm font-bold text-slate-800 cursor-pointer flex items-center gap-2"
-                    >
-                      Negotiable
-                      {form.negotiable && (
-                        <span className="text-[10px] bg-blue-50 text-blue-700 font-extrabold px-2 py-0.5 rounded-full border border-blue-200">
-                          Active
-                        </span>
-                      )}
-                    </span>
-                  </label>
-
-                  <span className="text-xs font-medium text-slate-500">
-                    {form.negotiable ? '✓ Price will be shown as Negotiable to clients' : 'Fixed price / non-negotiable'}
-                  </span>
                 </div>
               </div>
 
@@ -1947,11 +1903,6 @@ export default function AdminPropertiesPage() {
                         <span className="font-black text-sm text-slate-900 tracking-tight">
                           {prop.currency || 'USD'} {prop.price ? Number(prop.price).toLocaleString() : '0'}
                         </span>
-                        {(prop.negotiable || prop.negotiable === undefined) && (
-                          <span className="text-[10px] bg-blue-50 text-blue-700 border border-blue-200/80 px-1.5 py-0.5 rounded-md font-bold flex items-center gap-0.5">
-                            <Check className="w-2.5 h-2.5 stroke-[3]" /> Neg.
-                          </span>
-                        )}
                         {(prop.isFavourite || (prop as any).favourite || prop.featured) && (
                           <span className="text-[10px] bg-blue-50 text-blue-700 border border-blue-200/80 px-1.5 py-0.5 rounded-md font-bold flex items-center gap-0.5">
                             <Star className="w-2.5 h-2.5 fill-blue-600 text-blue-600" /> Fav
@@ -1964,11 +1915,11 @@ export default function AdminPropertiesPage() {
                   {/* Bottom: User Agent / Staff + Status + Action Buttons */}
                   <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
                     <div className="flex flex-col min-w-0">
-                      {prop.ownerName ? (
+                      {(prop.ownerName || prop.ownerPhone || prop.ownerCompany) ? (
                         <div className="flex items-center gap-1 text-xs font-bold text-slate-900 truncate">
                           <User className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
-                          <span className="truncate max-w-[140px]" title={prop.ownerName}>
-                            {prop.ownerName}
+                          <span className="truncate max-w-[140px]" title={prop.ownerName || prop.ownerCompany || 'Owner Recorded'}>
+                            {prop.ownerName || prop.ownerCompany || 'Owner Recorded'}
                           </span>
                           {prop.ownerPhone && (
                             <span className="text-[10px] text-emerald-700 font-semibold shrink-0">
@@ -1984,9 +1935,9 @@ export default function AdminPropertiesPage() {
                             onClick={() => {
                               setViewItem(prop);
                               setOwnerRecordForm({
-                                ownerName: '',
-                                ownerPhone: '',
-                                ownerCompany: '',
+                                ownerName: prop.ownerName || '',
+                                ownerPhone: prop.ownerPhone || '',
+                                ownerCompany: prop.ownerCompany || '',
                               });
                               setIsEditingOwnerRecord(true);
                             }}
@@ -2004,7 +1955,15 @@ export default function AdminPropertiesPage() {
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button
                         type="button"
-                        onClick={() => setViewItem(prop)}
+                        onClick={() => {
+                          setViewItem(prop);
+                          setOwnerRecordForm({
+                            ownerName: prop.ownerName || '',
+                            ownerPhone: prop.ownerPhone || '',
+                            ownerCompany: prop.ownerCompany || '',
+                          });
+                          setIsEditingOwnerRecord(false);
+                        }}
                         className="p-1.5 rounded-lg border border-emerald-200 text-emerald-700 hover:bg-emerald-50 transition bg-white"
                         title="View Property Details"
                         aria-label="View Property Details"
@@ -2157,24 +2116,19 @@ export default function AdminPropertiesPage() {
                         <div>
                           {prop.currency} {prop.price ? prop.price.toLocaleString() : '0'}
                         </div>
-                        {prop.negotiable && (
-                          <span className="text-[10px] text-blue-700 font-black flex items-center gap-0.5 mt-0.5">
-                            <Check className="w-3 h-3 stroke-[3]" /> Negotiable
-                          </span>
-                        )}
                       </td>
                       <td className="px-6 py-4 text-slate-600">{prop.city}</td>
 
                       {/* INTERNAL OWNER / SOURCING RECORD COLUMN */}
                       <td className="px-6 py-4 text-slate-800">
                         <div className="space-y-1.5">
-                          {prop.ownerName ? (
+                          {(prop.ownerName || prop.ownerPhone || prop.ownerCompany) ? (
                             <div className="space-y-0.5">
                               <div className="flex items-center justify-between gap-1">
                                 <div className="flex items-center gap-1.5 text-slate-900 font-black text-xs">
                                   <User className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
-                                  <span className="truncate max-w-[140px]" title={prop.ownerName}>
-                                    {prop.ownerName}
+                                  <span className="truncate max-w-[140px]" title={prop.ownerName || prop.ownerCompany || 'Owner Recorded'}>
+                                    {prop.ownerName || prop.ownerCompany || 'Owner Recorded'}
                                   </span>
                                 </div>
                                 <button
@@ -2216,9 +2170,9 @@ export default function AdminPropertiesPage() {
                                 onClick={() => {
                                   setViewItem(prop);
                                   setOwnerRecordForm({
-                                    ownerName: '',
-                                    ownerPhone: '',
-                                    ownerCompany: '',
+                                    ownerName: prop.ownerName || '',
+                                    ownerPhone: prop.ownerPhone || '',
+                                    ownerCompany: prop.ownerCompany || '',
                                   });
                                   setIsEditingOwnerRecord(true);
                                 }}
@@ -2299,7 +2253,15 @@ export default function AdminPropertiesPage() {
                       <td className="px-6 py-4 text-right space-x-1.5 whitespace-nowrap">
                         <button
                           type="button"
-                          onClick={() => setViewItem(prop)}
+                          onClick={() => {
+                            setViewItem(prop);
+                            setOwnerRecordForm({
+                              ownerName: prop.ownerName || '',
+                              ownerPhone: prop.ownerPhone || '',
+                              ownerCompany: prop.ownerCompany || '',
+                            });
+                            setIsEditingOwnerRecord(false);
+                          }}
                           className="p-2 rounded-lg text-emerald-800 hover:text-emerald-950 hover:bg-emerald-50 border border-emerald-200 transition"
                           title="View Full Property Details"
                           aria-label="View Full Property Details"
@@ -2497,7 +2459,6 @@ export default function AdminPropertiesPage() {
                   />
                   <div className="absolute top-3 right-3 bg-slate-900/80 backdrop-blur-xs text-white text-xs font-bold px-3 py-1.5 rounded-full">
                     {viewItem.currency || 'USD'} {viewItem.price ? Number(viewItem.price).toLocaleString() : '0'}
-                    {viewItem.pricePeriod ? ` • ${viewItem.pricePeriod}` : ''}
                   </div>
                 </div>
 
@@ -2543,7 +2504,7 @@ export default function AdminPropertiesPage() {
                       className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-emerald-100/70 border border-emerald-300 text-emerald-900 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition self-start sm:self-auto cursor-pointer"
                     >
                       <Edit2 className="w-3.5 h-3.5 text-emerald-800" />
-                      <span>{viewItem.ownerName ? 'Edit Owner Record' : '+ Add Owner Record'}</span>
+                      <span>{(viewItem.ownerName || viewItem.ownerPhone || viewItem.ownerCompany) ? 'Edit Owner Record' : '+ Add Owner Record'}</span>
                     </button>
                   ) : (
                     <button
@@ -2770,12 +2731,9 @@ export default function AdminPropertiesPage() {
               {/* Key Specs Matrix */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200">
-                  <span className="text-[11px] text-slate-500 font-bold block mb-1">Pricing & Terms</span>
+                  <span className="text-[11px] text-slate-500 font-bold block mb-1">Listing Price</span>
                   <span className="text-sm font-black text-slate-900 block">
                     {viewItem.currency} {viewItem.price ? Number(viewItem.price).toLocaleString() : '0'}
-                  </span>
-                  <span className="text-[10px] text-emerald-700 font-bold">
-                    {viewItem.negotiable ? '✓ Negotiable' : 'Fixed Price'}
                   </span>
                 </div>
 

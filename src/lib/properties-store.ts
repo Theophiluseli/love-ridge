@@ -237,50 +237,65 @@ export async function getAllProperties(forceFresh: boolean = false): Promise<Pro
             },
           });
           if (pProps && pProps.length > 0) {
+            const deletedIds = await getDeletedPropertyIds();
             const filePropsMap = new Map(fileProps.map((fp) => [fp.id, fp]));
-            const mapped = pProps.map((p: any) => {
-              const fileBackup = filePropsMap.get(p.id);
-              return {
-                id: p.id,
-                title: p.title,
-                slug: p.slug,
-                description: p.description,
-                listingType: p.listingType,
-                propertyType: p.propertyType,
-                status: p.status || "PUBLISHED",
-                price: p.price,
-                currency: p.currency || "USD",
-                pricePeriod: p.pricePeriod || (p.listingType === "RENT" ? "per month" : "outright purchase"),
-                negotiable: p.negotiable ?? fileBackup?.negotiable ?? true,
-                commission: p.commission || fileBackup?.commission || "",
-                bedrooms: p.bedrooms ?? 0,
-                bathrooms: p.bathrooms ?? 0,
-                guestRooms: p.guestRooms || 0,
-                boysQuarters: p.boysQuarters || 0,
-                garage: p.garage || 0,
-                sizeSqft: p.sizeSqft,
-                livingAreaSqft: p.livingAreaSqft,
-                locationAddress: p.locationAddress,
-                city: p.city,
-                region: p.region,
-                country: p.country || "Ghana",
-                featured: Boolean(p.featured),
-                isFavourite: fileBackup?.isFavourite !== undefined ? Boolean(fileBackup.isFavourite) : false,
-                imageUrl: p.imageUrl || "/property_villa.webp",
-                galleryUrls: Array.isArray(p.galleryUrls) && p.galleryUrls.length > 0 ? p.galleryUrls : [p.imageUrl || "/property_villa.webp"],
-                contactName: p.contactName || fileBackup?.contactName || p.agent?.name || "Desmond Senanu",
-                contactPhone: p.contactPhone || fileBackup?.contactPhone || p.agent?.phone || "+233 24 643 2493",
-                contactEmail: p.contactEmail || fileBackup?.contactEmail || p.agent?.email || "info@loveridgeproperty.com",
-                socialPlatform: p.socialPlatform || fileBackup?.socialPlatform || "TIKTOK",
-                socialUrl: p.socialUrl || fileBackup?.socialUrl || "",
-                ownerName: p.ownerName || fileBackup?.ownerName || "",
-                ownerPhone: p.ownerPhone || fileBackup?.ownerPhone || "",
-                ownerCompany: p.ownerCompany || fileBackup?.ownerCompany || "",
-                amenities: p.amenities?.map((a: any) => a.amenity?.name).filter(Boolean) || fileBackup?.amenities || [],
-                createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
-                updatedAt: p.updatedAt ? new Date(p.updatedAt).toISOString() : new Date().toISOString(),
-              };
-            });
+            const prismaIds = new Set(pProps.map((p: any) => p.id));
+            const mapped: PropertyItem[] = pProps
+              .filter((p: any) => !deletedIds.has(p.id))
+              .map((p: any) => {
+                const fileBackup = filePropsMap.get(p.id);
+                const fileIsNewer =
+                  fileBackup?.updatedAt &&
+                  p.updatedAt &&
+                  new Date(fileBackup.updatedAt).getTime() > new Date(p.updatedAt).getTime();
+                return {
+                  id: p.id,
+                  title: p.title,
+                  slug: p.slug,
+                  description: p.description,
+                  listingType: p.listingType,
+                  propertyType: p.propertyType,
+                  status: p.status || "PUBLISHED",
+                  price: p.price,
+                  currency: p.currency || "USD",
+                  pricePeriod: p.pricePeriod || (p.listingType === "RENT" ? "per month" : "outright purchase"),
+                  negotiable: p.negotiable ?? fileBackup?.negotiable ?? true,
+                  commission: p.commission || fileBackup?.commission || "",
+                  bedrooms: p.bedrooms ?? 0,
+                  bathrooms: p.bathrooms ?? 0,
+                  guestRooms: p.guestRooms || 0,
+                  boysQuarters: p.boysQuarters || 0,
+                  garage: p.garage || 0,
+                  sizeSqft: p.sizeSqft,
+                  livingAreaSqft: p.livingAreaSqft,
+                  locationAddress: p.locationAddress,
+                  city: p.city,
+                  region: p.region,
+                  country: p.country || "Ghana",
+                  featured: Boolean(p.featured),
+                  isFavourite: fileBackup?.isFavourite !== undefined ? Boolean(fileBackup.isFavourite) : false,
+                  imageUrl: p.imageUrl || "/property_villa.webp",
+                  galleryUrls: Array.isArray(p.galleryUrls) && p.galleryUrls.length > 0 ? p.galleryUrls : [p.imageUrl || "/property_villa.webp"],
+                  contactName: (fileIsNewer && fileBackup?.contactName) ? fileBackup.contactName : (p.contactName || fileBackup?.contactName || p.agent?.name || "Desmond Senanu"),
+                  contactPhone: (fileIsNewer && fileBackup?.contactPhone) ? fileBackup.contactPhone : (p.contactPhone || fileBackup?.contactPhone || p.agent?.phone || "+233 24 643 2493"),
+                  contactEmail: (fileIsNewer && fileBackup?.contactEmail) ? fileBackup.contactEmail : (p.contactEmail || fileBackup?.contactEmail || p.agent?.email || "info@loveridgeproperty.com"),
+                  socialPlatform: (fileIsNewer && fileBackup?.socialPlatform) ? fileBackup.socialPlatform : (p.socialPlatform || fileBackup?.socialPlatform || "TIKTOK"),
+                  socialUrl: (fileIsNewer && fileBackup?.socialUrl !== undefined) ? fileBackup.socialUrl : (p.socialUrl || fileBackup?.socialUrl || ""),
+                  ownerName: (fileIsNewer && fileBackup?.ownerName !== undefined) ? fileBackup.ownerName : (p.ownerName || fileBackup?.ownerName || ""),
+                  ownerPhone: (fileIsNewer && fileBackup?.ownerPhone !== undefined) ? fileBackup.ownerPhone : (p.ownerPhone || fileBackup?.ownerPhone || ""),
+                  ownerCompany: (fileIsNewer && fileBackup?.ownerCompany !== undefined) ? fileBackup.ownerCompany : (p.ownerCompany || fileBackup?.ownerCompany || ""),
+                  amenities: p.amenities?.map((a: any) => a.amenity?.name).filter(Boolean) || fileBackup?.amenities || [],
+                  createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
+                  updatedAt: (fileIsNewer && fileBackup?.updatedAt) ? fileBackup.updatedAt : (p.updatedAt ? new Date(p.updatedAt).toISOString() : new Date().toISOString()),
+                };
+              });
+
+            for (const fp of fileProps) {
+              if (!prismaIds.has(fp.id) && !deletedIds.has(fp.id)) {
+                mapped.push(fp);
+              }
+            }
+
             mapped.sort((a, b) => {
               const aFav = a.isFavourite ? 1 : 0;
               const bFav = b.isFavourite ? 1 : 0;
@@ -309,52 +324,66 @@ export async function getAllProperties(forceFresh: boolean = false): Promise<Pro
     });
 
     if (pProps && pProps.length > 0) {
+      const deletedIds = await getDeletedPropertyIds();
       const fileProps = readPropertiesFromFile();
       const filePropsMap = new Map(fileProps.map((fp) => [fp.id, fp]));
+      const prismaIds = new Set(pProps.map((p: any) => p.id));
 
-      prismaProperties = pProps.map((p: any) => {
-        const fileBackup = filePropsMap.get(p.id);
-        return {
-          id: p.id,
-          title: p.title,
-          slug: p.slug,
-          description: p.description,
-          listingType: p.listingType,
-          propertyType: p.propertyType,
-          status: p.status || "PUBLISHED",
-          price: p.price,
-          currency: p.currency || "USD",
-          pricePeriod: p.pricePeriod || (p.listingType === "RENT" ? "per month" : "outright purchase"),
-          negotiable: p.negotiable ?? fileBackup?.negotiable ?? true,
-          commission: p.commission || fileBackup?.commission || "",
-          bedrooms: p.bedrooms ?? 0,
-          bathrooms: p.bathrooms ?? 0,
-          guestRooms: p.guestRooms || 0,
-          boysQuarters: p.boysQuarters || 0,
-          garage: p.garage || 0,
-          sizeSqft: p.sizeSqft,
-          livingAreaSqft: p.livingAreaSqft,
-          locationAddress: p.locationAddress,
-          city: p.city,
-          region: p.region,
-          country: p.country || "Ghana",
-          featured: Boolean(p.featured),
-          isFavourite: fileBackup?.isFavourite !== undefined ? Boolean(fileBackup.isFavourite) : false,
-          imageUrl: p.imageUrl || "/property_villa.webp",
-          galleryUrls: Array.isArray(p.galleryUrls) && p.galleryUrls.length > 0 ? p.galleryUrls : [p.imageUrl || "/property_villa.webp"],
-          contactName: p.contactName || fileBackup?.contactName || p.agent?.name || "Desmond Senanu",
-          contactPhone: p.contactPhone || fileBackup?.contactPhone || p.agent?.phone || "+233 24 643 2493",
-          contactEmail: p.contactEmail || fileBackup?.contactEmail || p.agent?.email || "info@loveridgeproperty.com",
-          socialPlatform: p.socialPlatform || fileBackup?.socialPlatform || "TIKTOK",
-          socialUrl: p.socialUrl || fileBackup?.socialUrl || "",
-          ownerName: p.ownerName || fileBackup?.ownerName || "",
-          ownerPhone: p.ownerPhone || fileBackup?.ownerPhone || "",
-          ownerCompany: p.ownerCompany || fileBackup?.ownerCompany || "",
-          amenities: p.amenities?.map((a: any) => a.amenity?.name).filter(Boolean) || fileBackup?.amenities || [],
-          createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
-          updatedAt: p.updatedAt ? new Date(p.updatedAt).toISOString() : new Date().toISOString(),
-        };
-      });
+      prismaProperties = pProps
+        .filter((p: any) => !deletedIds.has(p.id))
+        .map((p: any) => {
+          const fileBackup = filePropsMap.get(p.id);
+          const fileIsNewer =
+            fileBackup?.updatedAt &&
+            p.updatedAt &&
+            new Date(fileBackup.updatedAt).getTime() > new Date(p.updatedAt).getTime();
+          return {
+            id: p.id,
+            title: p.title,
+            slug: p.slug,
+            description: p.description,
+            listingType: p.listingType,
+            propertyType: p.propertyType,
+            status: p.status || "PUBLISHED",
+            price: p.price,
+            currency: p.currency || "USD",
+            pricePeriod: p.pricePeriod || (p.listingType === "RENT" ? "per month" : "outright purchase"),
+            negotiable: p.negotiable ?? fileBackup?.negotiable ?? true,
+            commission: p.commission || fileBackup?.commission || "",
+            bedrooms: p.bedrooms ?? 0,
+            bathrooms: p.bathrooms ?? 0,
+            guestRooms: p.guestRooms || 0,
+            boysQuarters: p.boysQuarters || 0,
+            garage: p.garage || 0,
+            sizeSqft: p.sizeSqft,
+            livingAreaSqft: p.livingAreaSqft,
+            locationAddress: p.locationAddress,
+            city: p.city,
+            region: p.region,
+            country: p.country || "Ghana",
+            featured: Boolean(p.featured),
+            isFavourite: fileBackup?.isFavourite !== undefined ? Boolean(fileBackup.isFavourite) : false,
+            imageUrl: p.imageUrl || "/property_villa.webp",
+            galleryUrls: Array.isArray(p.galleryUrls) && p.galleryUrls.length > 0 ? p.galleryUrls : [p.imageUrl || "/property_villa.webp"],
+            contactName: (fileIsNewer && fileBackup?.contactName) ? fileBackup.contactName : (p.contactName || fileBackup?.contactName || p.agent?.name || "Desmond Senanu"),
+            contactPhone: (fileIsNewer && fileBackup?.contactPhone) ? fileBackup.contactPhone : (p.contactPhone || fileBackup?.contactPhone || p.agent?.phone || "+233 24 643 2493"),
+            contactEmail: (fileIsNewer && fileBackup?.contactEmail) ? fileBackup.contactEmail : (p.contactEmail || fileBackup?.contactEmail || p.agent?.email || "info@loveridgeproperty.com"),
+            socialPlatform: (fileIsNewer && fileBackup?.socialPlatform) ? fileBackup.socialPlatform : (p.socialPlatform || fileBackup?.socialPlatform || "TIKTOK"),
+            socialUrl: (fileIsNewer && fileBackup?.socialUrl !== undefined) ? fileBackup.socialUrl : (p.socialUrl || fileBackup?.socialUrl || ""),
+            ownerName: (fileIsNewer && fileBackup?.ownerName !== undefined) ? fileBackup.ownerName : (p.ownerName || fileBackup?.ownerName || ""),
+            ownerPhone: (fileIsNewer && fileBackup?.ownerPhone !== undefined) ? fileBackup.ownerPhone : (p.ownerPhone || fileBackup?.ownerPhone || ""),
+            ownerCompany: (fileIsNewer && fileBackup?.ownerCompany !== undefined) ? fileBackup.ownerCompany : (p.ownerCompany || fileBackup?.ownerCompany || ""),
+            amenities: p.amenities?.map((a: any) => a.amenity?.name).filter(Boolean) || fileBackup?.amenities || [],
+            createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
+            updatedAt: (fileIsNewer && fileBackup?.updatedAt) ? fileBackup.updatedAt : (p.updatedAt ? new Date(p.updatedAt).toISOString() : new Date().toISOString()),
+          };
+        });
+
+      for (const fp of fileProps) {
+        if (!prismaIds.has(fp.id) && !deletedIds.has(fp.id)) {
+          prismaProperties.push(fp);
+        }
+      }
     }
   } catch (err) {
     console.warn("Prisma property fetch notice, falling back to backup stores:", err);
@@ -481,14 +510,22 @@ export async function saveProperty(propData: Partial<PropertyItem>): Promise<Pro
       : (existing?.galleryUrls || (propData.imageUrl ? [propData.imageUrl] : ["/property_villa.webp"])),
     contactName: propData.contactName || existing?.contactName || "Desmond Senanu",
     contactPhone: propData.contactPhone || existing?.contactPhone || "+233 24 643 2493",
+    contactEmail: propData.contactEmail || existing?.contactEmail || "info@loveridgeproperty.com",
     socialPlatform: propData.socialPlatform
       ? String(propData.socialPlatform).trim().toUpperCase()
       : (existing?.socialPlatform || "TIKTOK"),
     socialUrl: propData.socialUrl !== undefined
       ? String(propData.socialUrl).trim()
       : (existing?.socialUrl || ""),
-    ownerPhone: propData.ownerPhone !== undefined ? propData.ownerPhone : (existing?.ownerPhone || ""),
-    ownerCompany: propData.ownerCompany !== undefined ? propData.ownerCompany : (existing?.ownerCompany || ""),
+    ownerName: propData.ownerName !== undefined
+      ? String(propData.ownerName).trim()
+      : (existing?.ownerName || ""),
+    ownerPhone: propData.ownerPhone !== undefined
+      ? String(propData.ownerPhone).trim()
+      : (existing?.ownerPhone || ""),
+    ownerCompany: propData.ownerCompany !== undefined
+      ? String(propData.ownerCompany).trim()
+      : (existing?.ownerCompany || ""),
     amenities: Array.isArray(propData.amenities)
       ? propData.amenities
       : (existing?.amenities || []),
@@ -498,6 +535,18 @@ export async function saveProperty(propData: Partial<PropertyItem>): Promise<Pro
 
   // 1. Upsert directly to PostgreSQL properties table via Prisma
   try {
+    let creatorId = (propData as any).createdById || "1ee92fa7-a3b4-4841-bc10-22e26a3d9fef";
+    try {
+      const existingUser = await prisma.user.findFirst({
+        where: { id: creatorId },
+        select: { id: true },
+      });
+      if (!existingUser) {
+        const anyUser = await prisma.user.findFirst({ select: { id: true } });
+        if (anyUser?.id) creatorId = anyUser.id;
+      }
+    } catch (_) {}
+
     await (prisma.property as any).upsert({
       where: { id: newProperty.id },
       create: {
@@ -536,7 +585,7 @@ export async function saveProperty(propData: Partial<PropertyItem>): Promise<Pro
         negotiable: newProperty.negotiable,
         commission: newProperty.commission || null,
         publishedAt: newProperty.status === "PUBLISHED" ? new Date() : null,
-        createdBy: { connect: { id: "1ee92fa7-a3b4-4841-bc10-22e26a3d9fef" } },
+        createdBy: { connect: { id: creatorId } },
       },
       update: {
         title: newProperty.title,
