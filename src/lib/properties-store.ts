@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { prisma } from "./db";
 import { getSystemSetting, setSystemSetting, invalidateSystemSetting } from "./system-settings";
+import { normalizeEntityImages } from "./image-url-normalizer";
 import {
   PropertyItem,
   sanitizePropertyForPublic,
@@ -33,7 +34,16 @@ export function readPropertiesFromFile(): PropertyItem[] {
       const data = fs.readFileSync(FILE_PATH, "utf-8");
       const parsed = JSON.parse(data);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        let anyChanged = false;
+        const normalized = parsed.map((p: PropertyItem) => {
+          const { item, changed } = normalizeEntityImages(p);
+          if (changed) anyChanged = true;
+          return item;
+        });
+        if (anyChanged) {
+          writePropertiesToFile(normalized);
+        }
+        return normalized;
       }
     }
   } catch (err) {
@@ -71,10 +81,11 @@ function writeDeletedPropertyIdsToFile(ids: Set<string>) {
 }
 
 declare global {
-  var __cachedProperties: PropertyItem[] | null | undefined;
-  var __cachedPropertiesTime: number | undefined;
+  var __cachedPropertiesV3: PropertyItem[] | null | undefined;
+  var __cachedPropertiesV3Time: number | undefined;
   var __cachedDeletedPropertyIds: Set<string> | null | undefined;
   var __deletedIdsCacheTime: number | undefined;
+  var __revalidatingPropertiesPromise: Promise<PropertyItem[]> | null | undefined;
 }
 
 export async function getDeletedPropertyIds(): Promise<Set<string>> {
@@ -125,8 +136,8 @@ export async function removeDeletedPropertyId(id: string): Promise<void> {
 }
 
 export function invalidatePropertiesCache() {
-  globalThis.__cachedProperties = null;
-  globalThis.__cachedPropertiesTime = 0;
+  globalThis.__cachedPropertiesV3 = null;
+  globalThis.__cachedPropertiesV3Time = 0;
   globalThis.__cachedDeletedPropertyIds = null;
   globalThis.__deletedIdsCacheTime = 0;
   invalidateSystemSetting("properties_catalog");
@@ -161,7 +172,7 @@ export async function getPropertyBySlug(slug: string): Promise<PropertyItem | nu
       }
     });
     if (dbProp) {
-      return {
+      return normalizeEntityImages({
         id: dbProp.id,
         title: dbProp.title,
         slug: dbProp.slug,
@@ -184,8 +195,8 @@ export async function getPropertyBySlug(slug: string): Promise<PropertyItem | nu
         region: dbProp.region,
         country: dbProp.country || "Ghana",
         featured: Boolean(dbProp.featured),
-        imageUrl: dbProp.imageUrl || "/property_villa.webp",
-        galleryUrls: Array.isArray(dbProp.galleryUrls) && dbProp.galleryUrls.length > 0 ? dbProp.galleryUrls : [dbProp.imageUrl || "/property_villa.webp"],
+        imageUrl: dbProp.imageUrl || "",
+        galleryUrls: Array.isArray(dbProp.galleryUrls) ? dbProp.galleryUrls : [],
         contactName: dbProp.contactName || dbProp.agent?.name || "Desmond Senanu",
         contactPhone: dbProp.contactPhone || dbProp.agent?.phone || "+233 24 643 2493",
         contactEmail: dbProp.contactEmail || dbProp.agent?.email || "info@loveridgeproperty.com",
@@ -199,7 +210,7 @@ export async function getPropertyBySlug(slug: string): Promise<PropertyItem | nu
         amenities: dbProp.amenities?.map((a: any) => a.amenity?.name).filter(Boolean) || [],
         createdAt: dbProp.createdAt ? new Date(dbProp.createdAt).toISOString() : new Date().toISOString(),
         updatedAt: dbProp.updatedAt ? new Date(dbProp.updatedAt).toISOString() : new Date().toISOString(),
-      };
+      }).item;
     }
   } catch (e) {
     console.error("Direct getPropertyBySlug DB lookup error:", e);
@@ -208,224 +219,180 @@ export async function getPropertyBySlug(slug: string): Promise<PropertyItem | nu
   return null;
 }
 
-export async function getAllProperties(forceFresh: boolean = false): Promise<PropertyItem[]> {
-  const now = Date.now();
-  if (
-    !forceFresh &&
-    globalThis.__cachedProperties &&
-    globalThis.__cachedProperties.length > 0 &&
-    now - (globalThis.__cachedPropertiesTime || 0) < CACHE_DURATION
-  ) {
-    return globalThis.__cachedProperties;
+async function revalidatePropertiesFromDb(): Promise<PropertyItem[]> {
+  if (globalThis.__revalidatingPropertiesPromise) {
+    return globalThis.__revalidatingPropertiesPromise;
   }
 
-  // Fast-path: if in-memory cache is empty, serve immediately from file cache (<1ms)
-  // while asynchronously revalidating from Supabase Prisma in background
-  if (!forceFresh && (!globalThis.__cachedProperties || globalThis.__cachedProperties.length === 0)) {
-    const fileProps = readPropertiesFromFile();
-    if (fileProps && fileProps.length > 0) {
-      globalThis.__cachedProperties = fileProps;
-      globalThis.__cachedPropertiesTime = now;
-      // Revalidate in background
-      (async () => {
-        try {
-          const pProps: any[] = await prisma.property.findMany({
-            orderBy: { createdAt: 'desc' },
-            include: {
-              agent: true,
-              amenities: { include: { amenity: true } },
-            },
-          });
-          if (pProps && pProps.length > 0) {
-            const deletedIds = await getDeletedPropertyIds();
-            const filePropsMap = new Map(fileProps.map((fp) => [fp.id, fp]));
-            const prismaIds = new Set(pProps.map((p: any) => p.id));
-            const mapped: PropertyItem[] = pProps
-              .filter((p: any) => !deletedIds.has(p.id))
-              .map((p: any) => {
-                const fileBackup = filePropsMap.get(p.id);
-                const fileIsNewer =
-                  fileBackup?.updatedAt &&
-                  p.updatedAt &&
-                  new Date(fileBackup.updatedAt).getTime() > new Date(p.updatedAt).getTime();
-                return {
-                  id: p.id,
-                  title: p.title,
-                  slug: p.slug,
-                  description: p.description,
-                  listingType: p.listingType,
-                  propertyType: p.propertyType,
-                  status: p.status || "PUBLISHED",
-                  price: p.price,
-                  currency: p.currency || "USD",
-                  pricePeriod: p.pricePeriod || (p.listingType === "RENT" ? "per month" : "outright purchase"),
-                  negotiable: p.negotiable ?? fileBackup?.negotiable ?? true,
-                  commission: p.commission || fileBackup?.commission || "",
-                  bedrooms: p.bedrooms ?? 0,
-                  bathrooms: p.bathrooms ?? 0,
-                  guestRooms: p.guestRooms || 0,
-                  boysQuarters: p.boysQuarters || 0,
-                  garage: p.garage || 0,
-                  sizeSqft: p.sizeSqft,
-                  livingAreaSqft: p.livingAreaSqft,
-                  locationAddress: p.locationAddress,
-                  city: p.city,
-                  region: p.region,
-                  country: p.country || "Ghana",
-                  featured: Boolean(p.featured),
-                  isFavourite: fileBackup?.isFavourite !== undefined ? Boolean(fileBackup.isFavourite) : false,
-                  imageUrl: p.imageUrl || "/property_villa.webp",
-                  galleryUrls: Array.isArray(p.galleryUrls) && p.galleryUrls.length > 0 ? p.galleryUrls : [p.imageUrl || "/property_villa.webp"],
-                  contactName: (fileIsNewer && fileBackup?.contactName) ? fileBackup.contactName : (p.contactName || fileBackup?.contactName || p.agent?.name || "Desmond Senanu"),
-                  contactPhone: (fileIsNewer && fileBackup?.contactPhone) ? fileBackup.contactPhone : (p.contactPhone || fileBackup?.contactPhone || p.agent?.phone || "+233 24 643 2493"),
-                  contactEmail: (fileIsNewer && fileBackup?.contactEmail) ? fileBackup.contactEmail : (p.contactEmail || fileBackup?.contactEmail || p.agent?.email || "info@loveridgeproperty.com"),
-                  socialPlatform: (fileIsNewer && fileBackup?.socialPlatform) ? fileBackup.socialPlatform : (p.socialPlatform || fileBackup?.socialPlatform || "TIKTOK"),
-                  socialUrl: (fileIsNewer && fileBackup?.socialUrl !== undefined) ? fileBackup.socialUrl : (p.socialUrl || fileBackup?.socialUrl || ""),
-                  ownerName: (fileIsNewer && fileBackup?.ownerName !== undefined) ? fileBackup.ownerName : (p.ownerName || fileBackup?.ownerName || ""),
-                  ownerPhone: (fileIsNewer && fileBackup?.ownerPhone !== undefined) ? fileBackup.ownerPhone : (p.ownerPhone || fileBackup?.ownerPhone || ""),
-                  ownerCompany: (fileIsNewer && fileBackup?.ownerCompany !== undefined) ? fileBackup.ownerCompany : (p.ownerCompany || fileBackup?.ownerCompany || ""),
-                  amenities: p.amenities?.map((a: any) => a.amenity?.name).filter(Boolean) || fileBackup?.amenities || [],
-                  createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
-                  updatedAt: (fileIsNewer && fileBackup?.updatedAt) ? fileBackup.updatedAt : (p.updatedAt ? new Date(p.updatedAt).toISOString() : new Date().toISOString()),
-                };
+  const promise = (async () => {
+    try {
+      const pProps: any[] = await prisma.property.findMany({
+        orderBy: { createdAt: 'desc' },
+        include: {
+          agent: true,
+          amenities: { include: { amenity: true } },
+        },
+      });
+
+      if (pProps && pProps.length > 0) {
+        const deletedIds = await getDeletedPropertyIds();
+        const fileProps = readPropertiesFromFile();
+        const filePropsMap = new Map(fileProps.map((fp) => [fp.id, fp]));
+        const prismaIds = new Set(pProps.map((p: any) => p.id));
+        const dbToClean: { id: string; imageUrl: string; galleryUrls: string[] }[] = [];
+
+        const mapped: PropertyItem[] = pProps
+          .filter((p: any) => !deletedIds.has(p.id))
+          .map((p: any) => {
+            const fileBackup = filePropsMap.get(p.id);
+            const fileIsNewer =
+              fileBackup?.updatedAt &&
+              p.updatedAt &&
+              new Date(fileBackup.updatedAt).getTime() > new Date(p.updatedAt).getTime();
+
+            const rawItem: PropertyItem = {
+              id: p.id,
+              title: p.title,
+              slug: p.slug,
+              description: p.description,
+              listingType: p.listingType,
+              propertyType: p.propertyType,
+              status: p.status || "PUBLISHED",
+              price: p.price,
+              currency: p.currency || "USD",
+              pricePeriod: p.pricePeriod || (p.listingType === "RENT" ? "per month" : "outright purchase"),
+              negotiable: p.negotiable ?? fileBackup?.negotiable ?? true,
+              commission: p.commission || fileBackup?.commission || "",
+              bedrooms: p.bedrooms ?? 0,
+              bathrooms: p.bathrooms ?? 0,
+              guestRooms: p.guestRooms || 0,
+              boysQuarters: p.boysQuarters || 0,
+              garage: p.garage || 0,
+              sizeSqft: p.sizeSqft,
+              livingAreaSqft: p.livingAreaSqft,
+              locationAddress: p.locationAddress,
+              city: p.city,
+              region: p.region,
+              country: p.country || "Ghana",
+              featured: Boolean(p.featured),
+              isFavourite: fileBackup?.isFavourite !== undefined ? Boolean(fileBackup.isFavourite) : false,
+              imageUrl: p.imageUrl || fileBackup?.imageUrl || "",
+              galleryUrls: Array.isArray(p.galleryUrls) && p.galleryUrls.length > 0 ? p.galleryUrls : (fileBackup?.galleryUrls || []),
+              contactName: (fileIsNewer && fileBackup?.contactName) ? fileBackup.contactName : (p.contactName || fileBackup?.contactName || p.agent?.name || "Desmond Senanu"),
+              contactPhone: (fileIsNewer && fileBackup?.contactPhone) ? fileBackup.contactPhone : (p.contactPhone || fileBackup?.contactPhone || p.agent?.phone || "+233 24 643 2493"),
+              contactEmail: (fileIsNewer && fileBackup?.contactEmail) ? fileBackup.contactEmail : (p.contactEmail || fileBackup?.contactEmail || p.agent?.email || "info@loveridgeproperty.com"),
+              socialPlatform: (fileIsNewer && fileBackup?.socialPlatform) ? fileBackup.socialPlatform : (p.socialPlatform || fileBackup?.socialPlatform || "TIKTOK"),
+              socialUrl: (fileIsNewer && fileBackup?.socialUrl !== undefined) ? fileBackup.socialUrl : (p.socialUrl || fileBackup?.socialUrl || ""),
+              ownerName: (fileIsNewer && fileBackup?.ownerName !== undefined) ? fileBackup.ownerName : (p.ownerName || fileBackup?.ownerName || ""),
+              ownerPhone: (fileIsNewer && fileBackup?.ownerPhone !== undefined) ? fileBackup.ownerPhone : (p.ownerPhone || fileBackup?.ownerPhone || ""),
+              ownerCompany: (fileIsNewer && fileBackup?.ownerCompany !== undefined) ? fileBackup.ownerCompany : (p.ownerCompany || fileBackup?.ownerCompany || ""),
+              amenities: p.amenities?.map((a: any) => a.amenity?.name).filter(Boolean) || fileBackup?.amenities || [],
+              createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
+              updatedAt: (fileIsNewer && fileBackup?.updatedAt) ? fileBackup.updatedAt : (p.updatedAt ? new Date(p.updatedAt).toISOString() : new Date().toISOString()),
+            };
+
+            const { item, changed } = normalizeEntityImages(rawItem);
+            if (changed) {
+              dbToClean.push({
+                id: item.id,
+                imageUrl: item.imageUrl || "",
+                galleryUrls: item.galleryUrls || [],
               });
-
-            for (const fp of fileProps) {
-              if (!prismaIds.has(fp.id) && !deletedIds.has(fp.id)) {
-                mapped.push(fp);
-              }
             }
+            return item;
+          });
 
-            mapped.sort((a, b) => {
-              const aFav = a.isFavourite ? 1 : 0;
-              const bFav = b.isFavourite ? 1 : 0;
-              if (aFav !== bFav) return bFav - aFav;
-              return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
-            });
-            globalThis.__cachedProperties = mapped;
-            globalThis.__cachedPropertiesTime = Date.now();
-            writePropertiesToFile(mapped);
+        for (const fp of fileProps) {
+          if (!prismaIds.has(fp.id) && !deletedIds.has(fp.id)) {
+            const { item } = normalizeEntityImages(fp);
+            mapped.push(item);
           }
-        } catch (_) {}
-      })();
-      return fileProps;
-    }
-  }
+        }
 
-  // 1. Authoritative primary source: Query Prisma PostgreSQL properties table
-  let prismaProperties: PropertyItem[] = [];
-  try {
-    const pProps: any[] = await prisma.property.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: {
-        agent: true,
-        amenities: { include: { amenity: true } },
-      },
-    });
-
-    if (pProps && pProps.length > 0) {
-      const deletedIds = await getDeletedPropertyIds();
-      const fileProps = readPropertiesFromFile();
-      const filePropsMap = new Map(fileProps.map((fp) => [fp.id, fp]));
-      const prismaIds = new Set(pProps.map((p: any) => p.id));
-
-      prismaProperties = pProps
-        .filter((p: any) => !deletedIds.has(p.id))
-        .map((p: any) => {
-          const fileBackup = filePropsMap.get(p.id);
-          const fileIsNewer =
-            fileBackup?.updatedAt &&
-            p.updatedAt &&
-            new Date(fileBackup.updatedAt).getTime() > new Date(p.updatedAt).getTime();
-          return {
-            id: p.id,
-            title: p.title,
-            slug: p.slug,
-            description: p.description,
-            listingType: p.listingType,
-            propertyType: p.propertyType,
-            status: p.status || "PUBLISHED",
-            price: p.price,
-            currency: p.currency || "USD",
-            pricePeriod: p.pricePeriod || (p.listingType === "RENT" ? "per month" : "outright purchase"),
-            negotiable: p.negotiable ?? fileBackup?.negotiable ?? true,
-            commission: p.commission || fileBackup?.commission || "",
-            bedrooms: p.bedrooms ?? 0,
-            bathrooms: p.bathrooms ?? 0,
-            guestRooms: p.guestRooms || 0,
-            boysQuarters: p.boysQuarters || 0,
-            garage: p.garage || 0,
-            sizeSqft: p.sizeSqft,
-            livingAreaSqft: p.livingAreaSqft,
-            locationAddress: p.locationAddress,
-            city: p.city,
-            region: p.region,
-            country: p.country || "Ghana",
-            featured: Boolean(p.featured),
-            isFavourite: fileBackup?.isFavourite !== undefined ? Boolean(fileBackup.isFavourite) : false,
-            imageUrl: p.imageUrl || "/property_villa.webp",
-            galleryUrls: Array.isArray(p.galleryUrls) && p.galleryUrls.length > 0 ? p.galleryUrls : [p.imageUrl || "/property_villa.webp"],
-            contactName: (fileIsNewer && fileBackup?.contactName) ? fileBackup.contactName : (p.contactName || fileBackup?.contactName || p.agent?.name || "Desmond Senanu"),
-            contactPhone: (fileIsNewer && fileBackup?.contactPhone) ? fileBackup.contactPhone : (p.contactPhone || fileBackup?.contactPhone || p.agent?.phone || "+233 24 643 2493"),
-            contactEmail: (fileIsNewer && fileBackup?.contactEmail) ? fileBackup.contactEmail : (p.contactEmail || fileBackup?.contactEmail || p.agent?.email || "info@loveridgeproperty.com"),
-            socialPlatform: (fileIsNewer && fileBackup?.socialPlatform) ? fileBackup.socialPlatform : (p.socialPlatform || fileBackup?.socialPlatform || "TIKTOK"),
-            socialUrl: (fileIsNewer && fileBackup?.socialUrl !== undefined) ? fileBackup.socialUrl : (p.socialUrl || fileBackup?.socialUrl || ""),
-            ownerName: (fileIsNewer && fileBackup?.ownerName !== undefined) ? fileBackup.ownerName : (p.ownerName || fileBackup?.ownerName || ""),
-            ownerPhone: (fileIsNewer && fileBackup?.ownerPhone !== undefined) ? fileBackup.ownerPhone : (p.ownerPhone || fileBackup?.ownerPhone || ""),
-            ownerCompany: (fileIsNewer && fileBackup?.ownerCompany !== undefined) ? fileBackup.ownerCompany : (p.ownerCompany || fileBackup?.ownerCompany || ""),
-            amenities: p.amenities?.map((a: any) => a.amenity?.name).filter(Boolean) || fileBackup?.amenities || [],
-            createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
-            updatedAt: (fileIsNewer && fileBackup?.updatedAt) ? fileBackup.updatedAt : (p.updatedAt ? new Date(p.updatedAt).toISOString() : new Date().toISOString()),
-          };
+        mapped.sort((a, b) => {
+          const aFav = a.isFavourite ? 1 : 0;
+          const bFav = b.isFavourite ? 1 : 0;
+          if (aFav !== bFav) return bFav - aFav;
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
         });
 
-      for (const fp of fileProps) {
-        if (!prismaIds.has(fp.id) && !deletedIds.has(fp.id)) {
-          prismaProperties.push(fp);
+        globalThis.__cachedPropertiesV3 = mapped;
+        globalThis.__cachedPropertiesV3Time = Date.now();
+        writePropertiesToFile(mapped);
+
+        // Permanently replace base64 strings in PostgreSQL with lightweight /uploads/... paths
+        if (dbToClean.length > 0) {
+          (async () => {
+            for (const cleanItem of dbToClean) {
+              try {
+                await prisma.property.update({
+                  where: { id: cleanItem.id },
+                  data: {
+                    imageUrl: cleanItem.imageUrl,
+                    galleryUrls: cleanItem.galleryUrls,
+                  },
+                });
+              } catch (_) {}
+            }
+            setSystemSetting("properties_catalog", mapped).catch(() => null);
+          })();
         }
+
+        return mapped;
       }
+    } catch (err) {
+      console.warn("Prisma property fetch notice, falling back to backup stores:", err);
+    } finally {
+      globalThis.__revalidatingPropertiesPromise = null;
     }
-  } catch (err) {
-    console.warn("Prisma property fetch notice, falling back to backup stores:", err);
+
+    return globalThis.__cachedPropertiesV3 || [];
+  })();
+
+  globalThis.__revalidatingPropertiesPromise = promise;
+  return promise;
+}
+
+export async function getAllProperties(forceFresh: boolean = false): Promise<PropertyItem[]> {
+  const now = Date.now();
+  const cacheAge = now - (globalThis.__cachedPropertiesV3Time || 0);
+
+  // 1. If in-memory cache is populated, return immediately (<1ms) and revalidate in background if stale
+  if (globalThis.__cachedPropertiesV3 && globalThis.__cachedPropertiesV3.length > 0) {
+    if (forceFresh || cacheAge >= 15000) {
+      revalidatePropertiesFromDb().catch(() => null);
+    }
+    return globalThis.__cachedPropertiesV3;
   }
 
-  // If Prisma successfully returned properties, use them as authoritative
-  if (prismaProperties.length > 0) {
-    // Sort: Favourites first, then newest
-    prismaProperties.sort((a, b) => {
-      const aFav = a.isFavourite ? 1 : 0;
-      const bFav = b.isFavourite ? 1 : 0;
-      if (aFav !== bFav) return bFav - aFav;
-      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
-    });
-
-    globalThis.__cachedProperties = prismaProperties;
-    globalThis.__cachedPropertiesTime = now;
-    writePropertiesToFile(prismaProperties);
-    return prismaProperties;
+  // 2. Cold start fast-path: serve immediately from local file store (<1ms) and revalidate in background
+  const fileProps = readPropertiesFromFile();
+  if (fileProps && fileProps.length > 0) {
+    globalThis.__cachedPropertiesV3 = fileProps;
+    globalThis.__cachedPropertiesV3Time = now;
+    revalidatePropertiesFromDb().catch(() => null);
+    return fileProps;
   }
 
-  // 2. Backup source: system_settings table in PostgreSQL
+  // 3. No local file cache yet: await database or backup setting
+  const dbProps = await revalidatePropertiesFromDb();
+  if (dbProps && dbProps.length > 0) {
+    return dbProps;
+  }
+
   try {
     const settingRes = await getSystemSetting<PropertyItem[]>("properties_catalog", []);
     if (!settingRes.isDefault && Array.isArray(settingRes.data) && settingRes.data.length > 0) {
-      globalThis.__cachedProperties = settingRes.data;
-      globalThis.__cachedPropertiesTime = now;
-      return settingRes.data;
+      const normalized = settingRes.data.map((p) => normalizeEntityImages(p).item);
+      globalThis.__cachedPropertiesV3 = normalized;
+      globalThis.__cachedPropertiesV3Time = now;
+      writePropertiesToFile(normalized);
+      return normalized;
     }
   } catch (e) {}
 
-  // 3. Fallback: local scratch file or initial constant
-  const fileProperties = readPropertiesFromFile();
-  if (fileProperties.length > 0) {
-    globalThis.__cachedProperties = fileProperties;
-    globalThis.__cachedPropertiesTime = now;
-    return fileProperties;
-  }
-
-  // 4. Default constant store
-  globalThis.__cachedProperties = INITIAL_PROPERTIES_STORE;
-  globalThis.__cachedPropertiesTime = now;
+  globalThis.__cachedPropertiesV3 = INITIAL_PROPERTIES_STORE;
+  globalThis.__cachedPropertiesV3Time = now;
   return INITIAL_PROPERTIES_STORE;
 }
 
@@ -462,7 +429,7 @@ export async function saveProperty(propData: Partial<PropertyItem>): Promise<Pro
 
   const determinedStatus = propData.status ? propData.status : (existing?.status || "PUBLISHED");
 
-  const newProperty: PropertyItem = {
+  const rawProperty: PropertyItem = {
     id: propData.id || existing?.id || `prop-${Date.now()}`,
     title: propData.title || existing?.title || "Untitled Property",
     slug: propData.slug || existing?.slug || ((propData.title || existing?.title || "prop").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Date.now().toString().slice(-4)),
@@ -504,10 +471,10 @@ export async function saveProperty(propData: Partial<PropertyItem>): Promise<Pro
     country: propData.country || existing?.country || "Ghana",
     featured: propData.featured !== undefined ? Boolean(propData.featured) : Boolean(existing?.featured || isFav),
     isFavourite: isFav,
-    imageUrl: propData.imageUrl || existing?.imageUrl || "/property_villa.webp",
+    imageUrl: propData.imageUrl || existing?.imageUrl || "",
     galleryUrls: Array.isArray(propData.galleryUrls) && propData.galleryUrls.length > 0
       ? propData.galleryUrls
-      : (existing?.galleryUrls || (propData.imageUrl ? [propData.imageUrl] : ["/property_villa.webp"])),
+      : (existing?.galleryUrls || (propData.imageUrl ? [propData.imageUrl] : [])),
     contactName: propData.contactName || existing?.contactName || "Desmond Senanu",
     contactPhone: propData.contactPhone || existing?.contactPhone || "+233 24 643 2493",
     contactEmail: propData.contactEmail || existing?.contactEmail || "info@loveridgeproperty.com",
@@ -533,7 +500,33 @@ export async function saveProperty(propData: Partial<PropertyItem>): Promise<Pro
     updatedAt: now,
   };
 
-  // 1. Upsert directly to PostgreSQL properties table via Prisma
+  // Normalize any inline base64 images to fast /uploads/... paths
+  const { item: newProperty } = normalizeEntityImages(rawProperty);
+
+  // 1. Immediately update memory cache and local file store (<1ms)
+  const updatedList = [...currentProps];
+  if (existingIndex >= 0) {
+    updatedList[existingIndex] = { ...updatedList[existingIndex], ...newProperty };
+  } else {
+    updatedList.unshift(newProperty);
+  }
+
+  updatedList.sort((a, b) => {
+    const aFav = a.isFavourite ? 1 : 0;
+    const bFav = b.isFavourite ? 1 : 0;
+    if (aFav !== bFav) return bFav - aFav;
+    return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+  });
+
+  globalThis.__cachedPropertiesV3 = updatedList;
+  globalThis.__cachedPropertiesV3Time = Date.now();
+  writePropertiesToFile(updatedList);
+
+  if (newProperty.id) {
+    removeDeletedPropertyId(newProperty.id).catch(() => null);
+  }
+
+  // 2. Upsert to PostgreSQL properties table and system_settings
   try {
     let creatorId = (propData as any).createdById || "1ee92fa7-a3b4-4841-bc10-22e26a3d9fef";
     try {
@@ -628,38 +621,24 @@ export async function saveProperty(propData: Partial<PropertyItem>): Promise<Pro
     console.warn("Prisma property upsert warning:", e);
   }
 
-  // 2. Update memory cache and backup stores
-  let updatedList = [...currentProps];
-  if (existingIndex >= 0) {
-    updatedList[existingIndex] = { ...updatedList[existingIndex], ...newProperty };
-  } else {
-    updatedList.unshift(newProperty);
-  }
-
-  updatedList.sort((a, b) => {
-    const aFav = a.isFavourite ? 1 : 0;
-    const bFav = b.isFavourite ? 1 : 0;
-    if (aFav !== bFav) return bFav - aFav;
-    return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
-  });
-
-  globalThis.__cachedProperties = updatedList;
-  globalThis.__cachedPropertiesTime = Date.now();
-  writePropertiesToFile(updatedList);
   setSystemSetting("properties_catalog", updatedList).catch(() => null);
-
-  if (newProperty.id) {
-    await removeDeletedPropertyId(newProperty.id);
-  }
-  invalidatePropertiesCache();
 
   return newProperty;
 }
 
 export async function deleteProperty(id: string): Promise<boolean> {
-  invalidatePropertiesCache();
+  await addDeletedPropertyId(id);
 
-  // 1. Direct deletion from Prisma PostgreSQL tables
+  // 1. Immediately remove from active memory list and file store (<1ms)
+  const currentProps = globalThis.__cachedPropertiesV3 || readPropertiesFromFile();
+  const updated = currentProps.filter((p) => p.id !== id);
+
+  globalThis.__cachedPropertiesV3 = updated;
+  globalThis.__cachedPropertiesV3Time = Date.now();
+  writePropertiesToFile(updated);
+  setSystemSetting("properties_catalog", updated).catch(() => null);
+
+  // 2. Direct deletion from Prisma PostgreSQL tables
   try {
     await prisma.propertyAmenity.deleteMany({ where: { propertyId: id } }).catch(() => null);
     await prisma.propertyMedia.deleteMany({ where: { propertyId: id } }).catch(() => null);
@@ -669,15 +648,5 @@ export async function deleteProperty(id: string): Promise<boolean> {
     console.warn("Prisma property delete notice:", e);
   }
 
-  // 2. Remove from active memory list and backup stores
-  const currentProps = await getAllProperties();
-  const updated = currentProps.filter((p) => p.id !== id);
-
-  globalThis.__cachedProperties = updated;
-  globalThis.__cachedPropertiesTime = Date.now();
-  writePropertiesToFile(updated);
-  setSystemSetting("properties_catalog", updated).catch(() => null);
-
-  invalidatePropertiesCache();
   return true;
 }

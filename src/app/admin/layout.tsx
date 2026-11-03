@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   Building2,
+  Briefcase,
   Package,
   Inbox,
   Users,
@@ -121,6 +122,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const navigation = [
     { href: '/admin/dashboard', label: 'Dashboard Overview', icon: LayoutDashboard },
     { href: '/admin/properties', label: 'Property Listings', icon: Building2 },
+    { href: '/admin/businesses', label: 'Business Listings', icon: Briefcase },
     { href: '/admin/products', label: 'Store', icon: Package },
     { href: '/admin/gallery', label: 'Gallery Management', icon: Images },
     { href: '/admin/hero', label: 'Hero Backgrounds', icon: ImageIcon },

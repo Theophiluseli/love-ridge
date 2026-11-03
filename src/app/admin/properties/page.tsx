@@ -1863,16 +1863,7 @@ export default function AdminPropertiesPage() {
                       title="Click to view details"
                     >
                       <img
-                        src={
-                          prop.imageUrl ||
-                          (prop.propertyType === 'LAND'
-                            ? '/property_land.png'
-                            : prop.propertyType === 'OFFICE_SPACE'
-                              ? '/property_office.png'
-                              : prop.propertyType === 'WAREHOUSE'
-                                ? '/property_warehouse.png'
-                                : '/property_villa.png')
-                        }
+                        src={prop.imageUrl || '/logo-green.webp'}
                         alt={prop.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                         loading="lazy"
@@ -2075,16 +2066,7 @@ export default function AdminPropertiesPage() {
                           title="Click to view details"
                         >
                           <img
-                            src={
-                              prop.imageUrl ||
-                              (prop.propertyType === 'LAND'
-                                ? '/property_land.png'
-                                : prop.propertyType === 'OFFICE_SPACE'
-                                  ? '/property_office.png'
-                                  : prop.propertyType === 'WAREHOUSE'
-                                    ? '/property_warehouse.png'
-                                    : '/property_villa.png')
-                            }
+                            src={prop.imageUrl || '/logo-green.webp'}
                             alt={prop.title}
                             className="w-full h-full object-cover group-hover:scale-110 transition duration-300"
                           />
@@ -2453,7 +2435,7 @@ export default function AdminPropertiesPage() {
               <div className="space-y-3">
                 <div className="w-full h-64 sm:h-80 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 relative">
                   <img
-                    src={viewItem.imageUrl || '/property_villa.webp'}
+                    src={viewItem.imageUrl || '/logo-green.webp'}
                     alt={viewItem.title}
                     className="w-full h-full object-cover"
                   />

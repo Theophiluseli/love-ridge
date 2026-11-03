@@ -153,6 +153,11 @@ export default function Footer() {
               </Link>
             </li>
             <li>
+              <Link href="/businesses" className="hover:text-emerald-800 transition">
+                {t('nav.businesses', 'Businesses')}
+              </Link>
+            </li>
+            <li>
               <Link href="/about" className="hover:text-emerald-800 transition">
                 {t('nav.about', 'About Us')}
               </Link>

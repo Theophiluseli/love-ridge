@@ -13,7 +13,8 @@ export async function GET(req: NextRequest) {
   if ('response' in auth) return auth.response;
 
   try {
-    const properties = await getAllProperties(true);
+    const forceFresh = req.nextUrl.searchParams.get('refresh') === 'true';
+    const properties = await getAllProperties(forceFresh);
     return NextResponse.json(
       { properties },
       {

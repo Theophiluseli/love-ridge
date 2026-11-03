@@ -51,8 +51,8 @@ function PropertiesContent() {
   const fetchProperties = useCallback(async (showSkeleton = false, forceFresh = false) => {
     if (showSkeleton) setLoading(true);
     try {
-      const url = `/api/properties?_t=${Date.now()}`;
-      const res = await fetch(url, { cache: 'no-store' });
+      const url = forceFresh ? `/api/properties?_t=${Date.now()}` : '/api/properties';
+      const res = await fetch(url, forceFresh ? { cache: 'no-store' } : undefined);
       const data = await res.json();
       if (data.properties && Array.isArray(data.properties)) {
         cachedClientProperties = data.properties;
@@ -66,19 +66,7 @@ function PropertiesContent() {
   }, []);
 
   useEffect(() => {
-    fetchProperties(!cachedClientProperties || cachedClientProperties.length === 0, true);
-
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') {
-        fetchProperties(false, true);
-      }
-    };
-    document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener('focus', onVisible);
-    return () => {
-      document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener('focus', onVisible);
-    };
+    fetchProperties(!cachedClientProperties || cachedClientProperties.length === 0, false);
   }, [fetchProperties]);
 
   // Real-time sync: auto-refetch when any admin or device adds/updates/deletes a property

@@ -102,25 +102,25 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
     );
   }
 
-  // Determine cover image: strictly use uploaded imageUrl first (WebP optimized)
-  let defaultCover = property.imageUrl;
-  if (!defaultCover || defaultCover === '/property_villa.png' || defaultCover === '/property_apartment.png' || defaultCover === '/property_land.png') {
-    if (property.propertyType === 'OFFICE_SPACE' || property.slug?.includes('office')) {
-      defaultCover = '/property_office.webp';
-    } else if (property.propertyType === 'WAREHOUSE' || property.slug?.includes('warehouse')) {
-      defaultCover = '/property_warehouse.webp';
-    } else if (property.propertyType === 'LAND' || property.slug?.includes('land')) {
-      defaultCover = '/property_land.webp';
-    } else if (property.propertyType === 'APARTMENT' || property.slug?.includes('apartment')) {
-      defaultCover = '/property_apartment.webp';
-    } else {
-      defaultCover = '/property_villa.webp';
-    }
-  }
+  // Helper to reject legacy generated demo pictures
+  const isGeneratedDemoImage = (url?: string | null): boolean => {
+    if (!url || typeof url !== 'string') return true;
+    return (
+      url.includes('property_villa') ||
+      url.includes('property_office') ||
+      url.includes('property_warehouse') ||
+      url.includes('property_apartment') ||
+      url.includes('property_land') ||
+      url.includes('hero_complex_bg') ||
+      url.includes('hero_villa_bg')
+    );
+  };
 
-  const currentCover = activePhoto || defaultCover;
+  // Determine cover image: strictly use uploaded imageUrl first, never demo pictures
+  const cleanCover = !isGeneratedDemoImage(property.imageUrl) ? property.imageUrl : '';
+  const currentCover = (!isGeneratedDemoImage(activePhoto) ? activePhoto : '') || cleanCover;
 
-  // Multi-photo gallery list
+  // Multi-photo gallery list (strictly filter out demo images)
   const uploadedGallery = Array.isArray(property.galleryUrls) ? property.galleryUrls : [];
   const uploadedMedia = Array.isArray(property.media)
     ? property.media.map((m: any) => m.media?.fileUrl).filter(Boolean)
@@ -128,17 +128,15 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
   const uploadedImages = Array.isArray(property.images) ? property.images : [];
 
   const userUploadedList = [
-    property.imageUrl,
+    cleanCover,
     ...uploadedGallery,
     ...uploadedMedia,
     ...uploadedImages,
-  ].filter(Boolean);
+  ]
+    .filter(Boolean)
+    .filter((url) => !isGeneratedDemoImage(url));
 
-  const galleryImages = Array.from(
-    new Set(
-      userUploadedList.length > 0 ? userUploadedList : [currentCover].filter(Boolean)
-    )
-  );
+  const galleryImages = Array.from(new Set(userUploadedList));
 
   const formattedPrice = formatPrice(property.price, property.currency || 'GHS');
   const agentName = property.contactName || property.agent?.name || 'Kwame Appiah';
@@ -232,23 +230,28 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
 
         {/* Gallery / Header Hero Showcase */}
         <div className="relative h-[320px] sm:h-[480px] rounded-3xl overflow-hidden shadow-2xl border border-slate-200 flex items-center justify-center p-4 sm:p-8 group bg-slate-900">
-          <img
-            src={currentCover}
-            alt={property.title}
-            loading="eager"
-            onError={(e) => {
-              const target = e.currentTarget;
-              const fallback = '/property_villa.webp';
-              if (!target.src.endsWith(fallback)) {
-                target.src = fallback;
-              }
-            }}
-            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 cursor-pointer"
-            onClick={() => {
-              setLightboxIndex(galleryImages.indexOf(currentCover) >= 0 ? galleryImages.indexOf(currentCover) : 0);
-              setLightboxOpen(true);
-            }}
-          />
+          {currentCover ? (
+            <img
+              src={currentCover}
+              alt={property.title}
+              loading="eager"
+              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 cursor-pointer"
+              onClick={() => {
+                setLightboxIndex(galleryImages.indexOf(currentCover) >= 0 ? galleryImages.indexOf(currentCover) : 0);
+                setLightboxOpen(true);
+              }}
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 p-8 text-center select-none">
+              <img src="/logo-white.png" alt="Loveridge" className="h-12 w-auto opacity-90 mb-3" />
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">
+                {formatPropertyType(property.propertyType)}
+              </span>
+              <h2 className="text-xl sm:text-2xl font-black text-white max-w-lg mt-2">
+                {property.title}
+              </h2>
+            </div>
+          )}
           {/* Left & Right Navigation Arrows */}
           {galleryImages.length > 1 && (
             <>
@@ -557,13 +560,6 @@ export default function PropertyDetailPage({ params }: { params: { slug: string 
                       src={imgUrl}
                       alt={`Property Photo ${idx + 1}`}
                       loading="lazy"
-                      onError={(e) => {
-                        const target = e.currentTarget;
-                        const fallback = '/property_villa.webp';
-                        if (!target.src.endsWith(fallback)) {
-                          target.src = fallback;
-                        }
-                      }}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 bg-slate-950/20 group-hover:bg-slate-950/0 transition-colors flex items-center justify-center">

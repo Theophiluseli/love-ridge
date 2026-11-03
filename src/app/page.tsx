@@ -40,10 +40,15 @@ const TRUST_FEATURES = [
   },
 ];
 
+// Module-level client cache for instant back-navigation
+let cachedHomeProperties: any[] | null = null;
+let cachedHomeProducts: any[] | null = null;
+
 export default function HomePage() {
-  const [properties, setProperties] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [properties, setProperties] = useState<any[]>(cachedHomeProperties || []);
+  const [products, setProducts] = useState<any[]>(cachedHomeProducts || []);
+  const [loading, setLoading] = useState(!cachedHomeProperties || cachedHomeProperties.length === 0);
+  const [productsLoading, setProductsLoading] = useState(!cachedHomeProducts || cachedHomeProducts.length === 0);
 
   // Background Hero Carousel State
   const [heroSlidesList, setHeroSlidesList] = useState<string[]>(DEFAULT_HERO_SLIDES);
@@ -255,24 +260,32 @@ export default function HomePage() {
   ];
 
   async function fetchData(forceFresh = false) {
-    try {
-      const urlProp = `/api/properties?featured=true&_t=${Date.now()}`;
-      const urlProd = `/api/products?featured=true&_t=${Date.now()}`;
-      const options = { cache: 'no-store' as RequestCache };
+    const querySuffix = forceFresh ? `&_t=${Date.now()}` : '';
+    const options: RequestInit = forceFresh ? { cache: 'no-store' } : {};
 
-      const [propRes, prodRes] = await Promise.all([
-        fetch(urlProp, options),
-        fetch(urlProd, options),
-      ]);
-      const propData = await propRes.json();
-      const prodData = await prodRes.json();
-      setProperties(propData.properties || []);
-      setProducts(prodData.products || []);
-    } catch (err) {
-      console.error('Failed to load homepage data:', err);
-    } finally {
-      setLoading(false);
-    }
+    // Fetch properties independently so they render immediately without waiting for products
+    fetch(`/api/properties?featured=true${querySuffix}`, options)
+      .then((res) => res.json())
+      .then((propData) => {
+        if (propData.properties) {
+          cachedHomeProperties = propData.properties;
+          setProperties(propData.properties);
+        }
+      })
+      .catch((err) => console.error('Failed to load homepage properties:', err))
+      .finally(() => setLoading(false));
+
+    // Fetch products in parallel
+    fetch(`/api/products?featured=true${querySuffix}`, options)
+      .then((res) => res.json())
+      .then((prodData) => {
+        if (prodData.products) {
+          cachedHomeProducts = prodData.products;
+          setProducts(prodData.products);
+        }
+      })
+      .catch((err) => console.error('Failed to load homepage products:', err))
+      .finally(() => setProductsLoading(false));
   }
 
   useEffect(() => {
@@ -667,7 +680,7 @@ export default function HomePage() {
               </Link>
             </div>
 
-            {loading ? (
+            {productsLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10">
                 {Array.from({ length: 3 }).map((_, i) => (
                   <ProductCardSkeleton key={i} />

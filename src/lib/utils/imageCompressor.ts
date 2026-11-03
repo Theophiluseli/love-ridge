@@ -84,17 +84,18 @@ export async function applyLoveridgeWatermark(
   }
 
   ctx.save();
-  const logoWidth = Math.max(160, Math.min(Math.round(width * 0.30), 320));
+  const minDim = Math.min(width, height);
+  const logoWidth = Math.max(60, Math.min(Math.round(minDim * 0.12), 115));
   const logoHeight = Math.round((logoWidth * 499) / 973);
   
-  const padX = Math.max(10, Math.round(logoWidth * 0.09));
-  const padY = Math.max(8, Math.round(logoHeight * 0.11));
+  const padX = Math.max(5, Math.round(logoWidth * 0.06));
+  const padY = Math.max(4, Math.round(logoHeight * 0.08));
   
   const pillWidth = logoWidth + padX * 2;
   const pillHeight = logoHeight + padY * 2;
   const pillX = Math.round((width - pillWidth) / 2);
   const pillY = Math.round((height - pillHeight) / 2);
-  const radius = Math.max(10, Math.round(pillHeight * 0.24));
+  const radius = Math.max(6, Math.round(pillHeight * 0.20));
 
   // Soft emerald translucent capsule
   drawRoundedRect(ctx, pillX, pillY, pillWidth, pillHeight, radius);

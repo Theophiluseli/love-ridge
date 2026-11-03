@@ -2,8 +2,9 @@ import { createClient } from '@supabase/supabase-js';
 import { getSystemSetting, setSystemSetting } from './system-settings';
 import { invalidatePropertiesCache } from './properties-store';
 import { invalidateProductsCache } from './products-store';
+import { invalidateBusinessesCache } from './businesses-store';
 
-export type CatalogType = 'properties' | 'products' | 'categories' | 'hero' | 'gallery';
+export type CatalogType = 'properties' | 'products' | 'categories' | 'hero' | 'gallery' | 'businesses';
 export type EventType = 'INSERT' | 'UPDATE' | 'DELETE';
 
 export interface CatalogRevision {
@@ -13,6 +14,7 @@ export interface CatalogRevision {
   categories: number;
   hero: number;
   gallery: number;
+  businesses?: number;
 }
 
 // Global revision registry shared across current server instance
@@ -28,6 +30,7 @@ const DEFAULT_REVISION: CatalogRevision = {
   categories: 1,
   hero: 1,
   gallery: 1,
+  businesses: 1,
 };
 
 if (!globalThis.__catalogRevision) {
@@ -87,11 +90,13 @@ export async function broadcastCatalogUpdate(
     invalidateProductsCache();
   } else if (catalog === 'categories') {
     invalidateProductsCache();
+  } else if (catalog === 'businesses') {
+    invalidateBusinessesCache();
   }
 
   // 2. Advance local memory revision
   if (!globalThis.__catalogRevision) {
-    globalThis.__catalogRevision = { version: now, properties: now, products: now, categories: now, hero: now, gallery: now };
+    globalThis.__catalogRevision = { version: now, properties: now, products: now, categories: now, hero: now, gallery: now, businesses: now };
   } else {
     globalThis.__catalogRevision[catalog] = now;
     globalThis.__catalogRevision.version = now;

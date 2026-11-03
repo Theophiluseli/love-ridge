@@ -15,7 +15,7 @@ export const DEFAULT_PAGE_SLIDES = [
 ];
 
 interface PageHeroCarouselProps {
-  pageKey?: 'properties' | 'products' | 'about' | 'services' | 'contact' | 'gallery';
+  pageKey?: 'properties' | 'products' | 'about' | 'services' | 'contact' | 'gallery' | 'businesses';
   badge?: {
     icon?: React.ReactNode;
     text: string;

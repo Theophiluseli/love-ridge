@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { prisma } from './db';
 import { getSystemSetting, setSystemSetting, invalidateSystemSetting } from './system-settings';
+import { normalizeEntityImages } from './image-url-normalizer';
 import {
   ProductItem,
   ProductCategoryItem,
@@ -37,7 +38,7 @@ export function readProductsFromFile(): ProductItem[] {
       const data = fs.readFileSync(FILE_PATH, 'utf-8');
       const parsed = JSON.parse(data);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        return parsed.map((p) => normalizeEntityImages(p, 'prod').item);
       }
     }
   } catch (err) {
@@ -49,15 +50,17 @@ export function readProductsFromFile(): ProductItem[] {
 export function writeProductsToFile(products: ProductItem[]) {
   ensureFile();
   try {
-    fs.writeFileSync(FILE_PATH, JSON.stringify(products, null, 2), 'utf-8');
+    const normalized = products.map((p) => normalizeEntityImages(p, 'prod').item);
+    fs.writeFileSync(FILE_PATH, JSON.stringify(normalized, null, 2), 'utf-8');
   } catch (err) {
     // Ignore error
   }
 }
 
 declare global {
-  var __cachedProducts: ProductItem[] | null | undefined;
-  var __cachedProductsTime: number | undefined;
+  var __cachedProductsV3: ProductItem[] | null | undefined;
+  var __cachedProductsV3Time: number | undefined;
+  var __revalidatingProductsPromise: Promise<void> | null | undefined;
   var __cachedDeletedProductIds: Set<string> | null | undefined;
   var __deletedProductIdsCacheTime: number | undefined;
 }
@@ -128,8 +131,8 @@ export async function removeDeletedProductId(id: string): Promise<void> {
 }
 
 export function invalidateProductsCache() {
-  globalThis.__cachedProducts = null;
-  globalThis.__cachedProductsTime = 0;
+  globalThis.__cachedProductsV3 = null;
+  globalThis.__cachedProductsV3Time = 0;
   globalThis.__cachedDeletedProductIds = null;
   globalThis.__deletedProductIdsCacheTime = 0;
   invalidateSystemSetting('products_catalog');
@@ -217,77 +220,112 @@ export async function getRelatedProducts(product: ProductItem, limit = 3): Promi
   return [...sameCategory, ...others].slice(0, limit);
 }
 
+function mapDbProductToItem(p: any): ProductItem {
+  const ghsPrice = typeof p.price === 'number' ? p.price : parseFloat(p.price) || 0;
+  const cnyPrice = Math.round(ghsPrice * 0.47);
+  return normalizeEntityImages({
+    id: p.id,
+    name: p.name,
+    slug: p.slug,
+    description: p.description || '',
+    categoryId: p.categoryId,
+    category: {
+      id: p.category?.id || p.categoryId,
+      name: p.category?.name || 'Building Materials',
+      slug: p.category?.slug || 'building-materials',
+    },
+    sku: p.sku,
+    price: ghsPrice,
+    priceCny: cnyPrice,
+    currency: p.currency || 'GHS',
+    unit: p.unit || 'per piece',
+    stockQuantity: p.stockQuantity || 0,
+    stockStatus: p.stockStatus || 'IN_STOCK',
+    originCountry: p.originCountry || 'China',
+    moq: p.moq || 1,
+    status: p.status || 'PUBLISHED',
+    featured: Boolean(p.featured),
+    isFavourite: Boolean(p.featured),
+    imageUrl: p.imageUrl || '/product_tiles.webp',
+    galleryUrls: Array.isArray(p.galleryUrls) && p.galleryUrls.length > 0 ? p.galleryUrls : [p.imageUrl || '/product_tiles.webp'],
+    socialPlatform: (p as any).socialPlatform || 'TIKTOK',
+    socialUrl: (p as any).socialUrl || '',
+    createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
+    updatedAt: p.updatedAt ? new Date(p.updatedAt).toISOString() : new Date().toISOString(),
+  }, 'prod').item;
+}
+
+function revalidateProductsFromDb() {
+  if (globalThis.__revalidatingProductsPromise) return;
+  globalThis.__revalidatingProductsPromise = (async () => {
+    try {
+      const pProds: any[] = await prisma.product.findMany({
+        orderBy: { createdAt: 'desc' },
+        include: { category: true },
+      });
+      if (pProds && pProds.length > 0) {
+        const mapped = pProds.map(mapDbProductToItem);
+        mapped.sort((a, b) => {
+          const aFav = a.isFavourite ? 1 : 0;
+          const bFav = b.isFavourite ? 1 : 0;
+          if (aFav !== bFav) return bFav - aFav;
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        });
+        globalThis.__cachedProductsV3 = mapped;
+        globalThis.__cachedProductsV3Time = Date.now();
+        writeProductsToFile(mapped);
+
+        // Background cleanup of any inline base64 strings in PostgreSQL products table
+        for (let i = 0; i < pProds.length; i++) {
+          const raw = pProds[i];
+          const clean = mapped[i];
+          const rawHasBase64 =
+            (typeof raw.imageUrl === 'string' && raw.imageUrl.startsWith('data:image/')) ||
+            (Array.isArray(raw.galleryUrls) && raw.galleryUrls.some((u: string) => typeof u === 'string' && u.startsWith('data:image/')));
+          if (rawHasBase64) {
+            await prisma.product.update({
+              where: { id: raw.id },
+              data: {
+                imageUrl: clean.imageUrl,
+                galleryUrls: clean.galleryUrls,
+              },
+            }).catch(() => null);
+          }
+        }
+      }
+    } catch (_) {
+    } finally {
+      globalThis.__revalidatingProductsPromise = null;
+    }
+  })();
+}
+
 export async function getAllProducts(forceFresh = false): Promise<ProductItem[]> {
   const now = Date.now();
   if (
     !forceFresh &&
-    globalThis.__cachedProducts &&
-    globalThis.__cachedProducts.length > 0 &&
-    now - (globalThis.__cachedProductsTime || 0) < CACHE_DURATION
+    globalThis.__cachedProductsV3 &&
+    globalThis.__cachedProductsV3.length > 0 &&
+    now - (globalThis.__cachedProductsV3Time || 0) < CACHE_DURATION
   ) {
-    return globalThis.__cachedProducts;
+    return globalThis.__cachedProductsV3;
+  }
+
+  // If we have in-memory products and they just expired, return immediately & revalidate in background
+  if (!forceFresh && globalThis.__cachedProductsV3 && globalThis.__cachedProductsV3.length > 0) {
+    globalThis.__cachedProductsV3Time = now;
+    revalidateProductsFromDb();
+    return globalThis.__cachedProductsV3;
   }
 
   // Fast-path: if in-memory cache is empty, serve immediately from file cache (<1ms)
   // while asynchronously revalidating from Supabase Prisma in background
-  if (!forceFresh && (!globalThis.__cachedProducts || globalThis.__cachedProducts.length === 0)) {
+  if (!forceFresh) {
     const fileProducts = readProductsFromFile();
     if (fileProducts && fileProducts.length > 0) {
-      globalThis.__cachedProducts = fileProducts;
-      globalThis.__cachedProductsTime = now;
-      // Revalidate in background
-      (async () => {
-        try {
-          const pProds: any[] = await prisma.product.findMany({
-            orderBy: { createdAt: 'desc' },
-            include: { category: true },
-          });
-          if (pProds && pProds.length > 0) {
-            const mapped = pProds.map((p: any) => {
-              const ghsPrice = typeof p.price === 'number' ? p.price : parseFloat(p.price) || 0;
-              return {
-                id: p.id,
-                name: p.name,
-                slug: p.slug,
-                description: p.description || '',
-                categoryId: p.categoryId,
-                category: {
-                  id: p.category?.id || p.categoryId,
-                  name: p.category?.name || 'Building Materials',
-                  slug: p.category?.slug || 'building-materials',
-                },
-                sku: p.sku,
-                price: ghsPrice,
-                priceCny: Math.round(ghsPrice * 0.47),
-                currency: p.currency || 'GHS',
-                unit: p.unit || 'per piece',
-                stockQuantity: p.stockQuantity || 0,
-                stockStatus: p.stockStatus || 'IN_STOCK',
-                originCountry: p.originCountry || 'China',
-                moq: p.moq || 1,
-                status: p.status || 'PUBLISHED',
-                featured: Boolean(p.featured),
-                isFavourite: Boolean(p.featured),
-                imageUrl: p.imageUrl || '/product_tiles.webp',
-                galleryUrls: Array.isArray(p.galleryUrls) && p.galleryUrls.length > 0 ? p.galleryUrls : [p.imageUrl || '/product_tiles.webp'],
-                socialPlatform: (p as any).socialPlatform || 'TIKTOK',
-                socialUrl: (p as any).socialUrl || '',
-                createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
-                updatedAt: p.updatedAt ? new Date(p.updatedAt).toISOString() : new Date().toISOString(),
-              };
-            });
-            mapped.sort((a, b) => {
-              const aFav = a.isFavourite ? 1 : 0;
-              const bFav = b.isFavourite ? 1 : 0;
-              if (aFav !== bFav) return bFav - aFav;
-              return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
-            });
-            globalThis.__cachedProducts = mapped;
-            globalThis.__cachedProductsTime = Date.now();
-            writeProductsToFile(mapped);
-          }
-        } catch (_) {}
-      })();
+      globalThis.__cachedProductsV3 = fileProducts;
+      globalThis.__cachedProductsV3Time = now;
+      revalidateProductsFromDb();
       return fileProducts;
     }
   }
@@ -303,40 +341,7 @@ export async function getAllProducts(forceFresh = false): Promise<ProductItem[]>
     });
 
     if (pProds && pProds.length > 0) {
-      prismaProducts = pProds.map((p: any) => {
-        const ghsPrice = typeof p.price === 'number' ? p.price : parseFloat(p.price) || 0;
-        const cnyPrice = Math.round(ghsPrice * 0.47);
-        return {
-          id: p.id,
-          name: p.name,
-          slug: p.slug,
-          description: p.description || '',
-          categoryId: p.categoryId,
-          category: {
-            id: p.category?.id || p.categoryId,
-            name: p.category?.name || 'Building Materials',
-            slug: p.category?.slug || 'building-materials',
-          },
-          sku: p.sku,
-          price: ghsPrice,
-          priceCny: cnyPrice,
-          currency: p.currency || 'GHS',
-          unit: p.unit || 'per piece',
-          stockQuantity: p.stockQuantity || 0,
-          stockStatus: p.stockStatus || 'IN_STOCK',
-          originCountry: p.originCountry || 'China',
-          moq: p.moq || 1,
-          status: p.status || 'PUBLISHED',
-          featured: Boolean(p.featured),
-          isFavourite: Boolean(p.featured),
-          imageUrl: p.imageUrl || '/product_tiles.webp',
-          galleryUrls: Array.isArray(p.galleryUrls) && p.galleryUrls.length > 0 ? p.galleryUrls : [p.imageUrl || '/product_tiles.webp'],
-          socialPlatform: (p as any).socialPlatform || 'TIKTOK',
-          socialUrl: (p as any).socialUrl || '',
-          createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
-          updatedAt: p.updatedAt ? new Date(p.updatedAt).toISOString() : new Date().toISOString(),
-        };
-      });
+      prismaProducts = pProds.map(mapDbProductToItem);
     }
   } catch (err) {
     console.warn('Prisma product fetch notice, falling back to backup stores:', err);
@@ -352,8 +357,8 @@ export async function getAllProducts(forceFresh = false): Promise<ProductItem[]>
       return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
     });
 
-    globalThis.__cachedProducts = prismaProducts;
-    globalThis.__cachedProductsTime = now;
+    globalThis.__cachedProductsV3 = prismaProducts;
+    globalThis.__cachedProductsV3Time = now;
     writeProductsToFile(prismaProducts);
     return prismaProducts;
   }
@@ -362,23 +367,24 @@ export async function getAllProducts(forceFresh = false): Promise<ProductItem[]>
   try {
     const settingRes = await getSystemSetting<ProductItem[]>('products_catalog', []);
     if (!settingRes.isDefault && Array.isArray(settingRes.data) && settingRes.data.length > 0) {
-      globalThis.__cachedProducts = settingRes.data;
-      globalThis.__cachedProductsTime = now;
-      return settingRes.data;
+      const normalized = settingRes.data.map((p) => normalizeEntityImages(p, 'prod').item);
+      globalThis.__cachedProductsV3 = normalized;
+      globalThis.__cachedProductsV3Time = now;
+      return normalized;
     }
   } catch (e) {}
 
   // 3. Fallback: local scratch file or initial constant
   const fileProducts = readProductsFromFile();
   if (fileProducts.length > 0) {
-    globalThis.__cachedProducts = fileProducts;
-    globalThis.__cachedProductsTime = now;
+    globalThis.__cachedProductsV3 = fileProducts;
+    globalThis.__cachedProductsV3Time = now;
     return fileProducts;
   }
 
   // 4. Default constant store
-  globalThis.__cachedProducts = INITIAL_PRODUCTS_STORE;
-  globalThis.__cachedProductsTime = now;
+  globalThis.__cachedProductsV3 = INITIAL_PRODUCTS_STORE;
+  globalThis.__cachedProductsV3Time = now;
   return INITIAL_PRODUCTS_STORE;
 }
 
@@ -435,7 +441,7 @@ export async function saveProduct(prodData: Partial<ProductItem>): Promise<Produ
     ? (typeof prodData.priceCny === 'number' ? prodData.priceCny : parseFloat(prodData.priceCny as any) || 0)
     : Math.round(ghsPrice * 0.47);
 
-  const newProduct: ProductItem = {
+  const newProduct: ProductItem = normalizeEntityImages({
     id: prodData.id || existing?.id || `prod-${Date.now()}`,
     name: prodData.name || existing?.name || 'Untitled Product',
     slug: prodData.slug || existing?.slug || ((prodData.name || existing?.name || 'prod').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Date.now().toString().slice(-4)),
@@ -471,7 +477,7 @@ export async function saveProduct(prodData: Partial<ProductItem>): Promise<Produ
     socialUrl: prodData.socialUrl !== undefined ? prodData.socialUrl : (existing?.socialUrl || ''),
     createdAt: existing?.createdAt || now,
     updatedAt: now,
-  };
+  }, 'prod').item;
 
   // 1. Direct upsert into PostgreSQL via Prisma
   try {
@@ -538,21 +544,25 @@ export async function saveProduct(prodData: Partial<ProductItem>): Promise<Produ
     return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
   });
 
-  globalThis.__cachedProducts = fileProducts;
-  globalThis.__cachedProductsTime = Date.now();
+  globalThis.__cachedProductsV3 = fileProducts;
+  globalThis.__cachedProductsV3Time = Date.now();
   writeProductsToFile(fileProducts);
   setSystemSetting('products_catalog', fileProducts).catch(() => null);
 
   if (newProduct.id) {
     await removeDeletedProductId(newProduct.id);
   }
-  invalidateProductsCache();
 
   return newProduct;
 }
 
 export async function deleteProduct(id: string): Promise<boolean> {
-  invalidateProductsCache();
+  const currentProducts = await getAllProducts();
+  const updated = currentProducts.filter((p) => p.id !== id);
+
+  globalThis.__cachedProductsV3 = updated;
+  globalThis.__cachedProductsV3Time = Date.now();
+  writeProductsToFile(updated);
 
   // 1. Direct deletion from Prisma PostgreSQL tables
   try {
@@ -563,15 +573,6 @@ export async function deleteProduct(id: string): Promise<boolean> {
     console.warn("Prisma product delete notice:", e);
   }
 
-  // 2. Remove from active memory list and backup stores
-  const currentProducts = await getAllProducts();
-  const updated = currentProducts.filter((p) => p.id !== id);
-
-  globalThis.__cachedProducts = updated;
-  globalThis.__cachedProductsTime = Date.now();
-  writeProductsToFile(updated);
   setSystemSetting('products_catalog', updated).catch(() => null);
-
-  invalidateProductsCache();
   return true;
 }
