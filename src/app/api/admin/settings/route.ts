@@ -5,9 +5,10 @@ export const dynamic = 'force-dynamic';
 
 const DEFAULT_SETTINGS = {
   siteName: 'Loveridge Properties & Hardware Platform',
+  siteUrl: 'https://loveridgeproperty.com',
   contactPhone: '+233 24 643 2493',
   whatsappNumber: '+233 24 643 2493',
-  contactEmail: 'info@loveridge.com',
+  contactEmail: 'info@loveridgeproperty.com',
   enableQuoteInquiries: true,
   enablePropertyBookings: true,
   currencySymbol: 'GHS',

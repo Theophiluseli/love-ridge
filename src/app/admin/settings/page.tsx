@@ -10,6 +10,7 @@ export default function AdminSettingsPage() {
 
   const [settings, setSettings] = useState({
     siteName: 'Loveridge Properties & Store',
+    siteUrl: 'https://loveridgeproperty.com',
     contactEmail: 'info@loveridgeproperty.com',
     contactPhone: '0246432493',
     whatsappNumber: '233246432493',
@@ -289,6 +290,17 @@ export default function AdminSettingsPage() {
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">Official Website URL</label>
+              <input
+                type="url"
+                value={(settings as any).siteUrl || 'https://loveridgeproperty.com'}
+                onChange={(e) => setSettings({ ...settings, siteUrl: e.target.value } as any)}
+                placeholder="https://loveridgeproperty.com"
+                className="admin-input"
+              />
+            </div>
+
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">Site Title</label>
               <input

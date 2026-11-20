@@ -151,6 +151,19 @@ export default function ContactPage() {
                     </div>
                   </div>
 
+                  {/* Official Website */}
+                  <div className="flex items-start gap-3 text-slate-700">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-900 flex items-center justify-center shrink-0 mt-0.5">
+                      <Globe className="w-4 h-4 text-emerald-800" />
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="font-bold text-slate-900 block text-sm">Official Website</span>
+                      <a href="https://loveridgeproperty.com" target="_blank" rel="noopener noreferrer" className="text-slate-700 hover:text-emerald-800 block transition break-all font-semibold">
+                        loveridgeproperty.com
+                      </a>
+                    </div>
+                  </div>
+
                   {/* Ghana Office Hours */}
                   <div className="flex items-start gap-3 text-slate-700">
                     <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-900 flex items-center justify-center shrink-0 mt-0.5">

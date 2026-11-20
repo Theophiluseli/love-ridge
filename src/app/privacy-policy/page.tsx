@@ -109,7 +109,7 @@ export default function PrivacyPolicyPage() {
                 7. Contact and Complaints
               </h2>
               <p>
-                Privacy requests may be sent to <a href="mailto:info@loveridgeproperty.com" className="text-emerald-800 font-semibold hover:underline">info@loveridgeproperty.com</a>. Head Office: boundary Road, East Legon, Accra, Ghana. Telephone: <a href="tel:+233246432493" className="text-emerald-800 font-semibold hover:underline">+233 24 643 2493</a>. International Office: Yiwu International Trade Center, Zhejiang, China. WhatsApp: <a href="https://wa.me/8615505150635" target="_blank" rel="noopener noreferrer" className="text-emerald-800 font-semibold hover:underline">+86 155 0515 0635</a>. You may also complain to Ghana&apos;s Data Protection Commission.
+                Privacy requests may be sent to <a href="mailto:info@loveridgeproperty.com" className="text-emerald-800 font-semibold hover:underline">info@loveridgeproperty.com</a>. Head Office: boundary Road, East Legon, Accra, Ghana. Telephone: <a href="tel:+233246432493" className="text-emerald-800 font-semibold hover:underline">+233 24 643 2493</a>. International Office: Yiwu International Trade Center, Zhejiang, China. WhatsApp: <a href="https://wa.me/8615505150635" target="_blank" rel="noopener noreferrer" className="text-emerald-800 font-semibold hover:underline">+86 155 0515 0635</a>; Website: <a href="https://loveridgeproperty.com" target="_blank" rel="noopener noreferrer" className="text-emerald-800 font-semibold hover:underline">https://loveridgeproperty.com</a>. You may also complain to Ghana&apos;s Data Protection Commission.
               </p>
             </section>
           </div>
