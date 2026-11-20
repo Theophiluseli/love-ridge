@@ -5,6 +5,7 @@ import { signAccessToken } from '@/lib/auth/jwt';
 import { getUserPermissions } from '@/lib/auth/rbac';
 import { logAuditAction } from '@/lib/auth/audit';
 import { getClientIp, isRateLimited, rateLimit, resetRateLimit } from '@/lib/rate-limit';
+import { isTwoFactorActive, verifyTotp } from '@/lib/auth/totp';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,10 +34,12 @@ export async function POST(req: NextRequest) {
 
   let email = '';
   let password = '';
+  let body2fa: { code?: unknown } = {};
   try {
     const body = await req.json().catch(() => ({}));
     email = String(body.email || '').trim().toLowerCase().slice(0, 254);
     password = String(body.password || '').slice(0, 200);
+    body2fa = { code: body.code };
   } catch {
     /* handled below */
   }
@@ -62,6 +65,31 @@ export async function POST(req: NextRequest) {
         newValue: { ip },
       }).catch(() => null);
       return NextResponse.json({ error: 'Invalid email or password.' }, { status: 401 });
+    }
+
+    // 2-step login: a correct password alone is not enough once an authenticator is set up.
+    if (isTwoFactorActive(user)) {
+      const code = String(body2fa.code || '').trim();
+      if (!code) {
+        return NextResponse.json(
+          { twoFactorRequired: true, message: 'Enter the 6-digit code from your authenticator app.' },
+          { status: 200 }
+        );
+      }
+      if (!verifyTotp(user.twoFactorSecret, code)) {
+        rateLimit(accountKey, MAX_FAILS_PER_ACCOUNT, WINDOW_MS);
+        logAuditAction({
+          userId: user.id,
+          action: 'USER_LOGIN_2FA_FAILED',
+          entityType: 'user',
+          entityId: user.id,
+          newValue: { ip },
+        }).catch(() => null);
+        return NextResponse.json(
+          { twoFactorRequired: true, error: 'That authentication code is not right. Try the newest code.' },
+          { status: 401 }
+        );
+      }
     }
 
     resetRateLimit(accountKey);

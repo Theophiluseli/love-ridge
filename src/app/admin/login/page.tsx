@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Lock, Mail, ArrowRight, AlertCircle, CheckCircle } from 'lucide-react';
+import { Lock, Mail, ArrowRight, AlertCircle, CheckCircle, ShieldCheck } from 'lucide-react';
 import Logo from '@/components/Logo';
 
 export default function AdminLoginPage() {
@@ -13,6 +13,8 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [needsCode, setNeedsCode] = useState(false);
+  const [code, setCode] = useState('');
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -24,11 +26,20 @@ export default function AdminLoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(needsCode ? { email, password, code } : { email, password }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Login failed.');
+      if (data.twoFactorRequired && res.ok) {
+        // Password accepted; now ask for the authenticator code.
+        setNeedsCode(true);
+        setCode('');
+        return;
+      }
+      if (!res.ok) {
+        if (data.twoFactorRequired) setCode('');
+        throw new Error(data.error || 'Login failed.');
+      }
 
       localStorage.setItem('loveridge_user', JSON.stringify(data.user));
       localStorage.setItem('loveridge_token', data.token);
@@ -110,19 +121,59 @@ export default function AdminLoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  readOnly={needsCode}
                   className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-emerald-700"
                 />
               </div>
             </div>
+
+            {needsCode && (
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
+                <label className="flex items-center gap-1.5 text-xs font-bold text-emerald-950">
+                  <ShieldCheck className="w-4 h-4 text-emerald-700" /> 2-step login code
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  pattern="[0-9 ]{6,7}"
+                  maxLength={7}
+                  required
+                  autoFocus
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/[^0-9 ]/g, ''))}
+                  placeholder="123 456"
+                  className="w-full bg-white border border-emerald-300 text-slate-900 text-lg tracking-[0.4em] text-center font-bold rounded-xl px-4 py-2.5 focus:outline-none focus:border-emerald-700"
+                />
+                <p className="text-[11px] text-emerald-900/80">
+                  Open your authenticator app and enter the 6-digit code for Loveridge Admin. Lost your phone? Ask
+                  another Super Admin to turn off 2-step login for your account.
+                </p>
+              </div>
+            )}
 
             <button
               type="submit"
               disabled={loading}
               className="gradient-btn w-full py-3.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-lg"
             >
-              {loading ? 'Authenticating...' : 'Sign In to Portal'}
+              {loading ? 'Authenticating...' : needsCode ? 'Verify Code & Sign In' : 'Sign In to Portal'}
               <ArrowRight className="w-4 h-4" />
             </button>
+            {needsCode && (
+              <button
+                type="button"
+                onClick={() => {
+                  setNeedsCode(false);
+                  setCode('');
+                  setPassword('');
+                  setError('');
+                }}
+                className="w-full text-xs text-slate-500 font-bold hover:underline"
+              >
+                Use a different account
+              </button>
+            )}
           </form>
         ) : (
           <div className="space-y-4">

@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { Save, Key, MessageSquare, Globe, CheckCircle, Shield } from 'lucide-react';
+import TwoFactorCard from '@/components/admin/TwoFactorCard';
 
 export default function AdminSettingsPage() {
   const [saved, setSaved] = useState(false);
@@ -157,6 +158,9 @@ export default function AdminSettingsPage() {
           <CheckCircle className="w-4 h-4 text-emerald-600" /> System settings updated successfully.
         </div>
       )}
+
+      {/* 2-Step Login */}
+      <TwoFactorCard />
 
       {/* Admin Email Update Card */}
       <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xl space-y-6">

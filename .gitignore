@@ -42,3 +42,9 @@ next-env.d.ts
 
 # Temporary scratch
 scratch/
+
+# Database backups (contain customer leads and password hashes - never commit)
+backups/
+
+# Claude Code local settings
+.claude/settings.local.json

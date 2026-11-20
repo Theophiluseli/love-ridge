@@ -117,6 +117,22 @@ export default function AdminUsersPage() {
     }
   }
 
+  async function handleReset2fa() {
+    if (!selectedUser) return;
+    const token = localStorage.getItem('loveridge_token');
+    try {
+      const res = await fetch(`/api/admin/users/${selectedUser.id}/reset-2fa`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to turn off 2-step login.');
+      setResetMessage(`2-step login turned off for ${selectedUser.name}. They can sign in with their password and set it up again.`);
+    } catch (err: any) {
+      alert(err.message);
+    }
+  }
+
   async function toggleStatus(u: any) {
     const newStatus = u.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
     const token = localStorage.getItem('loveridge_token');
@@ -365,6 +381,19 @@ export default function AdminUsersPage() {
                 </button>
               </div>
             </form>
+
+            <div className="pt-4 border-t border-slate-100 space-y-2">
+              <p className="text-[11px] text-slate-500 font-medium">
+                Lost phone? Turn off 2-step login for this person so they can sign in with their password and set it up again.
+              </p>
+              <button
+                type="button"
+                onClick={handleReset2fa}
+                className="w-full py-2.5 rounded-xl border-2 border-amber-300 text-amber-900 hover:bg-amber-50 text-xs font-bold"
+              >
+                Turn off 2-step login for this user
+              </button>
+            </div>
           </div>
         </div>
       )}
