@@ -136,6 +136,17 @@ function PropertiesContent() {
     });
   }, [allProperties, search, listingType, propertyType, city]);
 
+  // City options come from the published listings themselves, so new towns (e.g. Aburi) appear automatically.
+  const cityOptions = useMemo(() => {
+    const set = new Set<string>(['Accra', 'Tema', 'Kumasi']);
+    allProperties.forEach((p) => {
+      const c = String(p?.city || '').trim();
+      if (c) set.add(c);
+    });
+    if (city !== 'ALL') set.add(city);
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [allProperties, city]);
+
   function resetFilters() {
     setListingType('ALL');
     setPropertyType('ALL');
@@ -264,10 +275,9 @@ function PropertiesContent() {
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-semibold appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-800/20 focus:border-emerald-700 focus:bg-white shadow-xs pr-8 transition-all cursor-pointer"
                     >
                       <option value="ALL">All Cities</option>
-                      <option value="Accra">Accra</option>
-                      <option value="Tema">Tema</option>
-                      <option value="Kumasi">Kumasi</option>
-                      <option value="Takoradi">Takoradi</option>
+                      {cityOptions.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
                     </select>
                     <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
                       <ChevronDown className="w-3.5 h-3.5" />

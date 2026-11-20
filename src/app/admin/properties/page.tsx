@@ -5,6 +5,7 @@ import { Plus, Edit2, Trash2, CheckCircle, Search, ShieldCheck, Eye, ExternalLin
 import Link from 'next/link';
 import { compressImage, watermarkImage, optimizeImageToWebP, ImageOptimizationReport } from '@/lib/utils/imageCompressor';
 import { AMENITY_GROUPS, ALL_AMENITIES_LIST } from '@/lib/amenities-constants';
+import { GHANA_REGIONS, KNOWN_CITIES, regionForCity } from '@/lib/locations';
 import { BUILT_PROPERTY_TYPES, LAND_PROPERTY_TYPE, formatPropertyType, isResidentialProperty } from '@/lib/property-categories';
 import ImageOptimizationModal from '@/components/ImageOptimizationModal';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
@@ -59,6 +60,8 @@ export default function AdminPropertiesPage() {
     locationAddress: '',
     city: 'Accra',
     region: 'Greater Accra',
+    lat: '',
+    lng: '',
     featured: true,
     status: 'PUBLISHED',
     imageUrl: '',
@@ -498,6 +501,8 @@ export default function AdminPropertiesPage() {
       locationAddress: prop.locationAddress || '',
       city: prop.city || 'Accra',
       region: prop.region || 'Greater Accra',
+      lat: prop.lat != null ? String(prop.lat) : '',
+      lng: prop.lng != null ? String(prop.lng) : '',
       featured: Boolean(prop.featured),
       status: prop.status || 'DRAFT',
       imageUrl: prop.imageUrl || '',
@@ -551,6 +556,8 @@ export default function AdminPropertiesPage() {
       locationAddress: '',
       city: 'Accra',
       region: 'Greater Accra',
+      lat: '',
+      lng: '',
       featured: true,
       status: 'PUBLISHED',
       imageUrl: '',
@@ -1072,7 +1079,7 @@ export default function AdminPropertiesPage() {
               )}
 
               {/* GENERAL AMENITIES SELECTION (ALL RESIDENTIAL LIVING SPACES) */}
-              {isResidentialProperty(form.propertyType) && (
+              {Boolean(form.propertyType) && (
                 <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6">
                   {/* Top Red/Pink Accent Bar & Title Matching Screenshot */}
                   <div className="space-y-3">
@@ -1109,7 +1116,7 @@ export default function AdminPropertiesPage() {
                   </div>
 
                   {/* 3 Group Columns matching user screenshot: Appliances, Connectivity, Other */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
                     {AMENITY_GROUPS.map((group) => (
                       <div
                         key={group.category}
@@ -1120,6 +1127,7 @@ export default function AdminPropertiesPage() {
                           {group.iconKey === 'tv' && <Tv className="w-5 h-5 text-fuchsia-700" />}
                           {group.iconKey === 'network' && <Network className="w-5 h-5 text-purple-700" />}
                           {group.iconKey === 'asterisk' && <Asterisk className="w-5 h-5 text-pink-700" />}
+                          {group.iconKey === 'shield' && <ShieldCheck className="w-5 h-5 text-emerald-700" />}
                           <h4 className="font-black text-base text-slate-900 tracking-tight">
                             {group.category}
                           </h4>
@@ -1248,17 +1256,44 @@ export default function AdminPropertiesPage() {
               {/* City & Address */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-800 mb-2">City / Location *</label>
-                  <select
+                  <label className="block text-xs font-bold text-slate-800 mb-2">City / Town *</label>
+                  <input
+                    type="text"
+                    required
+                    list="loveridge-city-options"
                     value={form.city}
-                    onChange={(e) => setForm({ ...form, city: e.target.value })}
-                    className="admin-select"
+                    onChange={(e) => {
+                      const city = e.target.value;
+                      const knownRegion = regionForCity(city);
+                      setForm({ ...form, city, region: knownRegion || form.region });
+                    }}
+                    placeholder="Pick from the list or type a new town"
+                    className="admin-input"
+                    maxLength={60}
+                  />
+                  <datalist id="loveridge-city-options">
+                    {KNOWN_CITIES.map((c) => (
+                      <option key={c} value={c} />
+                    ))}
+                  </datalist>
+                  <p className="text-[11px] text-slate-500 mt-1">New towns are saved and appear in the public filters automatically.</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 mb-2">Region *</label>
+                  <select
+                    value={form.region}
+                    onChange={(e) => setForm({ ...form, region: e.target.value })}
+                    disabled={Boolean(regionForCity(form.city))}
+                    className="admin-select disabled:opacity-70"
                   >
-                    <option value="Accra">Accra</option>
-                    <option value="Tema">Tema</option>
-                    <option value="Kumasi">Kumasi</option>
-                    <option value="Takoradi">Takoradi</option>
+                    {GHANA_REGIONS.map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
                   </select>
+                  {regionForCity(form.city) && (
+                    <p className="text-[11px] text-slate-500 mt-1">Set automatically from the city.</p>
+                  )}
                 </div>
 
                 <div>
@@ -1271,6 +1306,35 @@ export default function AdminPropertiesPage() {
                     placeholder="e.g. Spintex Commercial Corridor, Near Coca-Cola Roundabout"
                     className="admin-input"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 mb-2">Map pin latitude (optional)</label>
+                  <input
+                    type="number"
+                    step="any"
+                    min={-90}
+                    max={90}
+                    value={form.lat}
+                    onChange={(e) => setForm({ ...form, lat: e.target.value })}
+                    placeholder="e.g. 5.816038"
+                    className="admin-input"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 mb-2">Map pin longitude (optional)</label>
+                  <input
+                    type="number"
+                    step="any"
+                    min={-180}
+                    max={180}
+                    value={form.lng}
+                    onChange={(e) => setForm({ ...form, lng: e.target.value })}
+                    placeholder="e.g. -0.177972"
+                    className="admin-input"
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">In Google Maps, right-click the plot and copy the two numbers. Shows a map on the listing.</p>
                 </div>
               </div>
 

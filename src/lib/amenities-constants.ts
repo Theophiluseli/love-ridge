@@ -1,12 +1,14 @@
 export interface AmenityItem {
   id: string;
   label: string;
-  category: 'Appliances' | 'Connectivity' | 'Other';
+  category: AmenityCategory;
 }
 
+export type AmenityCategory = 'Appliances' | 'Connectivity' | 'Other' | 'Property & Security';
+
 export interface AmenityCategoryGroup {
-  category: 'Appliances' | 'Connectivity' | 'Other';
-  iconKey: 'tv' | 'network' | 'asterisk';
+  category: AmenityCategory;
+  iconKey: 'tv' | 'network' | 'asterisk' | 'shield';
   color: string;
   items: string[];
 }
@@ -45,11 +47,25 @@ export const AMENITY_GROUPS: AmenityCategoryGroup[] = [
       'Roof terrace',
     ],
   },
+  {
+    // Buyer-confidence features most asked about by Ghana and diaspora buyers.
+    category: 'Property & Security',
+    iconKey: 'shield',
+    color: '#047857',
+    items: [
+      'Titled land',
+      'Swimming pool',
+      'Gated community',
+      '24/7 security',
+      'Backup generator',
+      'Water reservoir',
+    ],
+  },
 ];
 
 export const ALL_AMENITIES_LIST: string[] = AMENITY_GROUPS.flatMap((g) => g.items);
 
-export function getAmenityGroup(amenityName: string): 'Appliances' | 'Connectivity' | 'Other' {
+export function getAmenityGroup(amenityName: string): AmenityCategory {
   for (const group of AMENITY_GROUPS) {
     if (group.items.some((item) => item.toLowerCase() === amenityName.toLowerCase())) {
       return group.category;

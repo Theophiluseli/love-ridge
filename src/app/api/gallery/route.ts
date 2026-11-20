@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuthPermission } from '@/lib/auth/rbac';
 import { prisma } from '@/lib/db';
 import { broadcastCatalogUpdate } from '@/lib/realtime-broadcast';
 
@@ -92,7 +93,12 @@ export async function GET(req: NextRequest) {
     const category = searchParams.get('category');
     const search = searchParams.get('search');
     const featured = searchParams.get('featured');
-    const includeAll = searchParams.get('includeAll') === 'true';
+    let includeAll = searchParams.get('includeAll') === 'true';
+    if (includeAll) {
+      // Unpublished items are for signed-in staff only.
+      const auth = await requireAuthPermission(req, 'content.manage');
+      if ('response' in auth) includeAll = false;
+    }
 
     const isSimplePublicList = !category && !search && !featured && !includeAll;
     const now = Date.now();
@@ -201,6 +207,9 @@ export async function GET(req: NextRequest) {
 
 // POST: Create a new gallery photo item
 export async function POST(req: NextRequest) {
+  const auth = await requireAuthPermission(req, 'content.manage');
+  if ('response' in auth) return auth.response;
+
   try {
     const body = await req.json();
 

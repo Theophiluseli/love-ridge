@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
+import { trackLead } from '@/lib/analytics';
 
 const DEFAULT_HERO_SLIDES = [
   '/hero_carousel_1.jpg',
@@ -324,6 +325,7 @@ export default function HomePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to submit inquiry.');
 
+      trackLead({ formType: 'home_page' });
       setFormSubmitted(true);
       setContactForm({ name: '', email: '', phone: '', message: '', inquiryType: 'General Consultancy' });
     } catch (err: any) {

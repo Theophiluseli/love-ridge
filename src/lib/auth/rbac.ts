@@ -8,8 +8,9 @@ export async function getAuthenticatedUser(req: NextRequest): Promise<TokenPaylo
 
   if (authHeader && authHeader.startsWith('Bearer ')) {
     token = authHeader.substring(7).trim();
-  } else {
-    // Check cookie
+  }
+  if (!token || token === 'null' || token === 'undefined') {
+    // Fall back to the httpOnly session cookie set at login.
     token = req.cookies.get('loveridge_token')?.value;
   }
 
@@ -17,8 +18,16 @@ export async function getAuthenticatedUser(req: NextRequest): Promise<TokenPaylo
   return verifyAccessToken(token);
 }
 
+/**
+ * True when the signed-in user's role grants `requiredPermission`.
+ * Super Admins (and the '*' wildcard) can do everything.
+ */
 export function hasPermission(user: TokenPayload | null | undefined, requiredPermission?: string): boolean {
-  return Boolean(user);
+  if (!user) return false;
+  if (!requiredPermission) return true;
+  if (user.roleName === 'Super Admin') return true;
+  const perms = Array.isArray(user.permissions) ? user.permissions : [];
+  return perms.includes('*') || perms.includes(requiredPermission);
 }
 
 export async function requireAuthPermission(
@@ -35,6 +44,15 @@ export async function requireAuthPermission(
     };
   }
 
+  if (!hasPermission(user, requiredPermission)) {
+    return {
+      response: NextResponse.json(
+        { error: 'Your account does not have permission to do this. Please ask a Super Admin.' },
+        { status: 403 }
+      ),
+    };
+  }
+
   return { user };
 }
 
@@ -44,11 +62,10 @@ export async function getUserPermissions(roleId: string): Promise<string[]> {
       where: { roleId },
       include: { permission: true },
     });
-    if (rolePermissions && rolePermissions.length > 0) {
-      return rolePermissions.map((rp) => rp.permission.key);
-    }
+    return rolePermissions.map((rp) => rp.permission.key);
   } catch (err) {
-    console.warn('DB lookup error for role permissions, serving fallback permissions:', err);
+    console.warn('DB lookup error for role permissions:', err);
+    // Fail closed: no permissions rather than everything.
+    return [];
   }
-  return ['*'];
 }

@@ -1,3 +1,5 @@
+import { publicSlugFor } from "./property-slugs";
+
 export interface PropertyItem {
   id: string;
   title: string;
@@ -22,6 +24,8 @@ export interface PropertyItem {
   city: string;
   region: string;
   country: string;
+  lat?: number | null;
+  lng?: number | null;
   featured: boolean;
   isFavourite?: boolean;
   imageUrl?: string | null;
@@ -40,13 +44,63 @@ export interface PropertyItem {
   updatedAt: string;
 }
 
+function toFiniteOrNull(value: unknown): number | null {
+  const n = typeof value === "number" ? value : value == null || value === "" ? NaN : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Public view of a listing (Fix 6.1). This is an explicit WHITELIST: owner/landlord details,
+ * commission, agent records and internal ids are never sent to browsers. Contact fields are
+ * always Loveridge's own office details.
+ */
 export function sanitizePropertyForPublic(property: PropertyItem): PropertyItem {
-  const { ownerName, ownerPhone, ownerCompany, ...publicData } = property;
+  const p: any = property || {};
+  const amenities = Array.isArray(p.amenities)
+    ? p.amenities
+        .map((a: any) => (typeof a === "string" ? a : a?.amenity?.name || a?.name || ""))
+        .filter((a: string) => Boolean(a))
+    : [];
+  const sizeSqft = toFiniteOrNull(p.sizeSqft);
+  const livingAreaSqft = toFiniteOrNull(p.livingAreaSqft);
+
   return {
-    ...publicData,
-    contactName: "Desmond Senanu",
+    id: String(p.id),
+    title: String(p.title || ""),
+    slug: publicSlugFor({ id: String(p.id), slug: String(p.slug || "") }),
+    description: String(p.description || ""),
+    listingType: p.listingType,
+    propertyType: p.propertyType,
+    status: p.status || "PUBLISHED",
+    price: Number(p.price) || 0,
+    currency: p.currency || "USD",
+    pricePeriod: p.pricePeriod || undefined,
+    negotiable: p.negotiable ?? undefined,
+    bedrooms: Number(p.bedrooms) || 0,
+    bathrooms: Number(p.bathrooms) || 0,
+    guestRooms: Number(p.guestRooms) || 0,
+    boysQuarters: Number(p.boysQuarters) || 0,
+    garage: Number(p.garage) || 0,
+    sizeSqft: sizeSqft && sizeSqft > 0 ? sizeSqft : null,
+    livingAreaSqft: livingAreaSqft && livingAreaSqft > 0 ? livingAreaSqft : null,
+    locationAddress: String(p.locationAddress || ""),
+    city: String(p.city || ""),
+    region: String(p.region || ""),
+    country: p.country || "Ghana",
+    lat: toFiniteOrNull(p.lat),
+    lng: toFiniteOrNull(p.lng),
+    featured: Boolean(p.featured),
+    isFavourite: Boolean(p.isFavourite),
+    imageUrl: p.imageUrl || null,
+    galleryUrls: Array.isArray(p.galleryUrls) ? p.galleryUrls.filter((u: unknown) => typeof u === "string" && u) : [],
+    socialPlatform: p.socialPlatform || null,
+    socialUrl: p.socialUrl || null,
+    amenities,
+    contactName: "Loveridge Properties & Consult",
     contactPhone: "+233 24 643 2493",
     contactEmail: "info@loveridgeproperty.com",
+    createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
+    updatedAt: p.updatedAt ? new Date(p.updatedAt).toISOString() : new Date().toISOString(),
   };
 }
 

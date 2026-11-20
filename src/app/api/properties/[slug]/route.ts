@@ -1,90 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllProperties, getDeletedPropertyIds, sanitizePropertyForPublic } from '@/lib/properties-store';
-import { prisma } from '@/lib/db';
+import { getPublicListing } from '@/lib/public-listings';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { slug: string } }
-) {
+const NO_STORE = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+  Pragma: 'no-cache',
+  Expires: '0',
+};
+
+/**
+ * Public listing detail. Only PUBLISHED listings are returned, and only whitelisted public
+ * fields (no owner/landlord details, commission or internal records) — Fix 6.1.
+ */
+export async function GET(_req: NextRequest, { params }: { params: { slug: string } }) {
   try {
-    const { slug } = params;
-    const cleanSlug = decodeURIComponent(slug).toLowerCase().trim();
-    const deletedIds = await getDeletedPropertyIds();
-    if (deletedIds.has(cleanSlug) || deletedIds.has(slug)) {
-      return NextResponse.json({ error: 'Property not found.' }, { status: 404 });
+    const result = await getPublicListing(params.slug);
+    if (!result) {
+      return NextResponse.json({ error: 'Property not found.' }, { status: 404, headers: NO_STORE });
     }
-
-    const allProps = await getAllProperties();
-
-    const matched = allProps.find(
-      (p) =>
-        (p.slug.toLowerCase() === cleanSlug || p.id.toLowerCase() === cleanSlug) &&
-        !deletedIds.has(p.id) &&
-        !deletedIds.has(p.slug)
+    return NextResponse.json(
+      { property: result.property, similar: result.similar, canonicalSlug: result.property.slug },
+      { headers: NO_STORE }
     );
-
-    if (matched) {
-      const similar = allProps
-        .filter((p) => p.id !== matched.id && (p.status || 'PUBLISHED').toUpperCase() === 'PUBLISHED')
-        .slice(0, 3);
-
-      return NextResponse.json(
-        {
-          property: sanitizePropertyForPublic(matched),
-          similar: similar.map(sanitizePropertyForPublic),
-        },
-        {
-          headers: {
-            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
-            'Pragma': 'no-cache',
-            'Expires': '0',
-          },
-        }
-      );
-    }
-
-    // Fallback to Prisma if not found in store
-    const property = await prisma.property.findFirst({
-      where: {
-        OR: [{ slug: slug }, { id: slug }],
-      },
-      include: {
-        agent: {
-          select: { id: true, name: true, email: true, phone: true },
-        },
-        amenities: {
-          include: { amenity: true },
-        },
-        media: {
-          include: { media: true },
-          orderBy: { sortOrder: 'asc' },
-        },
-      },
-    });
-
-    if (!property || deletedIds.has(property.id) || deletedIds.has(property.slug)) {
-      return NextResponse.json({ error: 'Property not found.' }, { status: 404 });
-    }
-
-    const similar = await prisma.property.findMany({
-      where: {
-        status: 'PUBLISHED',
-        id: { not: property.id },
-        OR: [{ city: property.city }, { propertyType: property.propertyType }],
-      },
-      take: 3,
-      include: { agent: true },
-    });
-
-    return NextResponse.json({
-      property: sanitizePropertyForPublic(property as any),
-      similar: similar.map((s: any) => sanitizePropertyForPublic(s as any)),
-    });
   } catch (error) {
     console.error('Error fetching property detail:', error);
-    return NextResponse.json({ error: 'Failed to fetch property details.' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch property details.' }, { status: 500, headers: NO_STORE });
   }
 }

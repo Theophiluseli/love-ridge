@@ -13,7 +13,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const cleanEmail = email.trim().toLowerCase();
+    const cleanEmail = email.trim().toLowerCase().slice(0, 254);
+    if (!/^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/.test(cleanEmail)) {
+      return NextResponse.json({ error: 'Please provide a valid email address.' }, { status: 400 });
+    }
 
     // Check if already subscribed in leads
     const existing = await prisma.lead.findFirst({
@@ -30,7 +33,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const lead = await prisma.lead.create({
+    await prisma.lead.create({
       data: {
         type: 'NEWSLETTER',
         name: cleanEmail.split('@')[0] || 'Newsletter Subscriber',
@@ -43,7 +46,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(
-      { message: 'Thank you for subscribing to our newsletter!', lead },
+      { message: 'Thank you for subscribing to our newsletter!' },
       { status: 201 }
     );
   } catch (error) {

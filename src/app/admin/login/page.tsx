@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Lock, Mail, ArrowRight, AlertCircle, CheckCircle, Key } from 'lucide-react';
+import { Lock, Mail, ArrowRight, AlertCircle, CheckCircle } from 'lucide-react';
 import Logo from '@/components/Logo';
 
 export default function AdminLoginPage() {
@@ -10,7 +10,6 @@ export default function AdminLoginPage() {
   const [mode, setMode] = useState<'LOGIN' | 'RESET'>('LOGIN');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -37,33 +36,6 @@ export default function AdminLoginPage() {
       router.push('/admin/dashboard');
     } catch (err: any) {
       setError(err.message || 'Authentication error.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleResetPassword(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-    setSuccess('');
-
-    try {
-      const res = await fetch('/api/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, newPassword }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to reset password.');
-
-      setSuccess('Password updated successfully! You can now log in.');
-      setPassword(newPassword);
-      setNewPassword('');
-      setTimeout(() => setMode('LOGIN'), 1500);
-    } catch (err: any) {
-      setError(err.message || 'Failed to reset password.');
     } finally {
       setLoading(false);
     }
@@ -153,57 +125,24 @@ export default function AdminLoginPage() {
             </button>
           </form>
         ) : (
-          <form onSubmit={handleResetPassword} className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">Admin Email Address</label>
-              <div className="relative">
-                <Mail className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-emerald-700"
-                />
-              </div>
+          <div className="space-y-4">
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs font-semibold leading-relaxed">
+              For security, passwords can no longer be reset from this page. Please ask a Loveridge Super Admin to
+              reset your password from <strong>Admin → Users</strong>. Once signed in, you can change your own password in
+              Settings.
             </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">New Password</label>
-              <div className="relative">
-                <Key className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
-                <input
-                  type="password"
-                  required
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Min 6 characters"
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-emerald-700"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setError('');
-                  setSuccess('');
-                  setMode('LOGIN');
-                }}
-                className="flex-1 py-3 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50"
-              >
-                Back to Login
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="gradient-btn flex-1 py-3 rounded-xl text-xs font-bold shadow-md"
-              >
-                {loading ? 'Resetting...' : 'Reset Password'}
-              </button>
-            </div>
-          </form>
+            <button
+              type="button"
+              onClick={() => {
+                setError('');
+                setSuccess('');
+                setMode('LOGIN');
+              }}
+              className="w-full py-3 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50"
+            >
+              Back to Login
+            </button>
+          </div>
         )}
 
       </div>

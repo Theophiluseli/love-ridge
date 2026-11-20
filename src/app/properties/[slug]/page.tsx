@@ -1,732 +1,152 @@
-'use client';
+import type { Metadata } from 'next';
+import { notFound, permanentRedirect } from 'next/navigation';
+import PropertyDetailClient from '@/components/PropertyDetailClient';
+import { getPublicListing } from '@/lib/public-listings';
+import { formatPropertyType, isResidentialProperty } from '@/lib/property-categories';
+import { SITE_NAME, SITE_URL, BRAND_NAME, CALL_NUMBER_E164, absoluteUrl, propertyUrl } from '@/lib/site-config';
+import type { PropertyItem } from '@/lib/properties-constants';
 
-import { useState, useEffect } from 'react';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
-import PropertyCard from '@/components/PropertyCard';
-import InquiryModal from '@/components/InquiryModal';
-import ImageGalleryModal from '@/components/ImageGalleryModal';
-import SocialShare from '@/components/SocialShare';
-import { useCurrency } from '@/context/CurrencyContext';
-import { MapPin, Bed, Bath, Maximize2, Shield, Calendar, ChevronLeft, ChevronRight, CheckCircle2, Images, X, PhoneCall, Mail, UserCheck, Home, Clock, BadgeCheck, Tv, Network, Asterisk, Check, Wind, Flame, Shirt, Fan, Wifi, Trees, Car, Sun, Send, ExternalLink } from 'lucide-react';
-import Link from 'next/link';
-import { formatPropertyType } from '@/lib/property-categories';
+// Listings change from the admin panel at any time; render on request (data is cached in memory).
+export const dynamic = 'force-dynamic';
 
+type Props = { params: { slug: string } };
 
+function cleanText(text: string) {
+  return String(text || '')
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
-export default function PropertyDetailPage({ params }: { params: { slug: string } }) {
-  const { formatPrice } = useCurrency();
+function truncate(text: string, max: number) {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const lastSpace = cut.lastIndexOf(' ');
+  return `${(lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).replace(/[\s,.;:–-]+$/, '')}…`;
+}
 
-  const [property, setProperty] = useState<any>(null);
-  const [similar, setSimilar] = useState<any[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+function shortAddress(p: PropertyItem) {
+  const addr = String(p.locationAddress || '').replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim();
+  const parts = addr.split(',').map((s) => s.trim()).filter(Boolean).slice(0, 2);
+  const base = parts.join(', ') || p.city;
+  return p.city && !base.toLowerCase().includes(p.city.toLowerCase()) ? `${base}, ${p.city}` : base;
+}
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [inquiryType, setInquiryType] = useState('General Consultancy');
-  const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [activePhoto, setActivePhoto] = useState<string>('');
-  const [lightboxIndex, setLightboxIndex] = useState(0);
+function buildDescription(p: PropertyItem) {
+  const type = formatPropertyType(p.propertyType).toLowerCase();
+  const purpose = String(p.listingType).toUpperCase() === 'RENT' && String(p.propertyType).toUpperCase() !== 'LAND' ? 'for rent' : 'for sale';
+  const lead =
+    isResidentialProperty(p.propertyType) && p.bedrooms > 0
+      ? `${p.bedrooms}-bedroom ${type} ${purpose} in ${shortAddress(p)}.`
+      : `${type.charAt(0).toUpperCase()}${type.slice(1)} ${purpose} in ${shortAddress(p)}.`;
+  // Skip the first line of the description when it just repeats the title.
+  const lines = String(p.description || '').split('\n').map((l) => l.trim()).filter(Boolean);
+  const body = cleanText((lines.length > 1 && lines[0].length < 140 ? lines.slice(1) : lines).join(' '));
+  return truncate(`${lead} ${body}`, 158);
+}
 
-  useEffect(() => {
-    async function syncData() {
-      if (!params?.slug) {
-        setLoading(false);
-        return;
-      }
+function coverImage(p: PropertyItem) {
+  return absoluteUrl(p.imageUrl || p.galleryUrls?.[0]);
+}
 
-      // Fetch fresh data from API with cache busting
-      try {
-        const res = await fetch(`/api/properties/${params.slug}?_t=${Date.now()}`, { cache: 'no-store' });
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.property) {
-            setProperty(data.property);
-            if (data.similar && data.similar.length > 0) {
-              setSimilar(data.similar);
-            }
-            if (data.property.imageUrl) {
-              setActivePhoto(data.property.imageUrl);
-            }
-          } else {
-            setProperty(null);
-          }
-        } else {
-          setProperty(null);
-        }
-      } catch (err) {
-        console.error('Property detail sync error:', err);
-        setProperty(null);
-      } finally {
-        setLoading(false);
-      }
-    }
-    syncData();
-  }, [params?.slug]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between">
-        <Navbar />
-        <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-20 text-center space-y-4">
-          <div className="w-12 h-12 border-4 border-slate-200 border-t-emerald-800 rounded-full animate-spin mx-auto" />
-          <h2 className="text-xl font-bold text-slate-900">Loading Property Details...</h2>
-        </main>
-        <Footer />
-      </div>
-    );
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const result = await getPublicListing(params.slug);
+  // Status codes must be decided here: generateMetadata resolves before the page starts
+  // streaming (the root loading.tsx would otherwise force a 200 / client-side redirect).
+  if (!result) notFound();
+  if (result.redirectTo && result.redirectTo !== params.slug) {
+    permanentRedirect(`/properties/${result.redirectTo}`);
   }
+  const p = result.property;
+  const title = `${p.title} | ${SITE_NAME}`;
+  const description = buildDescription(p);
+  const url = propertyUrl(p.slug);
+  const image = coverImage(p);
 
-  if (!property) {
-    return (
-      <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between">
-        <Navbar />
-        <main className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-20 text-center space-y-6">
-          <div className="w-16 h-16 bg-emerald-100 border border-emerald-300 rounded-full flex items-center justify-center mx-auto text-emerald-800 font-bold text-2xl shadow-sm">
-            🏡
-          </div>
-          <h2 className="text-3xl font-black text-slate-900">Property Listing Not Found</h2>
-          <p className="text-slate-600 text-sm max-w-md mx-auto font-medium leading-relaxed">
-            The property listing you are trying to view might have been moved, unpublished, or is currently unavailable.
-          </p>
-          <div>
-            <Link
-              href="/properties"
-              className="gradient-btn px-6 py-3.5 rounded-2xl text-xs font-bold inline-flex items-center gap-2 shadow-md"
-            >
-              ← Browse All Verified Property Listings
-            </Link>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
-  // Helper to reject legacy generated demo pictures
-  const isGeneratedDemoImage = (url?: string | null): boolean => {
-    if (!url || typeof url !== 'string') return true;
-    return (
-      url.includes('property_villa') ||
-      url.includes('property_office') ||
-      url.includes('property_warehouse') ||
-      url.includes('property_apartment') ||
-      url.includes('property_land') ||
-      url.includes('hero_complex_bg') ||
-      url.includes('hero_villa_bg')
-    );
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      url,
+      siteName: BRAND_NAME,
+      locale: 'en_GH',
+      type: 'website',
+      images: image ? [{ url: image, alt: p.title }] : undefined,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: image ? [image] : undefined,
+    },
   };
+}
 
-  // Determine cover image: strictly use uploaded imageUrl first, never demo pictures
-  const cleanCover = !isGeneratedDemoImage(property.imageUrl) ? property.imageUrl : '';
-  const currentCover = (!isGeneratedDemoImage(activePhoto) ? activePhoto : '') || cleanCover;
+function buildJsonLd(p: PropertyItem) {
+  const url = propertyUrl(p.slug);
+  const images = [p.imageUrl, ...(p.galleryUrls || [])]
+    .map((u) => absoluteUrl(u))
+    .filter((u, i, arr): u is string => Boolean(u) && arr.indexOf(u) === i)
+    .slice(0, 10);
+  const isRent = String(p.listingType).toUpperCase() === 'RENT' && String(p.propertyType).toUpperCase() !== 'LAND';
 
-  // Multi-photo gallery list (strictly filter out demo images)
-  const uploadedGallery = Array.isArray(property.galleryUrls) ? property.galleryUrls : [];
-  const uploadedMedia = Array.isArray(property.media)
-    ? property.media.map((m: any) => m.media?.fileUrl).filter(Boolean)
-    : [];
-  const uploadedImages = Array.isArray(property.images) ? property.images : [];
-
-  const userUploadedList = [
-    cleanCover,
-    ...uploadedGallery,
-    ...uploadedMedia,
-    ...uploadedImages,
-  ]
-    .filter(Boolean)
-    .filter((url) => !isGeneratedDemoImage(url));
-
-  const galleryImages = Array.from(new Set(userUploadedList));
-
-  const formattedPrice = formatPrice(property.price, property.currency || 'GHS');
-  const agentName = property.contactName || property.agent?.name || 'Kwame Appiah';
-  const agentPhone = property.contactPhone || property.agent?.phone || '0246432493';
-  const agentEmail = property.contactEmail || property.agent?.email || 'info@loveridgeproperty.com';
-  const agentTitle = property.agent?.title || 'Lead Real Estate Broker';
-
-  const updatedDate = property.updatedAt || property.createdAt;
-  const formattedUpdateDate = updatedDate
-    ? new Date(updatedDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-    : 'Recently Updated';
-
-  // Normalize and group amenities (House & Apartment general amenities)
-  const rawAmenities = property.amenities || [];
-  const normalizedAmenities: string[] = Array.isArray(rawAmenities)
-    ? rawAmenities
-        .map((a: any) => (typeof a === 'string' ? a : a.amenity?.name || a.name || ''))
-        .filter(Boolean)
-    : [];
-
-  const norm = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-
-  const applianceAmenities = normalizedAmenities.filter((a) =>
-    ['air conditioning', 'cooker', 'washing machine', 'fans', 'refrigerator', 'microwave'].some(
-      (target) => norm(a) === norm(target)
-    )
-  );
-
-  const connectivityAmenities = normalizedAmenities.filter((a) =>
-    ['internet access', 'satellite tv'].some((target) => norm(a) === norm(target))
-  );
-
-  const otherAmenities = normalizedAmenities.filter((a) =>
-    ['garden', 'garage', "annexe (boys' quarters)", 'roof terrace'].some((target) => norm(a) === norm(target))
-  );
-
-  const generalAmenityNorms = new Set([
-    'airconditioning',
-    'cooker',
-    'washingmachine',
-    'fans',
-    'fan',
-    'refrigerator',
-    'microwave',
-    'internetaccess',
-    'satellitetv',
-    'garden',
-    'garage',
-    'annexeboysquarters',
-    'roofterrace',
-  ]);
-
-  const customHighlights = normalizedAmenities.filter((a) => !generalAmenityNorms.has(norm(a)));
-  const hasAnyAmenities = normalizedAmenities.length > 0;
-
-  function getAmenityIcon(name: string) {
-    const lower = name.toLowerCase();
-    if (lower.includes('air conditioning')) return <Wind className="w-4 h-4 text-sky-600" />;
-    if (lower.includes('cooker')) return <Flame className="w-4 h-4 text-orange-600" />;
-    if (lower.includes('washing machine')) return <Shirt className="w-4 h-4 text-indigo-600" />;
-    if (lower.includes('fan')) return <Fan className="w-4 h-4 text-teal-600" />;
-    if (lower.includes('refrigerator')) return <CheckCircle2 className="w-4 h-4 text-blue-600" />;
-    if (lower.includes('microwave')) return <Flame className="w-4 h-4 text-amber-600" />;
-    if (lower.includes('internet')) return <Wifi className="w-4 h-4 text-purple-600" />;
-    if (lower.includes('satellite') || lower.includes('tv')) return <Tv className="w-4 h-4 text-fuchsia-600" />;
-    if (lower.includes('garden')) return <Trees className="w-4 h-4 text-emerald-600" />;
-    if (lower.includes('garage')) return <Car className="w-4 h-4 text-blue-600" />;
-    if (lower.includes('annexe') || lower.includes('boys')) return <Home className="w-4 h-4 text-rose-600" />;
-    if (lower.includes('terrace') || lower.includes('roof')) return <Sun className="w-4 h-4 text-amber-600" />;
-    return <CheckCircle2 className="w-4 h-4 text-emerald-600" />;
+  const data: Record<string, unknown> = {
+    '@context': 'https://schema.org',
+    '@type': 'RealEstateListing',
+    name: p.title,
+    description: cleanText(p.description).slice(0, 5000),
+    url,
+    image: images,
+    datePosted: p.createdAt,
+    dateModified: p.updatedAt,
+    offers: {
+      '@type': 'Offer',
+      price: p.price,
+      priceCurrency: (p.currency || 'USD').toUpperCase(),
+      availability: 'https://schema.org/InStock',
+      businessFunction: isRent ? 'http://purl.org/goodrelations/v1#LeaseOut' : 'http://purl.org/goodrelations/v1#Sell',
+      url,
+      seller: {
+        '@type': 'RealEstateAgent',
+        name: BRAND_NAME,
+        url: SITE_URL,
+        telephone: CALL_NUMBER_E164,
+      },
+    },
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: shortAddress(p),
+      addressLocality: p.city,
+      addressRegion: p.region,
+      addressCountry: 'GH',
+    },
+  };
+  if (typeof p.lat === 'number' && typeof p.lng === 'number') {
+    data.geo = { '@type': 'GeoCoordinates', latitude: p.lat, longitude: p.lng };
   }
+  if (isResidentialProperty(p.propertyType) && p.bedrooms > 0) {
+    data.numberOfBedrooms = p.bedrooms;
+  }
+  return data;
+}
+
+export default async function PropertyDetailPage({ params }: Props) {
+  const result = await getPublicListing(params.slug);
+  if (!result) notFound();
+  // Old / renamed URLs: permanent redirect to the current address (Fix 2, Fix 6.4).
+  if (result.redirectTo && result.redirectTo !== params.slug) {
+    permanentRedirect(`/properties/${result.redirectTo}`);
+  }
+
+  const jsonLd = JSON.stringify(buildJsonLd(result.property)).replace(/</g, '\\u003c');
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between bg-grid-pattern">
-      <Navbar />
-
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10 space-y-10">
-        <div className="flex items-center justify-between">
-          <Link
-            href="/properties"
-            className="text-xs text-slate-500 hover:text-emerald-800 font-bold inline-flex items-center gap-1"
-          >
-            <ChevronLeft className="w-4 h-4" /> Back to Properties
-          </Link>
-
-          <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-            <Clock className="w-3.5 h-3.5 text-slate-400" />
-            <span>Last Updated: {formattedUpdateDate}</span>
-          </div>
-        </div>
-
-        {/* Gallery / Header Hero Showcase */}
-        <div className="relative h-[320px] sm:h-[480px] rounded-3xl overflow-hidden shadow-2xl border border-slate-200 flex items-center justify-center p-4 sm:p-8 group bg-slate-900">
-          {currentCover ? (
-            <img
-              src={currentCover}
-              alt={property.title}
-              loading="eager"
-              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 cursor-pointer"
-              onClick={() => {
-                setLightboxIndex(galleryImages.indexOf(currentCover) >= 0 ? galleryImages.indexOf(currentCover) : 0);
-                setLightboxOpen(true);
-              }}
-            />
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 p-8 text-center select-none">
-              <img src="/logo-white.png" alt="Loveridge" className="h-12 w-auto opacity-90 mb-3" />
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">
-                {formatPropertyType(property.propertyType)}
-              </span>
-              <h2 className="text-xl sm:text-2xl font-black text-white max-w-lg mt-2">
-                {property.title}
-              </h2>
-            </div>
-          )}
-          {/* Left & Right Navigation Arrows */}
-          {galleryImages.length > 1 && (
-            <>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const currentIndex = galleryImages.indexOf(currentCover);
-                  const prevIndex = currentIndex <= 0 ? galleryImages.length - 1 : currentIndex - 1;
-                  setActivePhoto(galleryImages[prevIndex]);
-                }}
-                className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-slate-950/70 hover:bg-slate-950/95 text-white border border-white/25 shadow-xl backdrop-blur-md flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-90 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 cursor-pointer"
-                title="Previous photo"
-                aria-label="Previous photo"
-              >
-                <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-              </button>
-
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const currentIndex = galleryImages.indexOf(currentCover);
-                  const nextIndex = currentIndex >= galleryImages.length - 1 ? 0 : currentIndex + 1;
-                  setActivePhoto(galleryImages[nextIndex]);
-                }}
-                className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-slate-950/70 hover:bg-slate-950/95 text-white border border-white/25 shadow-xl backdrop-blur-md flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-90 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 cursor-pointer"
-                title="Next photo"
-                aria-label="Next photo"
-              >
-                <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-              </button>
-            </>
-          )}
-
-          <button
-            onClick={() => {
-              setLightboxIndex(galleryImages.indexOf(currentCover) >= 0 ? galleryImages.indexOf(currentCover) : 0);
-              setLightboxOpen(true);
-            }}
-            className="absolute top-4 right-4 z-20 bg-white/95 text-slate-900 hover:bg-emerald-800 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-lg"
-          >
-            <Images className="w-4 h-4" /> View Full Gallery ({galleryImages.length})
-          </button>
-        </div>
-
-        {/* Main Grid: Details + Sidebar */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-          {/* Left Column: Specs, Description, Gallery, Amenities */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Comprehensive Quick Specs Bar (Matching exact user screenshot design: Beds, Baths, Guest, BQ, Garage, sqft) */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm grid grid-cols-3 sm:grid-cols-6 gap-3 text-center">
-              <div className="flex flex-col items-center">
-                <span className="text-[11px] text-slate-500 font-medium block">Bedrooms</span>
-                <span className="text-sm sm:text-base font-black text-slate-900 flex items-center justify-center gap-1.5 mt-1">
-                  <Bed className="w-4 h-4 text-emerald-800" /> {property.bedrooms ?? 0} Beds
-                </span>
-              </div>
-
-              <div className="flex flex-col items-center">
-                <span className="text-[11px] text-slate-500 font-medium block">Bathrooms</span>
-                <span className="text-sm sm:text-base font-black text-slate-900 flex items-center justify-center gap-1.5 mt-1">
-                  <Bath className="w-4 h-4 text-emerald-800" /> {property.bathrooms ?? 0} Baths
-                </span>
-              </div>
-
-              <div className="flex flex-col items-center">
-                <span className="text-[11px] text-slate-500 font-medium block">Guest Rooms</span>
-                <span className="text-sm sm:text-base font-black text-slate-900 flex items-center justify-center gap-1.5 mt-1">
-                  <Home className="w-4 h-4 text-emerald-800" /> {property.guestRooms ?? 0} Guest
-                </span>
-              </div>
-
-              <div className="flex flex-col items-center">
-                <span className="text-[11px] text-slate-500 font-medium block">Boys Quarters</span>
-                <span className="text-sm sm:text-base font-black text-slate-900 flex items-center justify-center gap-1.5 mt-1">
-                  <UserCheck className="w-4 h-4 text-emerald-800" /> {property.boysQuarters ?? 0} BQ
-                </span>
-              </div>
-
-              <div className="flex flex-col items-center">
-                <span className="text-[11px] text-slate-500 font-medium block">Garage</span>
-                <span className="text-sm sm:text-base font-black text-slate-900 flex items-center justify-center gap-1.5 mt-1">
-                  <Shield className="w-4 h-4 text-emerald-800" /> {property.garage ?? 0} Garage
-                </span>
-              </div>
-
-              <div className="flex flex-col items-center">
-                <span className="text-[11px] text-slate-500 font-medium block">Area Size</span>
-                <span className="text-sm sm:text-base font-black text-slate-900 flex items-center justify-center gap-1.5 mt-1">
-                  <Maximize2 className="w-4 h-4 text-emerald-800" /> {property.livingAreaSqft || property.sizeSqft || 0} sqft
-                </span>
-              </div>
-            </div>
-
-            {/* Detailed House Specifications Grid */}
-            <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
-              <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
-                <h2 className="text-lg font-black text-slate-900 tracking-tight">Property Overview & Specifications</h2>
-                <span className="px-3 py-1 bg-emerald-50 text-emerald-900 text-xs font-bold rounded-full border border-emerald-200">
-                  Verified Property Details
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs font-semibold">
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
-                  <span className="text-slate-500 text-[11px] block">Property Type</span>
-                  <span className="text-slate-900 font-bold block">{formatPropertyType(property.propertyType)}</span>
-                </div>
-
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
-                  <span className="text-slate-500 text-[11px] block">Listing Type</span>
-                  <span className="text-slate-900 font-bold block">FOR {property.listingType}</span>
-                </div>
-
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
-                  <span className="text-slate-500 text-[11px] block">Boys Quarters (BQ)</span>
-                  <span className="text-emerald-800 font-bold block">
-                    {property.boysQuarters ?? 0} Room(s)
-                  </span>
-                </div>
-
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
-                  <span className="text-slate-500 text-[11px] block">Garage & Carport</span>
-                  <span className="text-slate-900 font-bold block">
-                    {property.garage ?? 0} Vehicle Space(s)
-                  </span>
-                </div>
-
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
-                  <span className="text-slate-500 text-[11px] block">Interior Living Space</span>
-                  <span className="text-slate-900 font-bold block">{property.livingAreaSqft || property.sizeSqft || 0} sqft</span>
-                </div>
-
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
-                  <span className="text-slate-500 text-[11px] block">Land Documentation</span>
-                  <span className="text-emerald-800 font-bold block flex items-center gap-1">
-                    <Shield className="w-3.5 h-3.5 text-emerald-600" /> Titled & Indenture Checked
-                  </span>
-                </div>
-              </div>
-
-              {/* Description Body */}
-              <div className="space-y-3 pt-2">
-                <h3 className="text-sm font-bold text-slate-900">Description</h3>
-                <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-line font-medium">
-                  {property.description}
-                </p>
-              </div>
-            </div>
-
-            {/* GENERAL AMENITIES SECTION */}
-            {hasAnyAmenities && (
-              <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
-                {/* Header matching user design */}
-                <div className="space-y-3">
-                  <div className="h-1 bg-gradient-to-r from-rose-500 via-pink-500 to-rose-400 rounded-full w-full" />
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
-                    <div>
-                      <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                        <BadgeCheck className="w-6 h-6 text-emerald-800" />
-                        General Amenities
-                      </h2>
-                      <p className="text-xs text-slate-500 font-medium mt-1">
-                        Verified appliances, connectivity, and property amenities included with this listing.
-                      </p>
-                    </div>
-                    <span className="px-3.5 py-1.5 bg-emerald-50 text-emerald-900 text-xs font-black rounded-full border border-emerald-200/80 self-start sm:self-auto shadow-2xs">
-                      {normalizedAmenities.length} Inclusions Verified
-                    </span>
-                  </div>
-                </div>
-
-                {/* Categories Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  {/* Appliances */}
-                  {applianceAmenities.length > 0 && (
-                    <div className="bg-slate-50/90 rounded-2xl border border-slate-200/90 p-5 space-y-4 shadow-2xs">
-                      <div className="flex items-center gap-2.5 border-b border-slate-200/80 pb-3">
-                        <div className="w-8 h-8 rounded-xl bg-fuchsia-100 flex items-center justify-center text-fuchsia-700">
-                          <Tv className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <h4 className="font-black text-sm text-slate-900">Appliances</h4>
-                          <span className="text-[11px] text-slate-500 font-medium">{applianceAmenities.length} installed</span>
-                        </div>
-                      </div>
-                      <div className="space-y-2.5">
-                        {applianceAmenities.map((name) => (
-                          <div key={name} className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-100 shadow-2xs">
-                            <div className="flex items-center gap-2.5">
-                              {getAmenityIcon(name)}
-                              <span className="text-xs font-bold text-slate-800">{name}</span>
-                            </div>
-                            <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-2xs">
-                              <Check className="w-3.5 h-3.5 stroke-[3]" />
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Connectivity */}
-                  {connectivityAmenities.length > 0 && (
-                    <div className="bg-slate-50/90 rounded-2xl border border-slate-200/90 p-5 space-y-4 shadow-2xs">
-                      <div className="flex items-center gap-2.5 border-b border-slate-200/80 pb-3">
-                        <div className="w-8 h-8 rounded-xl bg-purple-100 flex items-center justify-center text-purple-700">
-                          <Network className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <h4 className="font-black text-sm text-slate-900">Connectivity</h4>
-                          <span className="text-[11px] text-slate-500 font-medium">{connectivityAmenities.length} active</span>
-                        </div>
-                      </div>
-                      <div className="space-y-2.5">
-                        {connectivityAmenities.map((name) => (
-                          <div key={name} className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-100 shadow-2xs">
-                            <div className="flex items-center gap-2.5">
-                              {getAmenityIcon(name)}
-                              <span className="text-xs font-bold text-slate-800">{name}</span>
-                            </div>
-                            <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-2xs">
-                              <Check className="w-3.5 h-3.5 stroke-[3]" />
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Other Inclusions */}
-                  {otherAmenities.length > 0 && (
-                    <div className="bg-slate-50/90 rounded-2xl border border-slate-200/90 p-5 space-y-4 shadow-2xs">
-                      <div className="flex items-center gap-2.5 border-b border-slate-200/80 pb-3">
-                        <div className="w-8 h-8 rounded-xl bg-pink-100 flex items-center justify-center text-pink-700">
-                          <Asterisk className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <h4 className="font-black text-sm text-slate-900">Other Features</h4>
-                          <span className="text-[11px] text-slate-500 font-medium">{otherAmenities.length} on-site</span>
-                        </div>
-                      </div>
-                      <div className="space-y-2.5">
-                        {otherAmenities.map((name) => (
-                          <div key={name} className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-100 shadow-2xs">
-                            <div className="flex items-center gap-2.5">
-                              {getAmenityIcon(name)}
-                              <span className="text-xs font-bold text-slate-800">{name}</span>
-                            </div>
-                            <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-2xs">
-                              <Check className="w-3.5 h-3.5 stroke-[3]" />
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Custom Highlights (if any other amenities exist) */}
-                {customHighlights.length > 0 && (
-                  <div className="pt-4 border-t border-slate-100">
-                    <span className="text-xs font-black text-slate-700 uppercase tracking-wider block mb-3">
-                      Additional Property Highlights
-                    </span>
-                    <div className="flex flex-wrap gap-2.5">
-                      {customHighlights.map((item) => (
-                        <div
-                          key={item}
-                          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-50/80 border border-emerald-200/80 text-emerald-950 text-xs font-bold shadow-2xs"
-                        >
-                          <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                          <span>{item}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Property Photo Gallery Section */}
-            <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-slate-900">Property Photo Gallery ({galleryImages.length} Photos)</h2>
-                <span className="text-xs text-slate-500 font-medium">Click photo to open lightbox viewer</span>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {galleryImages.map((imgUrl: string, idx: number) => (
-                  <div
-                    key={idx}
-                    onClick={() => {
-                      setActivePhoto(imgUrl);
-                      setLightboxIndex(idx);
-                      setLightboxOpen(true);
-                    }}
-                    className={`relative h-36 rounded-2xl overflow-hidden border-2 cursor-pointer group bg-slate-50 transition-all ${
-                      currentCover === imgUrl
-                        ? 'border-emerald-800 shadow-md ring-2 ring-emerald-800/20 scale-105'
-                        : 'border-slate-200 hover:border-slate-400 opacity-90'
-                    }`}
-                  >
-                    <img
-                      src={imgUrl}
-                      alt={`Property Photo ${idx + 1}`}
-                      loading="lazy"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-slate-950/20 group-hover:bg-slate-950/0 transition-colors flex items-center justify-center">
-                      <span className="opacity-0 group-hover:opacity-100 bg-white/95 text-slate-900 text-[10px] font-bold px-2.5 py-1 rounded-full transition-opacity shadow-md flex items-center gap-1">
-                        <Images className="w-3 h-3 text-emerald-800" /> Open Lightbox
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Social Share Widget */}
-            <SocialShare
-              title={property.title}
-              summary={`Check out ${property.title} in ${property.city} listed on Loveridge Properties.`}
-            />
-          </div>
-
-          {/* Right Column: Price & Agent Card */}
-          <div className="space-y-8">
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xl space-y-6 lg:sticky lg:top-24">
-              <div>
-                <span className="text-xs text-slate-500 font-bold block uppercase tracking-wider">LISTING PRICE</span>
-                <div className="flex flex-wrap items-baseline gap-2 mt-1">
-                  <span className="text-2xl font-black text-emerald-950">
-                    {formattedPrice}
-                  </span>
-                </div>
-              </div>
-
-              {/* ENQUIRY & VIEWING BUTTONS */}
-              <div className="space-y-2.5">
-                <button
-                  onClick={() => {
-                    setInquiryType('General Consultancy');
-                    setModalOpen(true);
-                  }}
-                  className="w-full bg-[#034d35] hover:bg-[#023b28] text-white py-3.5 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition cursor-pointer"
-                >
-                  <Send className="w-4 h-4" /> Make an Enquiry
-                </button>
-
-                <button
-                  onClick={() => {
-                    setInquiryType('Property Viewing Request');
-                    setModalOpen(true);
-                  }}
-                  className="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 py-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer"
-                >
-                  <Calendar className="w-4 h-4 text-emerald-800" /> Book Physical Viewing
-                </button>
-
-                {/* Featured Social Media Showcase Button */}
-                {(() => {
-                  const rawPlat = ((property as any).socialPlatform || '').toUpperCase().trim();
-                  const matched =
-                    rawPlat.includes('INSTA') ? 'INSTAGRAM' :
-                    rawPlat.includes('FACE') ? 'FACEBOOK' :
-                    rawPlat.includes('YOU') || rawPlat.includes('YT') ? 'YOUTUBE' :
-                    'TIKTOK';
-                  const cfg = {
-                    TIKTOK: { label: 'Watch on TikTok', url: (property as any).socialUrl || 'https://www.tiktok.com/@loveridgeproperty?is_from_webapp=1&sender_device=pc', cls: 'bg-black hover:bg-neutral-800 text-white' },
-                    INSTAGRAM: { label: 'Watch on Instagram', url: (property as any).socialUrl || 'https://www.instagram.com/loveridgepropertiesgh/', cls: 'bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045] hover:opacity-95 text-white' },
-                    FACEBOOK: { label: 'View on Facebook', url: (property as any).socialUrl || 'https://web.facebook.com/loveridgepropertiesgh', cls: 'bg-[#1877F2] hover:bg-[#166fe5] text-white' },
-                    YOUTUBE: { label: 'Watch on YouTube', url: (property as any).socialUrl || 'https://www.youtube.com/@loveridgeproperties', cls: 'bg-[#FF0000] hover:bg-[#d90000] text-white' },
-                  }[matched];
-
-                  return (
-                    <a
-                      href={cfg.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`w-full ${cfg.cls} py-3 rounded-2xl text-xs font-black flex items-center justify-center gap-2 transition shadow-md`}
-                    >
-                      <span>{cfg.label}</span>
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  );
-                })()}
-              </div>
-
-              {/* Full Official Loveridge Contact Details Card */}
-              <div className="pt-4 border-t border-slate-100 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs uppercase tracking-wider text-slate-500 font-bold">OFFICIAL PROPERTY BROKERAGE</h4>
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                    <UserCheck className="w-3 h-3 text-emerald-700" /> Loveridge Verified
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-900 text-white font-black text-base flex items-center justify-center border border-emerald-700 shadow-md shrink-0">
-                    L
-                  </div>
-                  <div>
-                    <h5 className="text-sm font-black text-slate-900">Loveridge Properties & Consult</h5>
-                    <p className="text-xs text-emerald-800 font-bold">Senior Real Estate Advisory Desk</p>
-                    <p className="text-xs text-slate-500 font-medium">+233 24 643 2493</p>
-                  </div>
-                </div>
-
-                <div className="space-y-2 text-xs font-semibold text-slate-700">
-                  <a
-                    href="tel:+233246432493"
-                    className="flex items-center gap-2 p-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 transition"
-                  >
-                    <PhoneCall className="w-4 h-4 text-emerald-700 shrink-0" />
-                    <span>Call Direct: +233 24 643 2493</span>
-                  </a>
-
-                  <a
-                    href={`mailto:info@loveridgeproperty.com?subject=Inquiry%20Regarding%20${encodeURIComponent(property.title)}`}
-                    className="flex items-center gap-2 p-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 transition truncate"
-                  >
-                    <Mail className="w-4 h-4 text-emerald-700 shrink-0" />
-                    <span className="truncate">info@loveridgeproperty.com</span>
-                  </a>
-                </div>
-
-                <a
-                  href={`https://wa.me/233246432493?text=Hello%20Loveridge%20Properties,%20I%20am%20interested%20in%20viewing%20${encodeURIComponent(property.title)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-full py-3.5 rounded-2xl bg-emerald-900 hover:bg-emerald-950 text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow-md"
-                >
-                  <PhoneCall className="w-3.5 h-3.5 text-emerald-400" /> Chat With Loveridge Desk on WhatsApp
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Similar Properties */}
-        {similar.length > 0 && (
-          <div className="space-y-6 pt-6 border-t border-slate-200">
-            <h2 className="text-2xl font-extrabold text-slate-900">
-              Similar Listed Properties
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {similar.map((sim) => (
-                <PropertyCard key={sim.id} property={sim} />
-              ))}
-            </div>
-          </div>
-        )}
-      </main>
-
-      <Footer />
-
-      <InquiryModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title="Property Enquiry"
-        defaultInquiryType={inquiryType}
-        type="PROPERTY_VIEWING"
-        propertyId={property.id}
-        itemName={property.title}
-      />
-
-      <ImageGalleryModal
-        isOpen={lightboxOpen}
-        onClose={() => setLightboxOpen(false)}
-        images={galleryImages}
-        initialIndex={lightboxIndex}
-        title={property.title}
-      />
-    </div>
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
+      <PropertyDetailClient initialProperty={result.property} initialSimilar={result.similar} />
+    </>
   );
 }

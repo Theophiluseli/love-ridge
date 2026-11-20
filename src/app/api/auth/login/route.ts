@@ -4,210 +4,111 @@ import { prisma } from '@/lib/db';
 import { signAccessToken } from '@/lib/auth/jwt';
 import { getUserPermissions } from '@/lib/auth/rbac';
 import { logAuditAction } from '@/lib/auth/audit';
+import { getClientIp, isRateLimited, rateLimit, resetRateLimit } from '@/lib/rate-limit';
 
+export const dynamic = 'force-dynamic';
+
+const WINDOW_MS = 15 * 60 * 1000;
+const MAX_FAILS_PER_ACCOUNT = 8;
+const MAX_ATTEMPTS_PER_IP = 30;
+// Pre-computed hash used to keep response timing similar when the account does not exist.
+const DUMMY_HASH = '$2a$10$.HhkolkmOyoVxpDXUi1e0.o3lyZ4Yjv5gplrRSTj9F2wbe0BzYrFq';
+
+function tooMany(retryAfter: number) {
+  return NextResponse.json(
+    { error: 'Too many sign-in attempts. Please wait 15 minutes and try again.' },
+    { status: 429, headers: { 'Retry-After': String(retryAfter || 900) } }
+  );
+}
+
+/**
+ * Admin sign-in. Only real, ACTIVE database accounts with a matching bcrypt password can sign in.
+ * (The previous version created or impersonated a Super Admin for any "@loveridge.com" email
+ * without checking the password; that has been removed.)
+ */
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req);
+  const ipLimit = rateLimit(`login-ip:${ip}`, MAX_ATTEMPTS_PER_IP, WINDOW_MS);
+  if (!ipLimit.allowed) return tooMany(ipLimit.retryAfterSeconds);
+
   let email = '';
   let password = '';
+  try {
+    const body = await req.json().catch(() => ({}));
+    email = String(body.email || '').trim().toLowerCase().slice(0, 254);
+    password = String(body.password || '').slice(0, 200);
+  } catch {
+    /* handled below */
+  }
+
+  if (!email || !password) {
+    return NextResponse.json({ error: 'Email and password are required.' }, { status: 400 });
+  }
+
+  const accountKey = `login-fail:${email}`;
+  if (isRateLimited(accountKey, MAX_FAILS_PER_ACCOUNT)) return tooMany(900);
 
   try {
-    const body = await req.json();
-    email = (body.email || '').trim().toLowerCase();
-    password = body.password || '';
+    const user = await prisma.user.findUnique({ where: { email }, include: { role: true } });
+    const passwordOk = await bcrypt.compare(password, user?.passwordHash || DUMMY_HASH).catch(() => false);
 
-    if (!email || !password) {
-      return NextResponse.json(
-        { error: 'Email and password are required.' },
-        { status: 400 }
-      );
+    if (!user || !passwordOk || user.status !== 'ACTIVE') {
+      rateLimit(accountKey, MAX_FAILS_PER_ACCOUNT, WINDOW_MS);
+      logAuditAction({
+        userId: user?.id,
+        action: 'USER_LOGIN_FAILED',
+        entityType: 'user',
+        entityId: user?.id || email,
+        newValue: { ip },
+      }).catch(() => null);
+      return NextResponse.json({ error: 'Invalid email or password.' }, { status: 401 });
     }
 
-    let user: any = null;
+    resetRateLimit(accountKey);
 
-    try {
-      user = await prisma.user.findUnique({
-        where: { email },
-        include: { role: true },
-      });
+    const permissions = await getUserPermissions(user.roleId).catch(() => [] as string[]);
+    const token = signAccessToken({
+      userId: user.id,
+      email: user.email,
+      name: user.name || 'Loveridge Admin',
+      roleId: user.roleId,
+      roleName: user.role?.name || 'Staff',
+      permissions,
+    });
 
-      if (!user && (email === 'admin@loveridge.com' || email === 'admin@loveridgeproperty.com' || email.endsWith('@loveridge.com'))) {
-        // Auto-bootstrap primary Super Admin account if first time
-        let adminRole = await prisma.role.findFirst({ where: { name: 'Super Admin' } });
-        if (!adminRole) {
-          adminRole = await prisma.role.create({
-            data: { name: 'Super Admin', description: 'Full Control Center Access' },
-          });
-        }
-        const hashedPassword = await bcrypt.hash(password || 'admin123', 10);
-        user = await prisma.user.create({
-          data: {
-            name: 'Desmond Senanu',
-            email,
-            passwordHash: hashedPassword,
-            roleId: adminRole.id,
-            status: 'ACTIVE',
-          },
-          include: { role: true },
-        });
-      }
-    } catch (dbErr) {
-      console.warn('Prisma DB lookup notice during login:', dbErr);
-    }
+    prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }).catch(() => null);
+    logAuditAction({ userId: user.id, action: 'USER_LOGIN', entityType: 'user', entityId: user.id, newValue: { ip } }).catch(() => null);
 
-    // Check password if user found in database
-    if (user && user.status === 'ACTIVE') {
-      const isValidPassword = await bcrypt.compare(password, user.passwordHash).catch(() => false);
-      if (isValidPassword) {
-        if (user.name === 'Kwaku Loveridge' || user.name === 'Super Admin' || !user.name) {
-          try {
-            user = await prisma.user.update({
-              where: { id: user.id },
-              data: { name: 'Desmond Senanu' },
-              include: { role: true },
-            });
-          } catch (e) {}
-        }
-
-        const permissions = await getUserPermissions(user.roleId).catch(() => ['*']);
-        const tokenPayload = {
-          userId: user.id,
-          email: user.email,
-          name: user.name || 'Desmond Senanu',
-          roleId: user.roleId || 'super-admin-role',
-          roleName: user.role?.name || 'Super Admin',
-          permissions,
-        };
-
-        const token = signAccessToken(tokenPayload);
-
-        try {
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { lastLoginAt: new Date() },
-          });
-          await logAuditAction({
-            userId: user.id,
-            action: 'USER_LOGIN',
-            entityType: 'user',
-            entityId: user.id,
-          });
-        } catch (e) {}
-
-        const response = NextResponse.json({
-          message: 'Login successful',
-          token,
-          user: {
-            id: user.id,
-            name: user.name || 'Desmond Senanu',
-            email: user.email,
-            phone: user.phone || '0246432493',
-            role: user.role?.name || 'Super Admin',
-            permissions,
-            twoFactorEnabled: user.twoFactorEnabled || false,
-          },
-        });
-
-        response.cookies.set({
-          name: 'loveridge_token',
-          value: token,
-          httpOnly: true,
-          path: '/',
-          maxAge: 60 * 60 * 8, // 8 hours
-          sameSite: 'lax',
-        });
-
-        return response;
-      }
-    }
-
-    // Admin Fallback authentication for staff accounts when remote DB connection is offline
-    if (email === 'admin@loveridge.com' || email === 'admin@loveridgeproperty.com' || email.endsWith('@loveridge.com')) {
-      const permissions = ['*'];
-      const tokenPayload = {
-        userId: 'admin-fallback-id',
-        email,
-        name: 'Desmond Senanu',
-        roleId: 'super-admin-role',
-        roleName: 'Super Admin',
+    const response = NextResponse.json({
+      message: 'Login successful',
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone || '',
+        role: user.role?.name || 'Staff',
         permissions,
-      };
+        twoFactorEnabled: user.twoFactorEnabled || false,
+      },
+    });
 
-      const token = signAccessToken(tokenPayload);
+    response.cookies.set({
+      name: 'loveridge_token',
+      value: token,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge: 60 * 60 * 8, // 8 hours
+      sameSite: 'lax',
+    });
 
-      const response = NextResponse.json({
-        message: 'Login successful (Super Admin Access)',
-        token,
-        user: {
-          id: 'admin-fallback-id',
-          name: 'Desmond Senanu',
-          email,
-          phone: '0246432493',
-          role: 'Super Admin',
-          permissions,
-          twoFactorEnabled: false,
-        },
-      });
-
-      response.cookies.set({
-        name: 'loveridge_token',
-        value: token,
-        httpOnly: true,
-        path: '/',
-        maxAge: 60 * 60 * 8,
-        sameSite: 'lax',
-      });
-
-      return response;
-    }
-
-    return NextResponse.json(
-      { error: 'Invalid email or password.' },
-      { status: 401 }
-    );
-  } catch (error: any) {
+    return response;
+  } catch (error) {
     console.error('Login route error:', error);
-
-    if (email === 'admin@loveridge.com' || email === 'admin@loveridgeproperty.com' || email.endsWith('@loveridge.com')) {
-      const permissions = ['*'];
-      const tokenPayload = {
-        userId: 'admin-fallback-id',
-        email: email || 'admin@loveridge.com',
-        name: 'Desmond Senanu',
-        roleId: 'super-admin-role',
-        roleName: 'Super Admin',
-        permissions,
-      };
-
-      const token = signAccessToken(tokenPayload);
-
-      const response = NextResponse.json({
-        message: 'Login successful (Super Admin Access)',
-        token,
-        user: {
-          id: 'admin-fallback-id',
-          name: 'Desmond Senanu',
-          email: email || 'admin@loveridge.com',
-          phone: '0246432493',
-          role: 'Super Admin',
-          permissions,
-          twoFactorEnabled: false,
-        },
-      });
-
-      response.cookies.set({
-        name: 'loveridge_token',
-        value: token,
-        httpOnly: true,
-        path: '/',
-        maxAge: 60 * 60 * 8,
-        sameSite: 'lax',
-      });
-
-      return response;
-    }
-
     return NextResponse.json(
-      { error: 'Internal server error during authentication.' },
-      { status: 500 }
+      { error: 'Sign-in is temporarily unavailable. Please try again in a minute.' },
+      { status: 503 }
     );
   }
 }

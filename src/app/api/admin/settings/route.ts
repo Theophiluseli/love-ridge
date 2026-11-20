@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuthPermission } from '@/lib/auth/rbac';
 import { getSystemSetting, setSystemSetting } from '@/lib/system-settings';
 
 export const dynamic = 'force-dynamic';
@@ -24,6 +25,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireAuthPermission(req, 'settings.manage');
+  if ('response' in auth) return auth.response;
+
   try {
     const body = await req.json();
     await setSystemSetting('site_settings', body);

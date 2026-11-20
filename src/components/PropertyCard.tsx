@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Bed, Bath, Maximize2, MapPin, Building, Warehouse as WarehouseIcon, Trees, Clock, Home, Check, Send, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Bed, Bath, Maximize2, MapPin, Building, Warehouse as WarehouseIcon, Trees, Clock, Home, Check, Send, ChevronLeft, ChevronRight, Car } from 'lucide-react';
 import { useCurrency } from '@/context/CurrencyContext';
 import { formatPropertyType } from '@/lib/property-categories';
 
@@ -263,6 +263,14 @@ export default function PropertyCard({ property, onRequestViewing, hidePropertyT
               <span className="text-lg sm:text-xl font-black text-white tracking-tight drop-shadow-md">
                 {formattedPrice}
               </span>
+              {isRent && propType !== 'LAND' && (
+                <span className="text-[11px] font-bold text-white/85 drop-shadow">/ month</span>
+              )}
+              {property.negotiable && (
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-950 bg-amber-300/95 px-2 py-0.5 rounded-full shadow">
+                  Negotiable
+                </span>
+              )}
             </div>
           </div>
           {!hidePropertyType && (
@@ -324,10 +332,20 @@ export default function PropertyCard({ property, onRequestViewing, hidePropertyT
                 <Home className="w-4 h-4 text-emerald-700 mb-1" />
                 <span>{property.guestRooms || 0} Guest</span>
               </div>
-              <div className="flex flex-col items-center" title="Total Size Sqft">
-                <Maximize2 className="w-4 h-4 text-emerald-700 mb-1" />
-                <span>{property.livingAreaSqft || property.sizeSqft || 100} sqft</span>
-              </div>
+              {/* Fix 5: only show a size when one is actually recorded (never a "0" / "100 sqft" placeholder) */}
+              {Number(property.livingAreaSqft) > 0 || Number(property.sizeSqft) > 0 ? (
+                <div className="flex flex-col items-center" title={Number(property.livingAreaSqft) > 0 ? 'Living area' : 'Land size'}>
+                  <Maximize2 className="w-4 h-4 text-emerald-700 mb-1" />
+                  <span>
+                    {Math.round(Number(property.livingAreaSqft) > 0 ? Number(property.livingAreaSqft) : Number(property.sizeSqft)).toLocaleString('en-US')} sqft
+                  </span>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center" title="Parking">
+                  <Car className="w-4 h-4 text-emerald-700 mb-1" />
+                  <span>{property.garage || 0} Parking</span>
+                </div>
+              )}
             </>
           )}
         </div>

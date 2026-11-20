@@ -11,6 +11,8 @@ import { useRealtimeSync } from '@/hooks/useRealtimeSync';
 import { ChevronLeft, Plus, Minus, ArrowRight, ShieldCheck, Clock } from 'lucide-react';
 import Link from 'next/link';
 import { ProductItem } from '@/lib/products-constants';
+import { trackContact } from '@/lib/analytics';
+import { buildWhatsAppLink } from '@/lib/site-config';
 
 interface ProductDetailClientProps {
   product: ProductItem;
@@ -271,7 +273,8 @@ export default function ProductDetailClient({
             {/* Action Buttons */}
             <div className="pt-3 sm:pt-4 flex flex-col sm:flex-row gap-3">
               <a
-                href={`https://wa.me/233246432493?text=${encodeURIComponent(orderMessage)}`}
+                href={buildWhatsAppLink(orderMessage)}
+                onClick={() => trackContact('whatsapp', { contentId: product.slug, contentName: product.name, location: 'product_page' })}
                 target="_blank"
                 rel="noreferrer"
                 className="gradient-btn w-full sm:flex-1 py-3.5 px-4 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-md active:scale-98 text-center"

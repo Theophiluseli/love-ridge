@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuthPermission } from '@/lib/auth/rbac';
 import { getSystemSetting, setSystemSetting } from '@/lib/system-settings';
 import { broadcastCatalogUpdate } from '@/lib/realtime-broadcast';
 import { PageHeroConfigs, DEFAULT_PAGE_HEROES } from '@/lib/page-heroes-constants';
@@ -27,6 +28,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireAuthPermission(req, 'content.manage');
+  if ('response' in auth) return auth.response;
+
   try {
     const body = await req.json();
     if (!body || typeof body.heroes !== 'object') {

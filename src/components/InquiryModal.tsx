@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { X, Send, CheckCircle2, Calendar, Clock } from 'lucide-react';
+import { trackLead } from '@/lib/analytics';
 
 interface InquiryModalProps {
+  /** Listing slug / product slug used as content_id in conversion events. */
+  trackingId?: string;
   isOpen: boolean;
   onClose: () => void;
   title?: string;
@@ -25,7 +28,10 @@ export default function InquiryModal({
   itemName,
   customMessage,
   defaultInquiryType = 'General Consultancy',
+  trackingId,
 }: InquiryModalProps) {
+  // Honeypot: real visitors never see or fill this field; bots usually do.
+  const [website, setWebsite] = useState('');
   const isProductQuote = type === 'PRODUCT_QUOTE';
 
   const [formData, setFormData] = useState({
@@ -84,12 +90,15 @@ export default function InquiryModal({
           preferredDate: isProductQuote ? null : (formData.preferredDate || null),
           preferredTime: isProductQuote ? null : (formData.preferredTime || null),
           message: formData.message,
+          website,
         }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Failed to submit enquiry.');
 
+      // Fix 7: SubmitForm (TikTok) + Lead (Meta) + generate_lead (GA4 via GTM)
+      trackLead({ contentId: trackingId || propertyId || productId, contentName: itemName, formType: type });
       setSuccess(true);
     } catch (err: any) {
       setError(err.message || 'An error occurred.');
@@ -148,6 +157,14 @@ export default function InquiryModal({
 
             {/* Form matching user's Image 2 screenshot exactly */}
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Spam honeypot (hidden from people and screen readers) */}
+              <div aria-hidden="true" style={{ position: 'absolute', left: '-10000px', width: 1, height: 1, overflow: 'hidden' }}>
+                <label>
+                  Website
+                  <input type="text" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} />
+                </label>
+              </div>
+
               {/* Row 1: Your Full Name & Inquiry Type */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -194,11 +211,11 @@ export default function InquiryModal({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-800 mb-1.5">
-                    Email Address
+                    Email Address <span className="font-medium text-slate-400">(optional)</span>
                   </label>
                   <input
                     type="email"
-                    required
+                    maxLength={254}
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="name@domain.com"
@@ -213,6 +230,8 @@ export default function InquiryModal({
                   <input
                     type="tel"
                     required
+                    maxLength={30}
+                    autoComplete="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     placeholder="+233 24 000 0000"

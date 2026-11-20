@@ -89,7 +89,10 @@ export default function PrivacyPolicyPage() {
                 5. Marketing, Cookies and Payments
               </h2>
               <p>
-                Marketing messages will be sent only where legally permitted and the required consent has been obtained. You may unsubscribe at any time. The website may use essential cookies; any analytics or advertising cookies should be disclosed through a cookie notice and consent control. Payments are handled through approved providers. We never request banking passwords, PINs or card-security codes.
+                Marketing messages will be sent only where legally permitted and the required consent has been obtained. You may unsubscribe at any time. Payments are handled through approved providers. We never request banking passwords, PINs or card-security codes.
+              </p>
+              <p>
+                <strong>Analytics and advertising.</strong> This website uses Google Tag Manager to load Google Analytics, Google Ads, the Meta (Facebook/Instagram) Pixel and the TikTok Pixel. These services use cookies and similar technologies to measure visits, understand which listings interest people, and show our adverts to people likely to be interested. When you open a listing, tap a WhatsApp or call button, or send an enquiry, that action (for example, which listing it concerned) may be shared with these providers. We do not send them the content of your enquiry. You can block or delete cookies in your browser settings, and manage ad preferences in your Google, Meta and TikTok account settings.
               </p>
             </section>
 

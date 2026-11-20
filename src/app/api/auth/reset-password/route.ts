@@ -1,32 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
-import { prisma } from '@/lib/db';
+import { NextResponse } from 'next/server';
 
-export async function POST(req: NextRequest) {
-  try {
-    const { email, newPassword } = await req.json();
-
-    if (!email || !newPassword) {
-      return NextResponse.json({ error: 'Admin email and new password are required.' }, { status: 400 });
-    }
-
-    if (newPassword.length < 6) {
-      return NextResponse.json({ error: 'New password must be at least 6 characters long.' }, { status: 400 });
-    }
-
-    const newHash = await bcrypt.hash(newPassword, 10);
-
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (user) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { passwordHash: newHash },
-      });
-    }
-
-    return NextResponse.json({ message: 'Password reset successfully! You can now log in with your new password.' });
-  } catch (error) {
-    console.error('Reset password error:', error);
-    return NextResponse.json({ message: 'Password reset successfully! You can now log in with your new password.' });
-  }
+/**
+ * Public "reset password by email" has been disabled: it changed any admin's password without
+ * verifying ownership of the email address, which allowed full account takeover.
+ *
+ * Passwords can be changed by:
+ *   - the signed-in user: POST /api/auth/change-password
+ *   - a Super Admin for any staff member: Admin → Users → Reset password
+ *     (POST /api/admin/users/[id]/reset-password, authenticated)
+ */
+export async function POST() {
+  return NextResponse.json(
+    {
+      error:
+        'Self-service password reset is disabled for security. Please ask a Loveridge Super Admin to reset your password from Admin → Users.',
+    },
+    { status: 403 }
+  );
 }

@@ -22,6 +22,8 @@ import {
   sanitizeBusinessForPublic,
 } from '@/lib/businesses-constants';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
+import { trackContact } from '@/lib/analytics';
+import { buildWhatsAppLink } from '@/lib/site-config';
 
 export default function BusinessesPage() {
   const [businesses, setBusinesses] = useState<PublicBusinessItem[]>(() =>
@@ -291,7 +293,8 @@ export default function BusinessesPage() {
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <a
-                href="https://wa.me/233246432493"
+                href={buildWhatsAppLink('Hello Loveridge, I would like advice on buying or selling a business.')}
+                onClick={() => trackContact('whatsapp', { location: 'businesses_page' })}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/15 font-bold text-sm transition-all"

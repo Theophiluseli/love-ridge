@@ -6,6 +6,8 @@ import Logo from './Logo';
 import { MapPin, Phone, Mail, Send, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 
 import { useLanguage } from '@/context/LanguageContext';
+import { trackContact, trackNewsletterSignup } from '@/lib/analytics';
+import { buildWhatsAppLink, CALL_NUMBER_DISPLAY, CALL_NUMBER_E164 } from '@/lib/site-config';
 
 export default function Footer() {
   const { t } = useLanguage();
@@ -39,6 +41,7 @@ export default function Footer() {
       const data = await res.json();
 
       if (res.ok) {
+        trackNewsletterSignup();
         setNewsletterStatus({
           type: 'success',
           message: data.message || 'Successfully subscribed! Thank you.',
@@ -187,8 +190,8 @@ export default function Footer() {
             </li>
             <li className="flex items-center justify-center sm:justify-start gap-2 text-slate-700">
               <Phone className="w-4 h-4 text-emerald-800 shrink-0" />
-              <a href="tel:+233246432493" className="hover:text-emerald-800 transition">
-                +233 24 643 2493
+              <a href={`tel:${CALL_NUMBER_E164}`} onClick={() => trackContact('call', { location: 'footer' })} className="hover:text-emerald-800 transition">
+                {CALL_NUMBER_DISPLAY}
               </a>
             </li>
             <li className="flex items-center justify-center sm:justify-start gap-2 text-slate-700">
@@ -263,7 +266,8 @@ export default function Footer() {
 
               {/* WhatsApp */}
               <a
-                href="https://wa.me/233246432493"
+                href={buildWhatsAppLink('Hello Loveridge, I would like to make an enquiry.')}
+                onClick={() => trackContact('whatsapp', { location: 'footer' })}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Chat with Loveridge on WhatsApp"

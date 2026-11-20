@@ -5,6 +5,8 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import PageHeroCarousel from '@/components/PageHeroCarousel';
 import { MapPin, Phone, Mail, Clock, Send, CheckCircle2, MessageSquare, PhoneCall, Globe, Calendar } from 'lucide-react';
+import { trackContact, trackLead } from '@/lib/analytics';
+import { buildWhatsAppLink, CALL_NUMBER_E164, WHATSAPP_DISPLAY } from '@/lib/site-config';
 
 export default function ContactPage() {
   const [form, setForm] = useState({
@@ -45,6 +47,7 @@ export default function ContactPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to send message.');
 
+      trackLead({ formType: 'contact_page' });
       setSubmitted(true);
       setForm({
         name: '',
@@ -105,7 +108,7 @@ export default function ContactPage() {
                     </div>
                     <div>
                       <span className="font-bold text-slate-900 block text-sm">Ghana Sales & Advisory Line</span>
-                      <a href="tel:+233246432493" className="text-slate-700 hover:text-emerald-800 font-semibold block transition">
+                      <a href={`tel:${CALL_NUMBER_E164}`} onClick={() => trackContact('call', { location: 'contact_page' })} className="text-slate-700 hover:text-emerald-800 font-semibold block transition">
                         +233 (0) 24 643 2493
                       </a>
                     </div>
@@ -178,15 +181,17 @@ export default function ContactPage() {
 
                 <div className="pt-4 border-t border-slate-100 space-y-2">
                   <a
-                    href="https://wa.me/233246432493?text=Hello%20Loveridge,%20I%20have%20an%20inquiry."
+                    href={buildWhatsAppLink('Hello Loveridge, I have an enquiry.')}
+                    onClick={() => trackContact('whatsapp', { location: 'contact_page' })}
                     target="_blank"
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                     className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-3 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-md transition"
                   >
-                    <MessageSquare className="w-4 h-4" /> WhatsApp Ghana (+233 24 643 2493)
+                    <MessageSquare className="w-4 h-4" /> WhatsApp Ghana ({WHATSAPP_DISPLAY})
                   </a>
                   <a
                     href="https://wa.me/8615505150635?text=Hello%20Loveridge%20China%20Office,%20I%20have%20an%20inquiry."
+                    onClick={() => trackContact('whatsapp', { location: 'contact_page_china' })}
                     target="_blank"
                     rel="noreferrer"
                     className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-md transition border border-slate-800"

@@ -29,6 +29,8 @@ import {
   sanitizeBusinessForPublic,
 } from '@/lib/businesses-constants';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
+import { trackContact, trackLead } from '@/lib/analytics';
+import { buildWhatsAppLink, CALL_NUMBER_DISPLAY, CALL_NUMBER_E164 } from '@/lib/site-config';
 
 export default function BusinessDetailPage({ params }: { params: { slug: string } }) {
   const cleanSlug = decodeURIComponent(params?.slug || '').toLowerCase().trim();
@@ -130,9 +132,11 @@ export default function BusinessDetailPage({ params }: { params: { slug: string 
       });
 
       if (!res.ok) {
-        throw new Error('Could not submit inquiry. Please try again.');
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Could not submit inquiry. Please try again.');
       }
 
+      trackLead({ contentId: business.slug, contentName: business.title, formType: 'business_listing' });
       setSubmitted(true);
       setFullName('');
       setEmail('');
@@ -668,7 +672,8 @@ export default function BusinessDetailPage({ params }: { params: { slug: string 
 
                 <div className="mt-5 pt-5 border-t border-slate-100 space-y-2.5">
                   <a
-                    href={`https://wa.me/233246432493?text=${whatsappMessage}`}
+                    href={`${buildWhatsAppLink()}?text=${whatsappMessage}`}
+                    onClick={() => trackContact('whatsapp', { contentId: business.slug, contentName: business.title, location: 'business_page' })}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold text-xs sm:text-sm transition-colors"
@@ -676,11 +681,12 @@ export default function BusinessDetailPage({ params }: { params: { slug: string 
                     Inquire Instantly via WhatsApp
                   </a>
                   <a
-                    href="tel:+233246432493"
+                    href={`tel:${CALL_NUMBER_E164}`}
+                    onClick={() => trackContact('call', { contentId: business.slug, contentName: business.title, location: 'business_page' })}
                     className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs sm:text-sm transition-colors"
                   >
                     <PhoneCall className="w-4 h-4" />
-                    Call Advisory Desk: +233 24 643 2493
+                    Call Advisory Desk: {CALL_NUMBER_DISPLAY}
                   </a>
                 </div>
               </div>

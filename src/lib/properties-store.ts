@@ -8,8 +8,81 @@ import {
   sanitizePropertyForPublic,
   INITIAL_PROPERTIES_STORE,
 } from "./properties-constants";
+import { normalizeCityName, resolveRegion } from "./locations";
+import {
+  LEGACY_SLUG_ALIASES,
+  generateUniqueSlug,
+  isPlaceholderSlug,
+  isPlaceholderTitle,
+  recordSlugRedirect,
+  slugify,
+} from "./property-slugs";
 
 export * from "./properties-constants";
+
+function parseCoordinate(value: unknown, limit: number): number | null {
+  if (value === undefined || value === null || value === "") return null;
+  const n = typeof value === "number" ? value : parseFloat(String(value));
+  return Number.isFinite(n) && Math.abs(n) <= limit ? n : null;
+}
+
+function parseOptionalPositive(value: unknown): number | null {
+  if (value === undefined || value === null || value === "") return null;
+  const n = typeof value === "number" ? value : parseFloat(String(value));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function normalizeAmenityList(list: unknown): string[] {
+  if (!Array.isArray(list)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of list) {
+    const name = String(typeof raw === "string" ? raw : (raw as any)?.amenity?.name || (raw as any)?.name || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 80);
+    if (!name || seen.has(name.toLowerCase())) continue;
+    seen.add(name.toLowerCase());
+    out.push(name);
+  }
+  return out.slice(0, 60);
+}
+
+/**
+ * Persist a listing's amenities into the amenities / property_amenities tables (Fix 6.2).
+ * Previously amenities only lived in the in-memory cache, so they disappeared on the next
+ * database refresh and the public API always returned [].
+ */
+async function syncPropertyAmenities(propertyId: string, names: string[]): Promise<void> {
+  const wanted = normalizeAmenityList(names);
+  const amenityIds: string[] = [];
+  for (const name of wanted) {
+    const existing = await prisma.amenity.findFirst({
+      where: { name: { equals: name, mode: "insensitive" } },
+      select: { id: true },
+    });
+    if (existing) {
+      amenityIds.push(existing.id);
+    } else {
+      const created = await prisma.amenity.upsert({
+        where: { name },
+        create: { name },
+        update: {},
+        select: { id: true },
+      });
+      amenityIds.push(created.id);
+    }
+  }
+  await prisma.$transaction([
+    prisma.propertyAmenity.deleteMany({
+      where: { propertyId, ...(amenityIds.length ? { amenityId: { notIn: amenityIds } } : {}) },
+    }),
+    prisma.propertyAmenity.createMany({
+      data: amenityIds.map((amenityId) => ({ propertyId, amenityId })),
+      skipDuplicates: true,
+    }),
+  ]);
+}
 
 const FILE_PATH = path.join(process.cwd(), "scratch", "properties.json");
 const DELETED_PROPERTIES_FILE = path.join(process.cwd(), "scratch", "deleted-properties.json");
@@ -194,6 +267,8 @@ export async function getPropertyBySlug(slug: string): Promise<PropertyItem | nu
         city: dbProp.city,
         region: dbProp.region,
         country: dbProp.country || "Ghana",
+        lat: dbProp.lat ?? null,
+        lng: dbProp.lng ?? null,
         featured: Boolean(dbProp.featured),
         imageUrl: dbProp.imageUrl || "",
         galleryUrls: Array.isArray(dbProp.galleryUrls) ? dbProp.galleryUrls : [],
@@ -274,6 +349,8 @@ async function revalidatePropertiesFromDb(): Promise<PropertyItem[]> {
               city: p.city,
               region: p.region,
               country: p.country || "Ghana",
+              lat: p.lat ?? fileBackup?.lat ?? null,
+              lng: p.lng ?? fileBackup?.lng ?? null,
               featured: Boolean(p.featured),
               isFavourite: fileBackup?.isFavourite !== undefined ? Boolean(fileBackup.isFavourite) : false,
               imageUrl: p.imageUrl || fileBackup?.imageUrl || "",
@@ -286,7 +363,11 @@ async function revalidatePropertiesFromDb(): Promise<PropertyItem[]> {
               ownerName: (fileIsNewer && fileBackup?.ownerName !== undefined) ? fileBackup.ownerName : (p.ownerName || fileBackup?.ownerName || ""),
               ownerPhone: (fileIsNewer && fileBackup?.ownerPhone !== undefined) ? fileBackup.ownerPhone : (p.ownerPhone || fileBackup?.ownerPhone || ""),
               ownerCompany: (fileIsNewer && fileBackup?.ownerCompany !== undefined) ? fileBackup.ownerCompany : (p.ownerCompany || fileBackup?.ownerCompany || ""),
-              amenities: p.amenities?.map((a: any) => a.amenity?.name).filter(Boolean) || fileBackup?.amenities || [],
+              // An empty array is truthy, so check length before falling back to the local backup.
+              amenities: (() => {
+                const fromDb = Array.isArray(p.amenities) ? p.amenities.map((a: any) => a.amenity?.name).filter(Boolean) : [];
+                return fromDb.length > 0 ? fromDb : (fileBackup?.amenities || []);
+              })(),
               createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
               updatedAt: (fileIsNewer && fileBackup?.updatedAt) ? fileBackup.updatedAt : (p.updatedAt ? new Date(p.updatedAt).toISOString() : new Date().toISOString()),
             };
@@ -428,11 +509,33 @@ export async function saveProperty(propData: Partial<PropertyItem>): Promise<Pro
   }
 
   const determinedStatus = propData.status ? propData.status : (existing?.status || "PUBLISHED");
+  const resolvedId = propData.id || existing?.id || `prop-${Date.now()}`;
+  const resolvedTitle = String(propData.title || existing?.title || "Untitled Property").trim();
+
+  // Slug rules (Fix 2): generate from the title, keep it stable once set, and never leave a
+  // placeholder "untitled-…" slug on a published listing.
+  let resolvedSlug = (propData.slug && slugify(propData.slug)) || existing?.slug || "";
+  if (!resolvedSlug) {
+    resolvedSlug = generateUniqueSlug(resolvedTitle, currentProps, resolvedId);
+  }
+  if (
+    String(determinedStatus).toUpperCase() === "PUBLISHED" &&
+    isPlaceholderSlug(resolvedSlug) &&
+    !isPlaceholderTitle(resolvedTitle)
+  ) {
+    const alias = LEGACY_SLUG_ALIASES[resolvedSlug];
+    const preferred = alias && alias.id === resolvedId ? alias.slug : undefined;
+    resolvedSlug = generateUniqueSlug(resolvedTitle, currentProps, resolvedId, preferred);
+  }
+  const previousSlug = existing?.slug;
+
+  const resolvedCity = normalizeCityName(propData.city || existing?.city || "Accra") || "Accra";
+  const resolvedRegion = resolveRegion(resolvedCity, propData.region || existing?.region);
 
   const rawProperty: PropertyItem = {
-    id: propData.id || existing?.id || `prop-${Date.now()}`,
-    title: propData.title || existing?.title || "Untitled Property",
-    slug: propData.slug || existing?.slug || ((propData.title || existing?.title || "prop").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Date.now().toString().slice(-4)),
+    id: resolvedId,
+    title: resolvedTitle,
+    slug: resolvedSlug,
     description: propData.description !== undefined ? propData.description : (existing?.description || "Property listing description."),
     listingType: propData.listingType || existing?.listingType || "SALE",
     propertyType: propData.propertyType || existing?.propertyType || "HOUSE",
@@ -459,16 +562,19 @@ export async function saveProperty(propData: Partial<PropertyItem>): Promise<Pro
     garage: propData.garage !== undefined
       ? (typeof propData.garage === "number" ? propData.garage : parseInt(propData.garage as any) || 0)
       : (existing?.garage ?? 0),
+    // 0, blank or invalid sizes are stored as "unknown" (null) so pages never show "0 sqft" (Fix 5).
     sizeSqft: propData.sizeSqft !== undefined
-      ? (typeof propData.sizeSqft === "number" ? propData.sizeSqft : parseFloat(propData.sizeSqft as any))
-      : (existing?.sizeSqft ?? null),
+      ? parseOptionalPositive(propData.sizeSqft)
+      : parseOptionalPositive(existing?.sizeSqft),
     livingAreaSqft: propData.livingAreaSqft !== undefined
-      ? (typeof propData.livingAreaSqft === "number" ? propData.livingAreaSqft : parseFloat(propData.livingAreaSqft as any))
-      : (existing?.livingAreaSqft ?? null),
+      ? parseOptionalPositive(propData.livingAreaSqft)
+      : parseOptionalPositive(existing?.livingAreaSqft),
     locationAddress: propData.locationAddress || existing?.locationAddress || "Accra",
-    city: propData.city || existing?.city || "Accra",
-    region: propData.region || existing?.region || "Greater Accra",
+    city: resolvedCity,
+    region: resolvedRegion,
     country: propData.country || existing?.country || "Ghana",
+    lat: propData.lat !== undefined ? parseCoordinate(propData.lat, 90) : (existing?.lat ?? null),
+    lng: propData.lng !== undefined ? parseCoordinate(propData.lng, 180) : (existing?.lng ?? null),
     featured: propData.featured !== undefined ? Boolean(propData.featured) : Boolean(existing?.featured || isFav),
     isFavourite: isFav,
     imageUrl: propData.imageUrl || existing?.imageUrl || "",
@@ -494,7 +600,7 @@ export async function saveProperty(propData: Partial<PropertyItem>): Promise<Pro
       ? String(propData.ownerCompany).trim()
       : (existing?.ownerCompany || ""),
     amenities: Array.isArray(propData.amenities)
-      ? propData.amenities
+      ? normalizeAmenityList(propData.amenities)
       : (existing?.amenities || []),
     createdAt: existing?.createdAt || now,
     updatedAt: now,
@@ -564,6 +670,8 @@ export async function saveProperty(propData: Partial<PropertyItem>): Promise<Pro
         city: newProperty.city,
         region: newProperty.region,
         country: newProperty.country,
+        lat: newProperty.lat ?? null,
+        lng: newProperty.lng ?? null,
         featured: newProperty.featured,
         imageUrl: newProperty.imageUrl,
         galleryUrls: newProperty.galleryUrls,
@@ -601,6 +709,8 @@ export async function saveProperty(propData: Partial<PropertyItem>): Promise<Pro
         city: newProperty.city,
         region: newProperty.region,
         country: newProperty.country,
+        lat: newProperty.lat ?? null,
+        lng: newProperty.lng ?? null,
         featured: newProperty.featured,
         imageUrl: newProperty.imageUrl,
         galleryUrls: newProperty.galleryUrls,
@@ -617,8 +727,18 @@ export async function saveProperty(propData: Partial<PropertyItem>): Promise<Pro
         publishedAt: newProperty.status === "PUBLISHED" ? new Date() : null,
       },
     });
+
+    // Amenities live in their own join table; persist them whenever the form sent a list.
+    if (Array.isArray(propData.amenities) || !existing) {
+      await syncPropertyAmenities(newProperty.id, newProperty.amenities || []);
+    }
   } catch (e) {
     console.warn("Prisma property upsert warning:", e);
+  }
+
+  // Keep the old address working with a permanent redirect when the slug changed.
+  if (previousSlug && previousSlug !== newProperty.slug) {
+    await recordSlugRedirect(previousSlug, newProperty.id);
   }
 
   setSystemSetting("properties_catalog", updatedList).catch(() => null);

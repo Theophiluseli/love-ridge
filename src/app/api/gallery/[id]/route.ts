@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuthPermission } from '@/lib/auth/rbac';
 import { prisma } from '@/lib/db';
 import { broadcastCatalogUpdate } from '@/lib/realtime-broadcast';
 
@@ -30,6 +31,9 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
 
 // PUT / PATCH: Update gallery item
 export async function PUT(req: NextRequest, { params }: RouteContext) {
+  const auth = await requireAuthPermission(req, 'content.manage');
+  if ('response' in auth) return auth.response;
+
   try {
     const { id } = params;
     const body = await req.json();
@@ -80,6 +84,9 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
 
 // DELETE: Remove gallery item
 export async function DELETE(req: NextRequest, { params }: RouteContext) {
+  const auth = await requireAuthPermission(req, 'content.manage');
+  if ('response' in auth) return auth.response;
+
   try {
     const { id } = params;
 

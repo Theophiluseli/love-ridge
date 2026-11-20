@@ -6,6 +6,8 @@ import GoogleTranslator from '@/components/GoogleTranslator';
 import { CurrencyProvider } from '@/context/CurrencyContext';
 import { LanguageProvider } from '@/context/LanguageContext';
 import { PwaProvider } from '@/context/PwaContext';
+import GoogleTagManager from '@/components/GoogleTagManager';
+import { SITE_URL } from '@/lib/site-config';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -17,17 +19,14 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://loveridgeproperty.com'),
+  metadataBase: new URL(SITE_URL),
   title: 'Loveridge Properties & Building Materials Store',
   description: 'Ghana’s premier dual-purpose platform combining real estate property listings in East Legon and direct imported porcelain tiles, marble, and construction tools.',
   manifest: '/manifest.json',
-  alternates: {
-    canonical: 'https://loveridgeproperty.com',
-  },
   openGraph: {
     title: 'Loveridge Properties & Building Materials Store',
     description: 'Ghana’s premier dual-purpose platform combining real estate property listings in East Legon and direct imported porcelain tiles, marble, and construction tools.',
-    url: 'https://loveridgeproperty.com',
+    url: SITE_URL,
     siteName: 'Loveridge Properties & Consult',
     locale: 'en_GH',
     type: 'website',
@@ -61,6 +60,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
       </head>
       <body className={inter.className}>
+        <GoogleTagManager />
         <PwaProvider>
           <LanguageProvider>
             <CurrencyProvider>
