@@ -84,9 +84,8 @@ declare global {
   var __cachedGalleryData: { items: any[]; categories: string[]; timestamp: number } | null | undefined;
 }
 
-// Short, per-server cache. Every create/edit/delete clears it; the short TTL covers other
-// serverless instances that did not handle the write.
-const GALLERY_CACHE_TTL = 30000; // 30 seconds
+// No in-memory list cache: on Vercel each server instance had its own copy, so an edit made
+// through one instance stayed invisible on the others. The gallery is small; read it fresh.
 
 // GET: Fetch gallery items with filters
 export async function GET(req: NextRequest) {
@@ -100,28 +99,6 @@ export async function GET(req: NextRequest) {
       // Unpublished items are for signed-in staff only.
       const auth = await requireAuthPermission(req, 'content.manage');
       if ('response' in auth) includeAll = false;
-    }
-
-    const isSimplePublicList = !category && !search && !featured && !includeAll;
-    const now = Date.now();
-
-    if (
-      isSimplePublicList &&
-      globalThis.__cachedGalleryData &&
-      now - globalThis.__cachedGalleryData.timestamp < GALLERY_CACHE_TTL
-    ) {
-      return NextResponse.json(
-        {
-          items: globalThis.__cachedGalleryData.items,
-          total: globalThis.__cachedGalleryData.items.length,
-          categories: globalThis.__cachedGalleryData.categories,
-        },
-        {
-          headers: {
-            'Cache-Control': 'no-store, no-cache, must-revalidate',
-          },
-        }
-      );
     }
 
     // Build Prisma query filter
@@ -176,14 +153,6 @@ export async function GET(req: NextRequest) {
     const categories = Array.from(
       new Set(['All', ...allCategoriesRaw.map((c) => c.category).filter(Boolean)])
     );
-
-    if (isSimplePublicList) {
-      globalThis.__cachedGalleryData = {
-        items,
-        categories,
-        timestamp: now,
-      };
-    }
 
     return NextResponse.json(
       { items, total: items.length, categories },

@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuthPermission } from '@/lib/auth/rbac';
-import { getSystemSetting, setSystemSetting } from '@/lib/system-settings';
+import { getSystemSetting, setSystemSetting, sameJsonValue } from '@/lib/system-settings';
 import { broadcastCatalogUpdate } from '@/lib/realtime-broadcast';
+import { moveInlineImageToStorage } from '@/lib/inline-image-storage';
 
 export const dynamic = 'force-dynamic';
+// The first save after this change moves embedded slide images into storage; allow time for it.
+export const maxDuration = 60;
 
 export interface HeroSlide {
   id: string;
@@ -23,7 +26,7 @@ const DEFAULT_SLIDES: HeroSlide[] = [
 
 export async function GET() {
   try {
-    const { data: slides, isDefault } = await getSystemSetting<HeroSlide[]>('hero_slides', DEFAULT_SLIDES);
+    const { data: slides, isDefault } = await getSystemSetting<HeroSlide[]>('hero_slides', DEFAULT_SLIDES, { fresh: true });
     return NextResponse.json(
       { slides, isDefault },
       {
@@ -47,8 +50,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid payload. Expecting slides array.' }, { status: 400 });
     }
 
-    const inputSlides: HeroSlide[] = body.slides;
-    await setSystemSetting('hero_slides', inputSlides);
+    // Slides used to be saved with the whole image embedded as text (several MB that every visitor
+    // downloaded). Move any embedded image into file storage and keep only its URL.
+    const inputSlides: HeroSlide[] = await Promise.all(
+      (body.slides as HeroSlide[]).map(async (slide) => ({
+        ...slide,
+        imageUrl: await moveInlineImageToStorage(slide.imageUrl, 'hero'),
+      }))
+    );
+
+    const written = await setSystemSetting('hero_slides', inputSlides, { strict: true });
+    const stored = (await getSystemSetting<HeroSlide[]>('hero_slides', DEFAULT_SLIDES, { fresh: true })).data;
+    if (!written || !sameJsonValue(stored, inputSlides)) {
+      return NextResponse.json(
+        { error: 'The database did not accept the change, so the slides were not saved. Please try again in a moment.' },
+        { status: 503 }
+      );
+    }
 
     // Broadcast change to all devices & clients via Supabase Realtime WebSocket
     await broadcastCatalogUpdate('hero', 'UPDATE', { count: inputSlides.length });

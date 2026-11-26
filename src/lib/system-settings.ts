@@ -10,9 +10,18 @@ if (!globalThis.__systemSettingsCache) {
 const settingsCache = globalThis.__systemSettingsCache;
 const CACHE_TTL = 60000; // 60s in-memory cache
 
-export async function getSystemSetting<T>(key: string, defaultValue: T): Promise<{ data: T; isDefault: boolean }> {
+/**
+ * Reads a setting. The 60s in-memory cache is per server instance, so on Vercel (many instances)
+ * a value edited through one instance can look stale on another. Pass `{ fresh: true }` for
+ * settings that admins edit and visitors must see straight away (hero text, hero slides).
+ */
+export async function getSystemSetting<T>(
+  key: string,
+  defaultValue: T,
+  options: { fresh?: boolean } = {}
+): Promise<{ data: T; isDefault: boolean }> {
   const cached = settingsCache.get(key);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+  if (!options.fresh && cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return { data: cached.value as T, isDefault: false };
   }
 
@@ -52,9 +61,18 @@ export async function getSystemSetting<T>(key: string, defaultValue: T): Promise
   return { data: defaultValue, isDefault: true };
 }
 
-export async function setSystemSetting<T>(key: string, value: T): Promise<boolean> {
+/**
+ * Writes a setting. By default the value is cached before the write (existing behaviour the
+ * catalog stores rely on). With `{ strict: true }` the cache is only updated after the database
+ * write succeeds, so a failed save is never reported back as saved.
+ */
+export async function setSystemSetting<T>(
+  key: string,
+  value: T,
+  options: { strict?: boolean } = {}
+): Promise<boolean> {
   const jsonStr = typeof value === 'string' ? value : JSON.stringify(value);
-  settingsCache.set(key, { value, timestamp: Date.now() });
+  if (!options.strict) settingsCache.set(key, { value, timestamp: Date.now() });
 
   try {
     // Upsert directly into PostgreSQL system_settings table via Prisma
@@ -64,9 +82,11 @@ export async function setSystemSetting<T>(key: string, value: T): Promise<boolea
       ON CONFLICT (key)
       DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at
     `;
+    settingsCache.set(key, { value, timestamp: Date.now() });
     return true;
   } catch (err) {
     console.error(`Failed to write system setting "${key}" via Prisma:`, err);
+    if (options.strict) settingsCache.delete(key);
     return false;
   }
 }
@@ -77,4 +97,19 @@ export function invalidateSystemSetting(key?: string) {
   } else {
     settingsCache.clear();
   }
+}
+
+/** True when two JSON-compatible values are equal, ignoring object key order. */
+export function sameJsonValue(a: unknown, b: unknown): boolean {
+  const canon = (v: any): any => {
+    if (Array.isArray(v)) return v.map(canon);
+    if (v && typeof v === 'object') {
+      return Object.keys(v)
+        .filter((k) => v[k] !== undefined)
+        .sort()
+        .reduce((acc: any, k) => ((acc[k] = canon(v[k])), acc), {});
+    }
+    return v;
+  };
+  return JSON.stringify(canon(a)) === JSON.stringify(canon(b));
 }
