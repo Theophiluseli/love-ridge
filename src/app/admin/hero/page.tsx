@@ -55,6 +55,21 @@ const PAGE_KEYS = [
   { key: 'contact', label: 'Contact Us Page', path: '/contact', icon: PhoneCall, tag: 'Inquiries & Desk' },
 ] as const;
 
+// Every admin call carries the signed-in token (the httpOnly cookie alone is not always present,
+// e.g. on localhost or after switching between www / non-www), matching the other admin pages.
+function authFetch(input: string, init: RequestInit = {}) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('loveridge_token') : null;
+  const headers = new Headers(init.headers || {});
+  if (token && token !== 'null' && token !== 'undefined') headers.set('Authorization', `Bearer ${token}`);
+  return fetch(input, { ...init, headers, credentials: 'same-origin' });
+}
+
+async function readError(res: Response, fallback: string) {
+  const data = await res.json().catch(() => ({} as any));
+  if (res.status === 401) return 'Your session has expired. Please log out and sign in again, then save again.';
+  return data.error || fallback;
+}
+
 export default function AdminHeroPage() {
   const [activeTab, setActiveTab] = useState<'slides' | 'content'>('slides');
   const [slides, setSlides] = useState<HeroSlideItem[]>([]);
@@ -178,11 +193,12 @@ export default function AdminHeroPage() {
     } catch (_) {}
 
     try {
-      const res = await fetch('/api/hero-slides', {
+      const res = await authFetch('/api/hero-slides', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slides: updatedSlides }),
       });
+      if (!res.ok) throw new Error(await readError(res, 'Could not save hero slides.'));
       const data = await res.json();
       const finalSlides = (data && Array.isArray(data.slides)) ? data.slides : updatedSlides;
 
@@ -191,9 +207,10 @@ export default function AdminHeroPage() {
       window.dispatchEvent(new Event('hero-slides-updated'));
       window.dispatchEvent(new Event('storage'));
       return finalSlides;
-    } catch (err) {
-      console.warn('Background sync hero slides error:', err);
-      return updatedSlides;
+    } catch (err: any) {
+      console.warn('Hero slides save error:', err);
+      setErrorMessage(`Slides were NOT saved to the live site: ${err.message || 'network error'}`);
+      return null;
     }
   }
 
@@ -212,11 +229,12 @@ export default function AdminHeroPage() {
     } catch (_) {}
 
     try {
-      const res = await fetch('/api/page-heroes', {
+      const res = await authFetch('/api/page-heroes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ heroes: updatedHeroes }),
       });
+      if (!res.ok) throw new Error(await readError(res, 'Could not save page hero text.'));
       const data = await res.json();
       const finalHeroes = (data && data.heroes) ? data.heroes : updatedHeroes;
       localStorage.setItem('loveridge_page_heroes', JSON.stringify(finalHeroes));
@@ -224,9 +242,10 @@ export default function AdminHeroPage() {
       window.dispatchEvent(new Event('page-heroes-updated'));
       window.dispatchEvent(new Event('storage'));
       return finalHeroes;
-    } catch (err) {
-      console.warn('Background sync page heroes error:', err);
-      return updatedHeroes;
+    } catch (err: any) {
+      console.warn('Page heroes save error:', err);
+      setErrorMessage(`Hero text was NOT saved to the live site: ${err.message || 'network error'}`);
+      return null;
     }
   }
 
@@ -235,10 +254,11 @@ export default function AdminHeroPage() {
     setMessage('');
     setErrorMessage('');
     try {
-      await Promise.all([
+      const [savedSlides, savedHeroes] = await Promise.all([
         persistSlides(slides),
         persistPageHeroes(pageHeroes),
       ]);
+      if (!savedSlides || !savedHeroes) return;
       setMessage('Hero section updated & saved successfully! Live changes are now active across Homepage, Properties, Store, About, Services, and Contact pages in real-time.');
       setTimeout(() => setMessage(''), 5000);
     } catch (err: any) {
@@ -259,13 +279,15 @@ export default function AdminHeroPage() {
         const file = files[i];
         const compressedBase64 = await compressImage(file, 1920, 1080, 0.85, false);
 
-        const uploadRes = await fetch('/api/upload', {
+        const uploadRes = await authFetch('/api/upload', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fileData: compressedBase64, fileName: `hero_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}` }),
+          body: JSON.stringify({ base64: compressedBase64, fileName: `hero_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}` }),
         });
+        if (!uploadRes.ok) throw new Error(await readError(uploadRes, 'Image upload failed.'));
         const uploadData = await uploadRes.json();
-        const finalUrl = uploadData.url || compressedBase64;
+        if (!uploadData.url) throw new Error('Image upload failed.');
+        const finalUrl = uploadData.url;
 
         newItems.push({
           id: `hero-${Date.now()}-${i}`,
@@ -277,7 +299,7 @@ export default function AdminHeroPage() {
       }
 
       const merged = [...slides, ...newItems];
-      await persistSlides(merged);
+      if (!(await persistSlides(merged))) return;
       setMessage(`Successfully uploaded and saved ${newItems.length} new hero background slide(s)! Live across all pages.`);
       setTimeout(() => setMessage(''), 4000);
     } catch (err: any) {
@@ -296,17 +318,19 @@ export default function AdminHeroPage() {
     try {
       const compressedBase64 = await compressImage(file, 1920, 1080, 0.85, false);
 
-      const uploadRes = await fetch('/api/upload', {
+      const uploadRes = await authFetch('/api/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileData: compressedBase64, fileName: `hero_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}` }),
+        body: JSON.stringify({ base64: compressedBase64, fileName: `hero_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}` }),
       });
+      if (!uploadRes.ok) throw new Error(await readError(uploadRes, 'Image upload failed.'));
       const uploadData = await uploadRes.json();
-      const finalUrl = uploadData.url || compressedBase64;
+      if (!uploadData.url) throw new Error('Image upload failed.');
+      const finalUrl = uploadData.url;
 
       const updated = [...slides];
       updated[slideIndex].imageUrl = finalUrl;
-      await persistSlides(updated);
+      if (!(await persistSlides(updated))) return;
       setMessage(`Slide image replaced successfully!`);
       setTimeout(() => setMessage(''), 4000);
     } catch (err: any) {
