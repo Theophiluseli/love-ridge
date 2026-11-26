@@ -209,54 +209,58 @@ export default function HomePage() {
 
   const faqs = [
     {
-      question: 'How does Loveridge Properties & Consult verify property owners before clients make payments?',
+      group: 'Buying, renting and selling',
+      question: 'Can you help me buy, rent, sell or manage property while I live outside Ghana?',
       answer:
-        'Loveridge Properties & Consult conducts due diligence before transactions. We verify ownership documents, confirm the legal right to sell, and conduct title verification where required to help protect clients from property fraud.',
+        'Yes. Most of our clients abroad never need to fly in until they are ready. Tell us the area, budget and type of property you want, or where your existing property is. We search, arrange live-video viewings, coordinate the checks with your lawyer and send written updates at every step.',
     },
     {
-      question: 'Do you handle private or off-market property sales and rentals?',
+      group: 'Buying, renting and selling',
+      question: 'How do I book a viewing?',
       answer:
-        'Yes. We provide discreet off-market property services by connecting verified property owners with qualified buyers and tenants who value privacy.',
+        'Send us the listing link (or the area and budget you have in mind), your preferred date, and whether you want an in-person or live-video viewing. We confirm availability with the owner and send you a time.',
     },
     {
-      question: 'Can I source building materials and construction equipment from China and Italy?',
+      group: 'Buying, renting and selling',
+      question: 'How do I know the seller has the right to sell?',
       answer:
-        'Yes. We help clients source building materials, smart tools, equipment, and machinery from trusted manufacturers while supporting procurement, shipping coordination, customs processes, and delivery to Ghana.',
+        'Before you pay anything, we coordinate an official title search at the Lands Commission through your lawyer, check the site plan against the boundary pillars, and confirm who has authority to sign for family or stool land. We explain what the findings mean and what still needs checking.',
     },
     {
-      question: 'How can I schedule a property viewing in Ghana?',
+      group: 'Buying, renting and selling',
+      question: 'Can a foreigner or a Ghanaian abroad own land in Ghana?',
       answer:
-        'Contact us through WhatsApp, email, or our website contact form and request a property viewing. Our team will arrange suitable properties and viewing schedules.',
+        'Ghanaian citizens, including dual citizens, can hold leases of up to 99 years. Non-citizens can hold leases of up to 50 years, renewable. Land is held on lease rather than freehold. Our free guide, "Buying Land in Ghana from Abroad, Safely", explains the details.',
     },
     {
-      question: 'Do you assist diaspora clients buying property in Ghana?',
+      group: 'Buying, renting and selling',
+      question: 'How should I pay for a property?',
       answer:
-        'Yes. We support diaspora buyers with property searches, virtual viewings, document coordination, ownership verification, and local inspections.',
+        'By traceable bank transfer, in agreed stages, into an account in the verified owner\'s or company\'s name. Never in cash and never into a personal "helper" account. Your lawyer should confirm the account before you pay.',
     },
     {
-      question: 'Can foreign investors invest in Ghana real estate?',
+      group: 'Buying, renting and selling',
+      question: 'I own a property. Can you sell or rent it for me?',
       answer:
-        'Yes. We assist international investors with property opportunities in Ghana through verification support, documentation assistance, and communication coordination.',
+        'Yes. We photograph and list it, market it to local and diaspora buyers or tenants, arrange viewings and negotiate terms. Send us the location, type of property and your asking price.',
     },
     {
-      question: 'How do you support China to Ghana imports?',
+      group: 'Sourcing from China',
+      question: 'What can you source from China?',
       answer:
-        'We provide sourcing and import support including supplier identification, factory coordination, shipping arrangements, customs support, and delivery coordination.',
+        'Building materials (tiles, doors, block moulding machines, nail manufacturing machines, sanitary ware, roofing, fittings), smart home products (smart locks, solar lighting, security cameras), tools and construction machinery. Our Yiwu team works directly with manufacturers.',
     },
     {
-      question: 'Do you offer property management and valuation services?',
+      group: 'Sourcing from China',
+      question: 'How do I get a quote?',
       answer:
-        'Yes. Our services include tenant sourcing, rent support, property inspections, maintenance coordination, valuation assistance, and property advisory services.',
+        'Send the item, a photo or specification, the quantity and your delivery town. We confirm details with the factory and send a quote covering the product, estimated production time and shipping.',
     },
     {
-      question: 'Is there a property viewing fee?',
+      group: 'Sourcing from China',
+      question: 'How does payment work for a factory order?',
       answer:
-        'Yes. A viewing fee covers transportation, coordination, and professional property tour services. Applicable commission fees apply after successful sales or rental agreements.',
-    },
-    {
-      question: 'Why Choose Loveridge Properties & Consult?',
-      answer:
-        '• Verified property opportunities in Ghana\n• Support for local and international investors\n• Diaspora property solutions\n• China–Ghana sourcing and procurement services\n• Professional guidance throughout your property journey',
+        'Factories usually ask for a 30% deposit to start production and the 70% balance when the goods are ready, after inspection and before loading.',
     },
   ];
 
@@ -370,6 +374,7 @@ export default function HomePage() {
               <p className="text-emerald-300 font-extrabold text-xs sm:text-sm tracking-wider uppercase max-w-xl mx-auto drop-shadow-sm">
                 Your Ultimate Destination for Premium Properties & Smart Building Solutions
               </p>
+
             </div>
 
             {/* Dual Search Box with Soft Green Accent Glows */}
@@ -1067,9 +1072,15 @@ export default function HomePage() {
               <div className="space-y-3 sm:space-y-3.5 max-w-4xl mx-auto">
                 {faqs.map((faq, idx) => {
                   const isOpen = openFaq === idx;
+                  const showGroup = idx === 0 || faqs[idx - 1].group !== faq.group;
                   return (
+                    <div key={idx} className="space-y-3 sm:space-y-3.5">
+                    {showGroup && (
+                      <h3 className={`text-lg sm:text-xl font-extrabold text-white tracking-tight ${idx === 0 ? '' : 'pt-4'}`}>
+                        {faq.group}
+                      </h3>
+                    )}
                     <div
-                      key={idx}
                       className="bg-white/95 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-white/50 shadow-md hover:shadow-xl transition-all duration-200 overflow-hidden group"
                     >
                       <button
@@ -1096,6 +1107,7 @@ export default function HomePage() {
                           {faq.answer}
                         </div>
                       )}
+                    </div>
                     </div>
                   );
                 })}

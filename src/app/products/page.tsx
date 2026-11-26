@@ -177,6 +177,27 @@ function ProductsContent() {
         subtitle="We help developers, investors, home builders, artisans, and diaspora clients across Ghana and Africa source quality building materials, smart tools, and machinery from China. Check our store now."
       />
 
+      {/* INTRO SECTION (after hero, before listings) */}
+      <section className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-14">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 sm:gap-6">
+          <div className="lg:col-span-3 bg-white rounded-3xl border border-emerald-200/80 shadow-md p-6 sm:p-8 space-y-3">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+              Building materials, smart home products and tools, factory-direct
+            </h2>
+            <p className="text-sm leading-relaxed font-medium text-slate-600">
+              We help developers, investors, home builders, artisans, and diaspora clients across Ghana and Africa source quality building materials, smart tools, and machinery from China. Check our store now.
+            </p>
+          </div>
+          <div className="lg:col-span-2 bg-emerald-950 text-white rounded-3xl shadow-md p-6 sm:p-8 flex items-center">
+            <ul className="list-disc pl-5 space-y-2.5 text-sm leading-relaxed font-medium text-emerald-50/90 marker:text-emerald-400">
+              <li>Selected and checked at the factory in China</li>
+              <li>Delivery across Ghana, with installation available</li>
+              <li>Bulk and project pricing for developers and contractors</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
       <main className="flex-1 w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-10 space-y-8">
         {/* Top Category Pills & Search Header */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b border-slate-200">

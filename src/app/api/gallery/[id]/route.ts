@@ -46,21 +46,34 @@ export async function PUT(req: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'Gallery item not found' }, { status: 404 });
     }
 
+    const str = (v: unknown) => (v === null || v === undefined ? '' : String(v)).trim();
     const dataToUpdate: any = {};
-    if (body.title !== undefined) dataToUpdate.title = body.title.trim();
-    if (body.description !== undefined) dataToUpdate.description = body.description.trim();
-    if (body.imageUrl !== undefined) dataToUpdate.imageUrl = body.imageUrl.trim();
-    if (body.category !== undefined) dataToUpdate.category = body.category.trim();
-    if (body.location !== undefined) dataToUpdate.location = body.location.trim();
-    if (body.eventDate !== undefined) dataToUpdate.eventDate = body.eventDate.trim();
+    if (body.title !== undefined) {
+      if (!str(body.title)) {
+        return NextResponse.json({ error: 'Title is required for gallery image.' }, { status: 400 });
+      }
+      dataToUpdate.title = str(body.title);
+    }
+    if (body.imageUrl !== undefined) {
+      if (!str(body.imageUrl)) {
+        return NextResponse.json({ error: 'Image URL is required.' }, { status: 400 });
+      }
+      dataToUpdate.imageUrl = str(body.imageUrl);
+    }
+    if (body.description !== undefined) dataToUpdate.description = str(body.description);
+    if (body.category !== undefined) dataToUpdate.category = str(body.category) || 'Trade Exhibitions';
+    if (body.location !== undefined) dataToUpdate.location = str(body.location);
+    if (body.eventDate !== undefined) dataToUpdate.eventDate = str(body.eventDate);
     if (body.featured !== undefined) dataToUpdate.featured = Boolean(body.featured);
-    if (body.sortOrder !== undefined) dataToUpdate.sortOrder = Number(body.sortOrder);
-    if (body.status !== undefined) dataToUpdate.status = body.status;
+    if (body.sortOrder !== undefined) dataToUpdate.sortOrder = Number(body.sortOrder) || 0;
+    if (body.status !== undefined) dataToUpdate.status = ['PUBLISHED', 'DRAFT', 'ARCHIVED'].includes(body.status) ? body.status : 'PUBLISHED';
 
     const updated = await prisma.galleryItem.update({
       where: { id },
       data: dataToUpdate,
     });
+
+    globalThis.__cachedGalleryData = null;
 
     // Broadcast change
     await broadcastCatalogUpdate('gallery', 'UPDATE', { id: updated.id });
@@ -101,6 +114,8 @@ export async function DELETE(req: NextRequest, { params }: RouteContext) {
     await prisma.galleryItem.delete({
       where: { id },
     });
+
+    globalThis.__cachedGalleryData = null;
 
     // Broadcast change
     await broadcastCatalogUpdate('gallery', 'DELETE', { id });

@@ -84,7 +84,9 @@ declare global {
   var __cachedGalleryData: { items: any[]; categories: string[]; timestamp: number } | null | undefined;
 }
 
-const GALLERY_CACHE_TTL = 300000; // 5 minutes
+// Short, per-server cache. Every create/edit/delete clears it; the short TTL covers other
+// serverless instances that did not handle the write.
+const GALLERY_CACHE_TTL = 30000; // 30 seconds
 
 // GET: Fetch gallery items with filters
 export async function GET(req: NextRequest) {
@@ -116,7 +118,7 @@ export async function GET(req: NextRequest) {
         },
         {
           headers: {
-            'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=600',
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
           },
         }
       );
@@ -187,9 +189,7 @@ export async function GET(req: NextRequest) {
       { items, total: items.length, categories },
       {
         headers: {
-          'Cache-Control': isSimplePublicList
-            ? 'public, s-maxage=120, stale-while-revalidate=600'
-            : 'no-store, no-cache, must-revalidate',
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
         },
       }
     );

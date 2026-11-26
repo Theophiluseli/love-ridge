@@ -37,38 +37,17 @@ export default function PageHeroCarousel({
   className = '',
 }: PageHeroCarouselProps) {
   const [heroSlide, setHeroSlide] = useState(0);
-  const [slideList, setSlideList] = useState<string[]>(() => {
-    if (initialSlides && initialSlides.length > 0) return initialSlides;
-    if (typeof window !== 'undefined') {
-      try {
-        const localSaved = localStorage.getItem('loveridge_hero_slides');
-        if (localSaved) {
-          const parsed = JSON.parse(localSaved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            const active = parsed.filter((s: any) => s.active).map((s: any) => s.imageUrl);
-            if (active.length > 0) return active;
-          }
-        }
-      } catch (_) {}
-    }
-    return DEFAULT_PAGE_SLIDES;
-  });
+  // Initial state must match the server render (no localStorage here) to avoid
+  // hydration errors; saved slides and hero text are applied in the loaders below.
+  const [slideList, setSlideList] = useState<string[]>(
+    initialSlides && initialSlides.length > 0 ? initialSlides : DEFAULT_PAGE_SLIDES
+  );
 
   const [dynamicHero, setDynamicHero] = useState<{
     title?: string;
     highlightText?: string;
     subtitle?: string;
-  } | null>(() => {
-    if (!pageKey || typeof window === 'undefined') return null;
-    try {
-      const localSaved = localStorage.getItem('loveridge_page_heroes');
-      if (localSaved) {
-        const parsed = JSON.parse(localSaved);
-        if (parsed && parsed[pageKey]) return parsed[pageKey];
-      }
-    } catch (_) {}
-    return null;
-  });
+  } | null>(null);
 
   // Load latest hero background slides from database API
   const loadHeroSlides = useCallback(async () => {

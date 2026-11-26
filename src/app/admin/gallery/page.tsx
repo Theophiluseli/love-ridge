@@ -56,6 +56,21 @@ const CATEGORY_PRESETS = [
   'Project Showcases',
 ];
 
+// Every admin call carries the signed-in token (the httpOnly cookie alone is not always present,
+// e.g. on localhost or after switching between www / non-www), matching the other admin pages.
+function authFetch(input: string, init: RequestInit = {}) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('loveridge_token') : null;
+  const headers = new Headers(init.headers || {});
+  if (token && token !== 'null' && token !== 'undefined') headers.set('Authorization', `Bearer ${token}`);
+  return fetch(input, { ...init, headers, credentials: 'same-origin' });
+}
+
+async function readError(res: Response, fallback: string) {
+  const data = await res.json().catch(() => ({} as any));
+  if (res.status === 401) return 'Your session has expired. Please log out and sign in again.';
+  return data.error || fallback;
+}
+
 export default function AdminGalleryPage() {
   const [items, setItems] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,13 +121,13 @@ export default function AdminGalleryPage() {
     else setLoading(true);
 
     try {
-      const res = await fetch('/api/gallery?includeAll=true', { cache: 'no-store' });
-      if (!res.ok) throw new Error('Failed to fetch gallery items');
+      const res = await authFetch('/api/gallery?includeAll=true', { cache: 'no-store' });
+      if (!res.ok) throw new Error(await readError(res, 'Failed to fetch gallery items'));
       const data = await res.json();
       setItems(data.items || []);
     } catch (err: any) {
       console.error('Gallery fetch error:', err);
-      showToast('Failed to load gallery items', 'error');
+      showToast(err.message || 'Failed to load gallery items', 'error');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -185,14 +200,14 @@ export default function AdminGalleryPage() {
       }
 
       // Upload to server endpoint
-      const res = await fetch('/api/upload', {
+      const res = await authFetch('/api/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ base64: uploadPayload }),
       });
 
       if (!res.ok) {
-        throw new Error('Image upload failed');
+        throw new Error(await readError(res, 'Image upload failed'));
       }
 
       const data = await res.json();
@@ -239,15 +254,14 @@ export default function AdminGalleryPage() {
     try {
       if (editingItem) {
         // PUT /api/gallery/[id]
-        const res = await fetch(`/api/gallery/${editingItem.id}`, {
+        const res = await authFetch(`/api/gallery/${editingItem.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
 
         if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || 'Failed to update photo');
+          throw new Error(await readError(res, 'Failed to update photo'));
         }
 
         const data = await res.json();
@@ -255,15 +269,14 @@ export default function AdminGalleryPage() {
         showToast('Gallery photo updated successfully!');
       } else {
         // POST /api/gallery
-        const res = await fetch('/api/gallery', {
+        const res = await authFetch('/api/gallery', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
 
         if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || 'Failed to create photo');
+          throw new Error(await readError(res, 'Failed to create photo'));
         }
 
         const data = await res.json();
@@ -291,19 +304,19 @@ export default function AdminGalleryPage() {
     );
 
     try {
-      const res = await fetch(`/api/gallery/${item.id}`, {
+      const res = await authFetch(`/api/gallery/${item.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ featured: updatedFeatured }),
       });
-      if (!res.ok) throw new Error('Toggle featured failed');
+      if (!res.ok) throw new Error(await readError(res, 'Failed to update featured status'));
       showToast(updatedFeatured ? 'Marked as Featured' : 'Removed from Featured');
-    } catch (err) {
+    } catch (err: any) {
       // Revert on error
       setItems((prev) =>
         prev.map((i) => (i.id === item.id ? { ...i, featured: item.featured } : i))
       );
-      showToast('Failed to update featured status', 'error');
+      showToast(err.message || 'Failed to update featured status', 'error');
     }
   };
 
@@ -317,18 +330,18 @@ export default function AdminGalleryPage() {
     );
 
     try {
-      const res = await fetch(`/api/gallery/${item.id}`, {
+      const res = await authFetch(`/api/gallery/${item.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       });
-      if (!res.ok) throw new Error('Status update failed');
+      if (!res.ok) throw new Error(await readError(res, 'Failed to update status'));
       showToast(`Photo ${newStatus === 'PUBLISHED' ? 'Published' : 'Moved to Drafts'}`);
-    } catch (err) {
+    } catch (err: any) {
       setItems((prev) =>
         prev.map((i) => (i.id === item.id ? { ...i, status: item.status } : i))
       );
-      showToast('Failed to update status', 'error');
+      showToast(err.message || 'Failed to update status', 'error');
     }
   };
 
@@ -338,10 +351,10 @@ export default function AdminGalleryPage() {
 
     const id = itemToDelete.id;
     try {
-      const res = await fetch(`/api/gallery/${id}`, {
+      const res = await authFetch(`/api/gallery/${id}`, {
         method: 'DELETE',
       });
-      if (!res.ok) throw new Error('Delete failed');
+      if (!res.ok) throw new Error(await readError(res, 'Failed to delete photo'));
 
       setItems((prev) => prev.filter((i) => i.id !== id));
       showToast('Gallery photo deleted successfully!');

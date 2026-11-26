@@ -17,14 +17,13 @@ export default function ServicesPage() {
       id: 'property-brokerage',
       icon: Building2,
       image: '/loveridge-consultation-bg.jpg',
-      title: 'Property Sales, Rentals & Brokerage',
+      title: 'Property sales, rentals & international brokerage',
       subtitle: 'Homes, Apartments, Commercial Property & Land',
-      description: 'We help buyers, tenants, landlords and investors find suitable residential and commercial properties across Accra and other key locations in Ghana and Africa. We coordinate documentation checks and guide clients through viewings, negotiations and the transaction process.',
+      description: "We help buyers and tenants find homes, land and commercial property in Accra, across Ghana and in other African markets. If you're selling or letting a property, we help you market it, arrange viewings and negotiate terms. If you're looking overseas, we connect you with international property developers and brokerage partners in your preferred market. For Chinese and other international investors, we help identify factory sites, meet owners of businesses for sale and explore joint ventures partnership.",
       features: [
-        'Residential & Commercial Property Listings',
-        'Rental, Lease & Property Viewing Support',
-        'Land Documentation & Title Search Coordination',
-        'Negotiation, Sale & Transfer Assistance',
+        'International property brokerage',
+        'Industrial property and joint ventures',
+        'Chinese investor support in Ghana',
       ],
       linkText: 'Browse Property Listings',
       linkHref: '/properties',
@@ -33,14 +32,13 @@ export default function ServicesPage() {
       id: 'materials-sourcing',
       icon: Package,
       image: '/gallery/canton-fair-materials.jpg',
-      title: 'International Building Materials & Equipment Sourcing',
-      subtitle: 'Building Materials, Tools, Equipment & Smart Solutions',
-      description: 'We help homeowners, contractors, developers and businesses source building materials, tools and equipment from reliable manufacturers in China and other major markets. We support procurement, supplier checks, quality control and shipping for projects in Ghana and across Africa.',
+      title: 'International building materials & equipment sourcing',
+      subtitle: 'International Building Materials & Equipment Sourcing',
+      description: 'Our Yiwu team helps you source building materials, smart tools and construction machinery from China for projects in Ghana and across Africa. We confirm specifications with manufacturers and arrange samples or inspections where needed. Before you order, you can review the product details, estimated production time and costs covered by your quote. Once your goods are ready, we coordinate shipping to your destination.',
       features: [
-        'Building Materials, Fixtures & Finishing Products',
-        'Construction Tools, Machinery & Safety Equipment',
-        'Supplier Verification, Negotiation & Quality Control',
-        'Shipping, Consolidation & Customs Support',
+        'Building materials, construction tools and machinery',
+        'Supplier checks and quality control',
+        'Shipping and customs support',
       ],
       linkText: 'Explore Building Materials Store',
       linkHref: '/products',
@@ -49,14 +47,13 @@ export default function ServicesPage() {
       id: 'renovation-management',
       icon: Wrench,
       image: '/gallery/hardware-samples-inspection.jpg',
-      title: 'Property Renovation & Project Management',
+      title: 'Property renovation & management',
       subtitle: 'Property Renovation, Interior Finishing & Project Support',
-      description: 'We help property owners, developers and businesses plan and manage residential and commercial renovation projects in Ghana and across Africa. Our support covers budgeting, material sourcing, contractor coordination, site supervision and quality checks from planning through completion.',
+      description: 'Finishing a home, refurbishing an office or ready to restart an unfinished building project? We help property owners, developers and businesses manage renovations and maintenance in Ghana and across Africa. Before work begins, we agree on the scope, budget and timetable with you. If you are managing the property from abroad, we supervise the work on site and send progress updates so you can make decisions wherever you are.',
       features: [
-        'Residential & Commercial Property Renovation',
-        'Interior Finishing, Tiling & Fixture Installation',
-        'Budget Planning, Procurement & Contractor Coordination',
-        'Site Supervision, Quality Checks & Progress Reporting',
+        'Residential and commercial renovation',
+        'Budgeting and contractor coordination',
+        'Site supervision and progress reporting',
       ],
       linkText: 'Book Renovation Consultation',
       action: 'renovation',
@@ -65,15 +62,13 @@ export default function ServicesPage() {
       id: 'titling-advisory',
       icon: ShieldCheck,
       image: '/gallery/client-document-advisory.jpg',
-      title: 'Property Valuation, Due Diligence & Investment Advisory',
+      title: 'Property valuation, due diligence & investment advisory',
       subtitle: 'Property Valuation, Due Diligence & Investment Support',
-      description: 'We help buyers, property owners, diaspora clients and investors determine property value and make informed real estate decisions in Ghana and selected African markets. We provide valuation support and coordinate document checks and title searches with the relevant professionals and public institutions.',
+      description: "What is the property worth, who has the right to sell it, and is the site suitable for your plans? We help buyers, owners and investors in Ghana and selected African markets answer these questions before they commit. We arrange formal valuations with qualified valuers and coordinate ownership checks and title searches with local professionals. If you're buying from abroad, we help you understand the findings and what still needs checking before you pay.",
       features: [
-        'Residential, Commercial Property & Land Valuation',
-        'Property Ownership & Document Verification Support',
-        'Lands Commission Search & Site Plan Coordination',
-        'Land Registration & Indenture Legal Guidance',
-        'Investment Feasibility & Diaspora Buyer Support',
+        'Property valuation',
+        'Title search coordination and registration support',
+        'Investment feasibility for diaspora and international buyers',
       ],
       linkText: 'Request Advisory Session',
       action: 'advisory',
@@ -122,14 +117,18 @@ export default function ServicesPage() {
                   {/* Content below the image */}
                   <div className="p-8 sm:p-10 flex flex-col justify-between flex-1 space-y-6">
                     <div className="space-y-4">
-                      <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-800 shadow-sm group-hover:scale-105 transition-transform">
-                        <Icon className="w-7 h-7" />
-                      </div>
+                      {Icon && (
+                        <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-800 shadow-sm group-hover:scale-105 transition-transform">
+                          <Icon className="w-7 h-7" />
+                        </div>
+                      )}
 
                       <div>
-                        <span className="text-[11px] sm:text-xs font-bold text-emerald-800 uppercase tracking-wider block">
-                          {srv.subtitle}
-                        </span>
+                        {srv.subtitle && (
+                          <span className="text-[11px] sm:text-xs font-bold text-emerald-800 uppercase tracking-wider block">
+                            {srv.subtitle}
+                          </span>
+                        )}
                         <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-1">{srv.title}</h3>
                       </div>
 

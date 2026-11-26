@@ -10,7 +10,7 @@ export const DEFAULT_PAGE_HEROES: PageHeroConfigs = {
   properties: {
     title: 'Properties & Commercial Listings',
     highlightText: 'Commercial Listings',
-    subtitle: 'Browse verified luxury villas, residential homes, prime commercial offices, logistics warehouses, and titled lands across Ghana.',
+    subtitle: '',
   },
   products: {
     title: 'Loveridge Building Materials Store',

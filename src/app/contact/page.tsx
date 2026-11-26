@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import PageHeroCarousel from '@/components/PageHeroCarousel';
-import { MapPin, Phone, Mail, Clock, Send, CheckCircle2, MessageSquare, PhoneCall, Globe, Calendar } from 'lucide-react';
+import { MapPin, Phone, Mail, Clock, Send, CheckCircle2, MessageSquare, PhoneCall, Calendar } from 'lucide-react';
 import { trackContact, trackLead } from '@/lib/analytics';
 import { buildWhatsAppLink, CALL_NUMBER_E164, WHATSAPP_DISPLAY } from '@/lib/site-config';
 
@@ -78,7 +78,7 @@ export default function ContactPage() {
               Contact <span className="text-emerald-400">Loveridge Consult</span>
             </>
           }
-          subtitle="Have a question about a property viewing, land title search, or wholesale building material import? Reach out to our East Legon office team."
+          subtitle="For a property enquiry, send the listing link or your preferred area and budget. For a sourcing quote, send the item, a photo or specification, the quantity and your delivery town."
         />
 
         {/* Contact Layout: Form + Info Cards */}
@@ -89,92 +89,82 @@ export default function ContactPage() {
               <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xl space-y-6">
                 <h3 className="text-xl font-bold text-slate-900">Get In Touch Directly</h3>
 
-                <div className="space-y-4 text-xs font-medium">
-                  {/* Ghana Head Office */}
-                  <div className="flex items-start gap-3 text-slate-700">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-900 flex items-center justify-center shrink-0 mt-0.5">
-                      <MapPin className="w-4 h-4 text-emerald-800" />
+                <div className="space-y-5 text-xs font-medium">
+                  {/* Ghana Office */}
+                  <div className="space-y-4">
+                    <h4 className="text-[11px] font-extrabold text-emerald-800 uppercase tracking-widest">Ghana Office</h4>
+                    <div className="flex items-start gap-3 text-slate-700">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-900 flex items-center justify-center shrink-0 mt-0.5">
+                        <MapPin className="w-4 h-4 text-emerald-800" />
+                      </div>
+                      <div className="space-y-0.5">
+                        <span className="font-bold text-slate-900 block text-sm">Address</span>
+                        <span className="text-slate-600 block">Boundary Road, East Legon, Accra – Ghana</span>
+                      </div>
                     </div>
-                    <div>
-                      <span className="font-bold text-slate-900 block text-sm">Ghana Head Office</span>
-                      <span className="text-slate-600">Boundary Road, East Legon, Accra – Ghana</span>
+                    <div className="flex items-start gap-3 text-slate-700">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-900 flex items-center justify-center shrink-0 mt-0.5">
+                        <Phone className="w-4 h-4 text-emerald-800" />
+                      </div>
+                      <div className="space-y-0.5">
+                        <span className="font-bold text-slate-900 block text-sm">Sales & Advisory Line</span>
+                        <a href={`tel:${CALL_NUMBER_E164}`} onClick={() => trackContact('call', { location: 'contact_page' })} className="text-slate-700 hover:text-emerald-800 font-semibold block transition">
+                          +233 (0) 24 643 2493
+                        </a>
+                      </div>
                     </div>
-                  </div>
-
-                  {/* Ghana Sales & Advisory Line */}
-                  <div className="flex items-start gap-3 text-slate-700">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-900 flex items-center justify-center shrink-0 mt-0.5">
-                      <Phone className="w-4 h-4 text-emerald-800" />
-                    </div>
-                    <div>
-                      <span className="font-bold text-slate-900 block text-sm">Ghana Sales & Advisory Line</span>
-                      <a href={`tel:${CALL_NUMBER_E164}`} onClick={() => trackContact('call', { location: 'contact_page' })} className="text-slate-700 hover:text-emerald-800 font-semibold block transition">
-                        +233 (0) 24 643 2493
-                      </a>
+                    <div className="flex items-start gap-3 text-slate-700">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-900 flex items-center justify-center shrink-0 mt-0.5">
+                        <Clock className="w-4 h-4 text-emerald-800" />
+                      </div>
+                      <div className="space-y-0.5">
+                        <span className="font-bold text-slate-900 block text-sm">Office Hours</span>
+                        <span className="text-slate-600 block">Monday – Saturday: 8:00 AM – 6:00 PM (GMT)</span>
+                      </div>
                     </div>
                   </div>
 
                   {/* International Office – China */}
-                  <div className="flex items-start gap-3 text-slate-700">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-900 flex items-center justify-center shrink-0 mt-0.5">
-                      <Globe className="w-4 h-4 text-emerald-800" />
+                  <div className="space-y-4 pt-5 border-t border-slate-100">
+                    <h4 className="text-[11px] font-extrabold text-emerald-800 uppercase tracking-widest">International Office – China</h4>
+                    <div className="flex items-start gap-3 text-slate-700">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-900 flex items-center justify-center shrink-0 mt-0.5">
+                        <MapPin className="w-4 h-4 text-emerald-800" />
+                      </div>
+                      <div className="space-y-0.5">
+                        <span className="font-bold text-slate-900 block text-sm">Address</span>
+                        <span className="text-slate-600 block">Yiwu International Trade Center, Yiwu, Zhejiang – China</span>
+                      </div>
                     </div>
-                    <div>
-                      <span className="font-bold text-slate-900 block text-sm">International Office – China</span>
-                      <span className="text-slate-600">Yiwu International Trade Center, Yiwu, Zhejiang – China</span>
-                    </div>
-                  </div>
-
-                  {/* International WhatsApp & Telephone */}
-                  <div className="flex items-start gap-3 text-slate-700">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-900 flex items-center justify-center shrink-0 mt-0.5">
-                      <PhoneCall className="w-4 h-4 text-emerald-800" />
-                    </div>
-                    <div>
-                      <span className="font-bold text-slate-900 block text-sm">International WhatsApp & Telephone</span>
-                      <a href="tel:+8615505150635" className="text-slate-700 hover:text-emerald-800 font-semibold block transition">
-                        +86 155 0515 0635
-                      </a>
+                    <div className="flex items-start gap-3 text-slate-700">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-900 flex items-center justify-center shrink-0 mt-0.5">
+                        <PhoneCall className="w-4 h-4 text-emerald-800" />
+                      </div>
+                      <div className="space-y-0.5">
+                        <span className="font-bold text-slate-900 block text-sm">WhatsApp & Telephone</span>
+                        <a href="tel:+8615505150635" className="text-slate-700 hover:text-emerald-800 font-semibold block transition">
+                          +86 155 0515 0635
+                        </a>
+                      </div>
                     </div>
                   </div>
 
                   {/* Official Emails */}
-                  <div className="flex items-start gap-3 text-slate-700">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-900 flex items-center justify-center shrink-0 mt-0.5">
-                      <Mail className="w-4 h-4 text-emerald-800" />
-                    </div>
-                    <div className="space-y-0.5">
-                      <span className="font-bold text-slate-900 block text-sm">Official Emails</span>
-                      <a href="mailto:info@loveridgeproperty.com" className="text-slate-700 hover:text-emerald-800 block transition break-all">
-                        info@loveridgeproperty.com
-                      </a>
-                      <a href="mailto:loveridgepropertiesgh@gmail.com" className="text-slate-700 hover:text-emerald-800 block transition break-all">
-                        loveridgepropertiesgh@gmail.com
-                      </a>
-                    </div>
-                  </div>
-
-                  {/* Official Website */}
-                  <div className="flex items-start gap-3 text-slate-700">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-900 flex items-center justify-center shrink-0 mt-0.5">
-                      <Globe className="w-4 h-4 text-emerald-800" />
-                    </div>
-                    <div className="space-y-0.5">
-                      <span className="font-bold text-slate-900 block text-sm">Official Website</span>
-                      <a href="https://loveridgeproperty.com" target="_blank" rel="noopener noreferrer" className="text-slate-700 hover:text-emerald-800 block transition break-all font-semibold">
-                        loveridgeproperty.com
-                      </a>
-                    </div>
-                  </div>
-
-                  {/* Ghana Office Hours */}
-                  <div className="flex items-start gap-3 text-slate-700">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-900 flex items-center justify-center shrink-0 mt-0.5">
-                      <Clock className="w-4 h-4 text-emerald-800" />
-                    </div>
-                    <div>
-                      <span className="font-bold text-slate-900 block text-sm">Ghana Office Hours</span>
-                      <span className="text-slate-600">Monday – Saturday: 8:00 AM – 6:00 PM (GMT)</span>
+                  <div className="space-y-4 pt-5 border-t border-slate-100">
+                    <h4 className="text-[11px] font-extrabold text-emerald-800 uppercase tracking-widest">Official Emails</h4>
+                    <div className="flex items-start gap-3 text-slate-700">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-900 flex items-center justify-center shrink-0 mt-0.5">
+                        <Mail className="w-4 h-4 text-emerald-800" />
+                      </div>
+                      <div className="space-y-0.5">
+                        <span className="font-bold text-slate-900 block text-sm">Email</span>
+                        <a href="mailto:info@loveridgeproperty.com" className="text-slate-700 hover:text-emerald-800 block transition break-all">
+                          info@loveridgeproperty.com
+                        </a>
+                        <a href="mailto:loveridgepropertiesgh@gmail.com" className="text-slate-700 hover:text-emerald-800 block transition break-all">
+                          loveridgepropertiesgh@gmail.com
+                        </a>
+                      </div>
                     </div>
                   </div>
                 </div>

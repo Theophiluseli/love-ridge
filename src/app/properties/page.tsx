@@ -46,6 +46,9 @@ function PropertiesContent() {
     isOpen: boolean;
     propertyId?: string;
     itemName?: string;
+    title?: string;
+    type?: 'PROPERTY_VIEWING' | 'GENERAL_CONTACT';
+    customMessage?: string;
   }>({ isOpen: false });
 
   const fetchProperties = useCallback(async (showSkeleton = false, forceFresh = false) => {
@@ -174,7 +177,6 @@ function PropertiesContent() {
             Properties & <span className="text-emerald-400">Commercial Listings</span>
           </>
         }
-        subtitle="Browse verified luxury villas, residential homes, prime commercial offices, logistics warehouses, and titled lands across Ghana."
       >
 
           {/* COMPACT SLEEK SEARCH FILTER BOX */}
@@ -319,6 +321,39 @@ function PropertiesContent() {
 
       </PageHeroCarousel>
 
+      {/* INTRO SECTION (after hero, before listings) */}
+      <section className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-14">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 sm:gap-6">
+          <div className="lg:col-span-3 bg-white rounded-3xl border border-emerald-200/80 shadow-md p-6 sm:p-8 space-y-3">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+              Houses, land and commercial property for sale and rent in Ghana
+            </h2>
+            <p className="text-sm leading-relaxed font-medium text-slate-600">
+              Browse verified luxury villas, residential homes, prime commercial offices, logistics warehouses, and titled lands across Ghana.
+            </p>
+          </div>
+          <div className="lg:col-span-2 bg-emerald-950 text-white rounded-3xl shadow-md p-6 sm:p-8 flex flex-col gap-4">
+            <p className="text-sm leading-relaxed font-medium text-emerald-50/90 flex-1">
+              <strong className="text-white font-bold">Can&apos;t find what you need?</strong> Tell us the area, budget and type of property and we will search for you, including off-market options.
+            </p>
+            <button
+              type="button"
+              onClick={() =>
+                setModalState({
+                  isOpen: true,
+                  type: 'GENERAL_CONTACT',
+                  title: 'Send my requirements',
+                  customMessage: 'Hello Loveridge, please search for a property for me.\nArea: \nBudget: \nType of property: ',
+                })
+              }
+              className="self-start bg-white hover:bg-emerald-50 text-emerald-950 font-bold px-6 py-3 rounded-2xl text-sm transition-colors"
+            >
+              Send my requirements
+            </button>
+          </div>
+        </div>
+      </section>
+
       {/* Main Results Container */}
       <main id="property-results" className="flex-1 w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-10 space-y-10">
         {/* Results Header Counter */}
@@ -372,11 +407,12 @@ function PropertiesContent() {
       <InquiryModal
         isOpen={modalState.isOpen}
         onClose={() => setModalState({ isOpen: false })}
-        title="Property Enquiry"
+        title={modalState.title || 'Property Enquiry'}
         defaultInquiryType="General Consultancy"
-        type="PROPERTY_VIEWING"
+        type={modalState.type || 'PROPERTY_VIEWING'}
         propertyId={modalState.propertyId}
         itemName={modalState.itemName}
+        customMessage={modalState.customMessage}
       />
     </div>
   );
